@@ -532,3 +532,5 @@ After a failure, SentinelFS follows these steps:
 5. **Monitoring**: Monitor for additional issues
 
 This architecture enables SentinelFS to maintain high availability and data integrity even during component failures or network partitions.
+
+_last updated 29.09.2025_

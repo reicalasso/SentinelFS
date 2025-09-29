@@ -752,3 +752,5 @@ Establish and maintain performance baselines:
 - **Resource Baseline**: Document normal CPU/memory usage
 
 This information enables proactive operations and capacity planning for SentinelFS deployments.
+
+_last updated 29.09.2025_

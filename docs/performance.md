@@ -386,3 +386,5 @@ After tuning, validate performance improvements:
 # Generate performance report
 cargo run --bin sentinel-benchmark -- --report /tmp/performance-report.pdf
 ```
+
+_last updated 29.09.2025_

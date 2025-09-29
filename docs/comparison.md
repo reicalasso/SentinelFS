@@ -340,3 +340,5 @@ SentinelFS represents a new generation of distributed file systems that prioriti
 | Performance + Security | Choose SentinelFS |
 
 The decision matrix shows that SentinelFS is best suited for organizations that prioritize security, compliance, and advanced threat detection capabilities. For environments where basic file sharing is the primary requirement, NFS may still be appropriate. For massive-scale storage needs, Ceph remains a strong choice. GlusterFS serves as a middle ground for organizations that need scale but with simpler architecture than Ceph.
+
+_last updated 29.09.2025_

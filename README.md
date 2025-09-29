@@ -431,3 +431,6 @@ This project represents original work by the listed team members for YMH345 - Co
 [![GitHub stars](https://img.shields.io/github/stars/reicalasso/SentinelFS?style=social)](https://github.com/reicalasso/SentinelFS)
 
 </div>
+
+
+_last updated 29.09.2025_

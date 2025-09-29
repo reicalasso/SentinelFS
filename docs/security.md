@@ -386,3 +386,5 @@ Automated security validation tests:
 # Validate encryption
 ./scripts/security-tests/encryption-validation.sh
 ```
+
+_last updated 29.09.2025_

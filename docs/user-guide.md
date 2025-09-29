@@ -353,3 +353,5 @@ Key metrics to monitor:
 - `sentinel_fs_latency_seconds`: Operation latency percentiles
 - `sentinel_fs_cache_hit_ratio`: Cache efficiency
 - `sentinel_fs_network_latency_seconds`: Network performance between nodes
+
+_last updated 29.09.2025_

@@ -277,6 +277,8 @@ The integration of real-time security intelligence, network-aware optimization, 
 This work was supported by the Software Engineering Department at [Institution Name]. We thank the reviewers for their valuable feedback.
 
 ---
-**Corresponding Author:** [Author Name]  
-**Email:** [email@institution.edu]  
-**Date:** [Current Date]
+**Corresponding Author:** [Mehmet Arda Hakbilen]  
+**Email:** [23291164@ankara.edu.tr]  
+**Date:** [29.09.2025]
+
+_last updated 29.09.2025_
