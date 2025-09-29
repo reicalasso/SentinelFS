@@ -35,9 +35,9 @@ graph TB
     end
     
     subgraph "Storage Nodes"
-        NODE1[Node 1\n(Metadata)]
-        NODE2[Node 2\n(Data)]
-        NODE3[Node 3\n(Replica)]
+        NODE1["Node 1<br/>(Metadata)"]
+        NODE2["Node 2<br/>(Data)"]
+        NODE3["Node 3<br/>(Replica)"]
     end
     
     APP --> FUSE_DRIVER
