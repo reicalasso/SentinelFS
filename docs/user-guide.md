@@ -1,8 +1,22 @@
+---
+title: "SentinelFS User Guide"
+description: "How to install, configure, and use SentinelFS in your environment"
+date: "29.09.2025"
+---
+
 # 📖 SentinelFS User Guide
+
+## 📋 Table of Contents
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Basic Usage](#basic-usage)
+- [Troubleshooting](#troubleshooting)
+- [Security Best Practices](#security-best-practices)
+- [Monitoring and Metrics](#monitoring-and-metrics)
 
 Welcome to the SentinelFS User Guide! This document will help you install, configure, and use SentinelFS in your environment.
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -116,7 +130,7 @@ server {
 }
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Mount Configuration
 
@@ -184,7 +198,7 @@ confidence_threshold = 0.85
 learning_enabled = true
 ```
 
-## 📁 Basic Usage
+## Basic Usage
 
 ### Mounting the File System
 
@@ -236,7 +250,7 @@ curl -X PUT http://localhost:8080/api/v1/files/sentinels/myfile.txt/permissions 
     }'
 ```
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -311,7 +325,7 @@ curl http://localhost:8080/api/v1/health/storage
 curl http://localhost:8080/api/v1/health/security
 ```
 
-## 🚨 Security Best Practices
+## Security Best Practices
 
 ### Regular Updates
 
@@ -337,7 +351,7 @@ Implement a backup strategy for your data:
 sentinelfs-cli backup create --destination /backup/location --encryption
 ```
 
-## 📊 Monitoring and Metrics
+## Monitoring and Metrics
 
 SentinelFS exports Prometheus metrics at `/metrics`:
 
@@ -354,4 +368,4 @@ Key metrics to monitor:
 - `sentinel_fs_cache_hit_ratio`: Cache efficiency
 - `sentinel_fs_network_latency_seconds`: Network performance between nodes
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

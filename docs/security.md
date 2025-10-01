@@ -1,8 +1,25 @@
+---
+title: "SentinelFS Security Model"
+description: "Security architecture and implementation in SentinelFS"
+date: "29.09.2025"
+---
+
 # 🛡️ SentinelFS Security Model
+
+## 📋 Table of Contents
+- [Zero-Trust Architecture](#zero-trust-architecture)
+- [Authentication & Authorization](#authentication--authorization)
+- [Key Management](#key-management)
+- [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+- [Threat Detection & Response](#threat-detection--response)
+- [Immutable Audit Logging](#immutable-audit-logging)
+- [Incident Response](#incident-response)
+- [Security Configuration](#security-configuration)
+- [Security Testing](#security-testing)
 
 This document details the security architecture and implementation in SentinelFS, covering the zero-trust model, key management, and RBAC implementation.
 
-## 🏗️ Zero-Trust Architecture
+## Zero-Trust Architecture
 
 SentinelFS implements a comprehensive zero-trust security model with the following principles:
 
@@ -27,7 +44,7 @@ SentinelFS implements a comprehensive zero-trust security model with the followi
 - Regular security scanning and threat detection
 - Automated anomaly detection and response
 
-## 🔐 Authentication & Authorization
+## Authentication & Authorization
 
 ### JWT-Based Authentication
 
@@ -47,7 +64,7 @@ For administrative accounts, MFA is enforced with:
 - Certificate-based authentication (optional)
 - Biometric authentication (when available)
 
-## 🔑 Key Management
+## Key Management
 
 ### Encryption Standards
 
@@ -96,7 +113,7 @@ The master key hierarchy:
 └─────────────────────┘
 ```
 
-## 🎭 Role-Based Access Control (RBAC)
+## Role-Based Access Control (RBAC)
 
 ### Role Hierarchy
 
@@ -167,7 +184,7 @@ In addition to RBAC, SentinelFS supports ABAC for fine-grained access control:
 - **Resource attributes**: Classification, department, retention policy
 - **Environment attributes**: Network zone, device compliance, time
 
-## 🦠 Threat Detection & Response
+## Threat Detection & Response
 
 ### Multi-Layer Security
 
@@ -231,7 +248,7 @@ Machine learning models detect anomalous access patterns:
 - **Learning**: Continuous model updates with new data
 - **Response**: Automated alerts and access restrictions
 
-## 📝 Immutable Audit Logging
+## Immutable Audit Logging
 
 ### Blockchain-Based Log Integrity
 
@@ -289,7 +306,7 @@ Each audit entry contains:
 }
 ```
 
-## 🚨 Incident Response
+## Incident Response
 
 ### Automated Response Actions
 
@@ -321,7 +338,7 @@ Default thresholds:
 - **Orange (51-75)**: Quarantine and investigate
 - **Red (76-100)**: Block access immediately
 
-## 🔧 Security Configuration
+## Security Configuration
 
 ### Security Settings Configuration
 
@@ -387,4 +404,4 @@ Automated security validation tests:
 ./scripts/security-tests/encryption-validation.sh
 ```
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

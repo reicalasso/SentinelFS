@@ -1,4 +1,24 @@
+---
+title: "SentinelFS Academic Presentation"
+description: "Academic presentation covering the SentinelFS project"
+date: "29.09.2025"
+---
+
 # 📊 SentinelFS Academic Presentation
+
+## 📋 Table of Contents
+- [Presentation Outline](#presentation-outline)
+- [1. Title Slide](#1-title-slide)
+- [2. Problem Statement](#2-problem-statement)
+- [3. Solution Overview](#3-solution-overview)
+- [4. Technical Architecture](#4-technical-architecture)
+- [5. Security Framework](#5-security-framework)
+- [6. AI Integration](#6-ai-integration)
+- [7. Performance Results](#7-performance-results)
+- [8. Security Effectiveness](#8-security-effectiveness)
+- [9. Use Cases](#9-use-cases)
+- [10. Future Work](#10-future-work)
+- [11. Questions](#11-questions)
 
 ## Presentation Outline
 
@@ -256,4 +276,4 @@ For technical questions about implementation:
 - **Project Repository:** [https://github.com/reicalasso/SentinelFS](https://github.com/reicalasso/SentinelFS)  
 - **Documentation:** [https://sentinelfs.readthedocs.io](https://sentinelfs.readthedocs.io)
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

@@ -1,4 +1,24 @@
+---
+title: "SentinelFS - AI-Powered Distributed Security File System"
+authors: "Mehmet Arda Hakbilen, Özgül Yaren Arslan, Yunus Emre Aslan, Zeynep Tuana Zengin"
+date: "29.09.2025"
+course: "YMH345 – Computer Networks (2025-Fall)"
+institution: "Software Engineering Department"
+---
+
 # 🎓 Academic Paper: SentinelFS - AI-Powered Distributed Security File System
+
+## 📋 Table of Contents
+- [Abstract](#abstract)
+- [1. Introduction](#1-introduction)
+- [2. Related Work](#2-related-work)
+- [3. System Design](#3-system-design)
+- [4. Implementation](#4-implementation)
+- [5. Evaluation](#5-evaluation)
+- [6. Discussion](#6-discussion)
+- [7. Conclusion](#7-conclusion)
+- [References](#references)
+- [Acknowledgments](#acknowledgments)
 
 ## Abstract
 
@@ -281,4 +301,4 @@ This work was supported by the Software Engineering Department at [Institution N
 **Email:** [23291164@ankara.edu.tr]  
 **Date:** [29.09.2025]
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

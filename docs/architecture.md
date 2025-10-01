@@ -1,8 +1,26 @@
+---
+title: "SentinelFS Architecture Deep Dive"
+description: "In-depth look at the SentinelFS architecture, including module interactions, data flows, failure handling, and design decisions"
+date: "29.09.2025"
+---
+
 # 🏗️ SentinelFS Architecture Deep Dive
 
-This document provides an in-depth look at the SentinelFS architecture, including module interactions, data flows, failure handling, and design decisions.
+## 📋 Table of Contents
+- [System Architecture](#system-architecture)
+- [Module Architecture](#module-architecture)
+- [Data Flow Architecture](#data-flow-architecture)
+- [AI Engine Architecture](#ai-engine-architecture)
+- [Security Architecture](#security-architecture)
+- [Network Architecture](#network-architecture)
+- [Configuration Management](#configuration-management)
+- [Monitoring & Observability](#monitoring--observability)
+- [Scalability Considerations](#scalability-considerations)
+- [Integration Architecture](#integration-architecture)
+- [Error Handling & Fault Tolerance](#error-handling--fault-tolerance)
+- [Failover and Recovery](#failover-and-recovery)
 
-## 🧱 System Architecture
+## System Architecture
 
 ### High-Level Architecture
 
@@ -93,7 +111,7 @@ The complete request flow from client to storage:
                     └──────────────────┘
 ```
 
-## 🧩 Module Architecture
+## Module Architecture
 
 ### Core Modules & Responsibilities
 
@@ -136,7 +154,7 @@ enum InternalMessage {
 }
 ```
 
-## 🔄 Data Flow Architecture
+## Data Flow Architecture
 
 ### Write Operation Flow
 
@@ -231,7 +249,232 @@ graph TD
     E --> L[Log Security Event]
 ```
 
-## 🧪 Error Handling & Fault Tolerance
+## AI Engine Architecture
+
+### Model Architecture
+
+The AI engine uses a hybrid approach combining multiple techniques:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      AI Engine                          │
+├─────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
+│  │ LSTM Model  │  │ Isolation   │  │ Feature         │ │
+│  │ (Temporal   │  │ Forest       │  │ Extractor       │ │
+│  │  Patterns)  │  │ (Anomalies) │  │ (Access Stats)  │ │
+│  └─────────────┘  └─────────────┘  └─────────────────┘ │
+│              │           │                   │           │
+│              └───────────┼───────────────────┘           │
+│                          │                               │
+│                   ┌─────────────┐                        │
+│                   │ Ensemble    │                        │
+│                   │ (Aggregator)│                        │
+│                   └─────────────┘                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Real-Time Inference Pipeline
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Access Event   │───▶│  Feature        │───▶│  Model          │
+│  (User, File,   │    │  Extraction     │    │  Inference      │
+│   Time, etc.)   │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                            │                          │
+                            ▼                          ▼
+                   ┌─────────────────┐        ┌─────────────────┐
+                   │  Anomaly Score  │───────▶│  Risk Assessment│
+                   │                 │        │                 │
+                   └─────────────────┘        └─────────────────┘
+```
+
+## Security Architecture Deep Dive
+
+### Defense-in-Depth Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                    │
+├─────────────────────────────────────────────────────────┤
+│  🔐 JWT Authentication + MFA    │  🎭 RBAC Authorization│
+├─────────────────────────────────────────────────────────┤
+│          🤖 AI BEHAVIORAL ANALYSIS ENGINE               │
+├─────────────────────────────────────────────────────────┤
+│  🦠 YARA Malware Detection      │  📊 Entropy Analysis  │
+├─────────────────────────────────────────────────────────┤
+│  🔒 AES-256-GCM Encryption      │  🔑 Key Management    │
+├─────────────────────────────────────────────────────────┤
+│          📝 IMMUTABLE AUDIT LOGGING                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Zero-Trust Implementation
+
+Each component implements zero-trust principles:
+
+- **Authentication**: Every request is authenticated
+- **Authorization**: Every action is authorized against policies
+- **Validation**: All inputs are validated
+- **Encryption**: All data is encrypted in transit and at rest
+- **Auditing**: All actions are logged for audit purposes
+
+## Network Architecture
+
+### Cluster Topology
+
+SentinelFS supports multiple cluster topologies:
+
+#### Linear Topology
+```
+Node 1 ←→ Node 2 ←→ Node 3 ←→ Node 4
+```
+- Simple to set up
+- Good for small clusters
+- Higher latency for distant nodes
+
+#### Star Topology
+```mermaid
+graph LR
+    A[Node 1] --- B[Node 2]
+    A --- C[Node 3]
+    A --- D[Node 4]
+    B --- C
+    B --- D
+    C --- D
+```
+- All nodes communicate directly
+- Highest performance
+- More complex to manage
+
+### Load Balancing Strategy
+
+SentinelFS uses intelligent load balancing based on:
+
+- **Node health**: Avoid unhealthy nodes
+- **Latency**: Prefer lower-latency nodes
+- **Load**: Distribute based on node utilization
+- **Data locality**: Prefer nodes with requested data
+
+## Configuration Management
+
+### Dynamic Configuration Updates
+
+SentinelFS supports runtime configuration updates:
+
+```rust
+// Configuration update mechanism
+pub struct ConfigManager {
+    config: RwLock<Configuration>,
+    subscribers: Vec<UnboundedSender<ConfigUpdate>>,
+}
+
+impl ConfigManager {
+    pub async fn update_config(&self, new_config: Configuration) -> Result<()> {
+        // Validate new configuration
+        self.validate_config(&new_config)?;
+        
+        // Apply changes atomically
+        *self.config.write().await = new_config;
+        
+        // Notify all subscribers
+        for subscriber in &self.subscribers {
+            subscriber.send(ConfigUpdate::Reload)?;
+        }
+        
+        Ok(())
+    }
+}
+```
+
+### Configuration Validation
+
+All configuration changes are validated before application:
+
+- Schema validation using Serde
+- Semantic validation (e.g., port ranges, path accessibility)
+- Dependency validation (e.g., required services)
+- Performance impact assessment
+
+## Monitoring & Observability
+
+### Internal Metrics System
+
+SentinelFS exposes metrics through multiple systems:
+
+| Metric Type | Purpose | Labels |
+|-------------|---------|---------|
+| Counters | Track events | `operation`, `result`, `node` |
+| Gauges | Monitor state | `state`, `node` |
+| Histograms | Measure latency | `operation`, `node` |
+| Summaries | Track percentiles | `operation`, `node` |
+
+### Distributed Tracing
+
+Requests are traced across all components:
+
+```
+Trace ID: 12345-abcde-67890
+├── FUSE Driver: File read request (10ms)
+│   ├── Cache Check: Hit (1ms)
+│   ├── Security Check: Passed (5ms)
+│   └── Return to Client: Success (4ms)
+└── DB Log: Audit entry recorded (2ms)
+```
+
+## Scalability Considerations
+
+### Horizontal Scaling
+
+SentinelFS can scale horizontally by:
+
+- Adding more storage nodes
+- Distributing load across gateway nodes
+- Sharding data across multiple clusters
+- Using read replicas for high availability
+
+### Vertical Scaling
+
+Components can be scaled vertically by adjusting:
+
+- CPU cores for encryption and AI processing
+- Memory for caching and buffering
+- Network bandwidth for higher throughput
+- Storage IOPS for better performance
+
+## Integration Architecture
+
+### FUSE Integration
+
+SentinelFS integrates with the Linux kernel through FUSE:
+
+```c
+// Simplified FUSE operations
+static struct fuse_operations sentinelfs_oper = {
+    .getattr    = sentinelfs_getattr,
+    .readdir    = sentinelfs_readdir, 
+    .open       = sentinelfs_open,
+    .read       = sentinelfs_read,
+    .write      = sentinelfs_write,
+    .create     = sentinelfs_create,
+    .unlink     = sentinelfs_unlink,
+    .chmod      = sentinelfs_chmod,
+    .chown      = sentinelfs_chown,
+};
+```
+
+### Third-Party Integrations
+
+SentinelFS provides integration points for:
+
+- **SIEM Systems**: Real-time security event streaming
+- **Backup Tools**: Native backup and restore APIs
+- **Monitoring Tools**: Prometheus, Grafana, ELK stack
+- **Orchestration**: Kubernetes, Docker, systemd
+- **Identity Providers**: LDAP, Active Directory, OAuth
+
+## Error Handling & Fault Tolerance
 
 ### Failure Scenarios & Handling
 
@@ -282,232 +525,7 @@ struct CircuitBreaker {
 }
 ```
 
-## 🧠 AI Engine Architecture
-
-### Model Architecture
-
-The AI engine uses a hybrid approach combining multiple techniques:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      AI Engine                          │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
-│  │ LSTM Model  │  │ Isolation   │  │ Feature         │ │
-│  │ (Temporal   │  │ Forest       │  │ Extractor       │ │
-│  │  Patterns)  │  │ (Anomalies) │  │ (Access Stats)  │ │
-│  └─────────────┘  └─────────────┘  └─────────────────┘ │
-│              │           │                   │           │
-│              └───────────┼───────────────────┘           │
-│                          │                               │
-│                   ┌─────────────┐                        │
-│                   │ Ensemble    │                        │
-│                   │ (Aggregator)│                        │
-│                   └─────────────┘                        │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Real-Time Inference Pipeline
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Access Event   │───▶│  Feature        │───▶│  Model          │
-│  (User, File,   │    │  Extraction     │    │  Inference      │
-│   Time, etc.)   │    │                 │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                            │                          │
-                            ▼                          ▼
-                   ┌─────────────────┐        ┌─────────────────┐
-                   │  Anomaly Score  │───────▶│  Risk Assessment│
-                   │                 │        │                 │
-                   └─────────────────┘        └─────────────────┘
-```
-
-## 🔐 Security Architecture Deep Dive
-
-### Defense-in-Depth Layers
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    APPLICATION LAYER                    │
-├─────────────────────────────────────────────────────────┤
-│  🔐 JWT Authentication + MFA    │  🎭 RBAC Authorization│
-├─────────────────────────────────────────────────────────┤
-│          🤖 AI BEHAVIORAL ANALYSIS ENGINE               │
-├─────────────────────────────────────────────────────────┤
-│  🦠 YARA Malware Detection      │  📊 Entropy Analysis  │
-├─────────────────────────────────────────────────────────┤
-│  🔒 AES-256-GCM Encryption      │  🔑 Key Management    │
-├─────────────────────────────────────────────────────────┤
-│          📝 IMMUTABLE AUDIT LOGGING                     │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Zero-Trust Implementation
-
-Each component implements zero-trust principles:
-
-- **Authentication**: Every request is authenticated
-- **Authorization**: Every action is authorized against policies
-- **Validation**: All inputs are validated
-- **Encryption**: All data is encrypted in transit and at rest
-- **Auditing**: All actions are logged for audit purposes
-
-## 🌐 Network Architecture
-
-### Cluster Topology
-
-SentinelFS supports multiple cluster topologies:
-
-#### Linear Topology
-```
-Node 1 ←→ Node 2 ←→ Node 3 ←→ Node 4
-```
-- Simple to set up
-- Good for small clusters
-- Higher latency for distant nodes
-
-#### Star Topology
-```mermaid
-graph LR
-    A[Node 1] --- B[Node 2]
-    A --- C[Node 3]
-    A --- D[Node 4]
-    B --- C
-    B --- D
-    C --- D
-```
-- All nodes communicate directly
-- Highest performance
-- More complex to manage
-
-### Load Balancing Strategy
-
-SentinelFS uses intelligent load balancing based on:
-
-- **Node health**: Avoid unhealthy nodes
-- **Latency**: Prefer lower-latency nodes
-- **Load**: Distribute based on node utilization
-- **Data locality**: Prefer nodes with requested data
-
-## 🔧 Configuration Management
-
-### Dynamic Configuration Updates
-
-SentinelFS supports runtime configuration updates:
-
-```rust
-// Configuration update mechanism
-pub struct ConfigManager {
-    config: RwLock<Configuration>,
-    subscribers: Vec<UnboundedSender<ConfigUpdate>>,
-}
-
-impl ConfigManager {
-    pub async fn update_config(&self, new_config: Configuration) -> Result<()> {
-        // Validate new configuration
-        self.validate_config(&new_config)?;
-        
-        // Apply changes atomically
-        *self.config.write().await = new_config;
-        
-        // Notify all subscribers
-        for subscriber in &self.subscribers {
-            subscriber.send(ConfigUpdate::Reload)?;
-        }
-        
-        Ok(())
-    }
-}
-```
-
-### Configuration Validation
-
-All configuration changes are validated before application:
-
-- Schema validation using Serde
-- Semantic validation (e.g., port ranges, path accessibility)
-- Dependency validation (e.g., required services)
-- Performance impact assessment
-
-## 📊 Monitoring & Observability
-
-### Internal Metrics System
-
-SentinelFS exposes metrics through multiple systems:
-
-| Metric Type | Purpose | Labels |
-|-------------|---------|---------|
-| Counters | Track events | `operation`, `result`, `node` |
-| Gauges | Monitor state | `state`, `node` |
-| Histograms | Measure latency | `operation`, `node` |
-| Summaries | Track percentiles | `operation`, `node` |
-
-### Distributed Tracing
-
-Requests are traced across all components:
-
-```
-Trace ID: 12345-abcde-67890
-├── FUSE Driver: File read request (10ms)
-│   ├── Cache Check: Hit (1ms)
-│   ├── Security Check: Passed (5ms)
-│   └── Return to Client: Success (4ms)
-└── DB Log: Audit entry recorded (2ms)
-```
-
-## 🔄 Scalability Considerations
-
-### Horizontal Scaling
-
-SentinelFS can scale horizontally by:
-
-- Adding more storage nodes
-- Distributing load across gateway nodes
-- Sharding data across multiple clusters
-- Using read replicas for high availability
-
-### Vertical Scaling
-
-Components can be scaled vertically by adjusting:
-
-- CPU cores for encryption and AI processing
-- Memory for caching and buffering
-- Network bandwidth for higher throughput
-- Storage IOPS for better performance
-
-## 🧩 Integration Architecture
-
-### FUSE Integration
-
-SentinelFS integrates with the Linux kernel through FUSE:
-
-```c
-// Simplified FUSE operations
-static struct fuse_operations sentinelfs_oper = {
-    .getattr    = sentinelfs_getattr,
-    .readdir    = sentinelfs_readdir, 
-    .open       = sentinelfs_open,
-    .read       = sentinelfs_read,
-    .write      = sentinelfs_write,
-    .create     = sentinelfs_create,
-    .unlink     = sentinelfs_unlink,
-    .chmod      = sentinelfs_chmod,
-    .chown      = sentinelfs_chown,
-};
-```
-
-### Third-Party Integrations
-
-SentinelFS provides integration points for:
-
-- **SIEM Systems**: Real-time security event streaming
-- **Backup Tools**: Native backup and restore APIs
-- **Monitoring Tools**: Prometheus, Grafana, ELK stack
-- **Orchestration**: Kubernetes, Docker, systemd
-- **Identity Providers**: LDAP, Active Directory, OAuth
-
-## 🚨 Failover and Recovery
+## Failover and Recovery
 
 ### Automatic Failover
 
@@ -530,4 +548,4 @@ After a failure, SentinelFS follows these steps:
 
 This architecture enables SentinelFS to maintain high availability and data integrity even during component failures or network partitions.
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

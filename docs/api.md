@@ -1,15 +1,42 @@
+---
+title: "SentinelFS API Reference"
+description: "Comprehensive reference for the SentinelFS REST API"
+date: "29.09.2025"
+---
+
 # 🔧 SentinelFS API Reference
+
+## 📋 Table of Contents
+- [API Overview](#api-overview)
+- [Authentication](#authentication)
+- [File Operations](#file-operations)
+- [Permission Management](#permission-management)
+- [Security Operations](#security-operations)
+- [AI Operations](#ai-operations)
+- [Monitoring & Health](#monitoring--health)
+- [Code Examples](#code-examples)
+
+## API Overview
 
 This document provides a comprehensive reference for the SentinelFS REST API. All endpoints are versioned under `/api/v1/`.
 
-## 📋 API Overview
-
+### Base Information
 - **Base URL**: `http://<sentinelfs-host>:8080/api/v1`
 - **Content-Type**: `application/json`
 - **Authentication**: JWT tokens for most endpoints
 - **Rate Limiting**: Requests are limited to 1000 per minute per IP
 
-## 🔐 Authentication
+### HTTP Status Codes
+- `200`: Success
+- `201`: Created
+- `400`: Bad Request
+- `401`: Unauthorized
+- `403`: Forbidden
+- `404`: Not Found
+- `429`: Too Many Requests
+- `500`: Internal Server Error
+
+## Authentication
 
 Most endpoints require authentication using JWT tokens. To obtain a token:
 
@@ -26,7 +53,7 @@ Include the returned token in the Authorization header for subsequent requests:
 
 `Authorization: Bearer <jwt-token>`
 
-## 📁 File Operations
+## File Operations
 
 ### Get File Information
 
@@ -139,7 +166,7 @@ curl -X DELETE "http://localhost:8080/api/v1/files/sentinels%2Ftodelete.txt" \
 }
 ```
 
-## 🔐 Permission Management
+## Permission Management
 
 ### Get File Permissions
 
@@ -233,7 +260,7 @@ curl -X PUT "http://localhost:8080/api/v1/files/sentinels%2Fmydata.txt/permissio
 }
 ```
 
-## 🛡️ Security Operations
+## Security Operations
 
 ### Scan File
 
@@ -325,7 +352,7 @@ curl -X POST "http://localhost:8080/api/v1/security/quarantine/release" \
 }
 ```
 
-## 🧠 AI Operations
+## AI Operations
 
 ### Get AI Analysis
 
@@ -356,7 +383,7 @@ curl -X GET "http://localhost:8080/api/v1/ai/analysis/sentinels%2Fmydata.txt" \
 }
 ```
 
-## 📊 Monitoring & Health
+## Monitoring & Health
 
 ### Health Check
 
@@ -442,7 +469,7 @@ curl -X GET "http://localhost:8080/api/v1/audit?limit=100&time_range=24h&severit
 }
 ```
 
-## 📝 Examples
+## Code Examples
 
 ### Using curl
 
@@ -537,4 +564,4 @@ func main() {
 }
 ```
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

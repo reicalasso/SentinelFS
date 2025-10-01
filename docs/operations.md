@@ -1,8 +1,22 @@
+---
+title: "SentinelFS Deployment & Operations Guide"
+description: "Comprehensive information for deploying, managing, and operating SentinelFS in production environments"
+date: "29.09.2025"
+---
+
 # 🚀 SentinelFS Deployment & Operations Guide
+
+## 📋 Table of Contents
+- [Production Deployment](#production-deployment)
+- [Monitoring Integration](#monitoring-integration)
+- [Operations Management](#operations-management)
+- [Troubleshooting](#troubleshooting)
+- [Security Operations](#security-operations)
+- [Capacity Planning](#capacity-planning)
 
 This guide provides comprehensive information for deploying, managing, and operating SentinelFS in production environments.
 
-## 🏗️ Production Deployment
+## Production Deployment
 
 ### Infrastructure Requirements
 
@@ -313,7 +327,7 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-## 📊 Monitoring Integration
+## Monitoring Integration
 
 ### Prometheus Configuration
 
@@ -437,7 +451,7 @@ setup.kibana:
   host: "kibana:5601"
 ```
 
-## 🔧 Operations Management
+## Operations Management
 
 ### Daily Operations
 
@@ -611,7 +625,7 @@ sentinelfs-cli maintenance update-stats
 sentinelfs-cli maintenance optimize-storage
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -695,7 +709,7 @@ awk '/operation completed/ {print $4}' /var/log/sentinelfs.log | sort -n
 grep "username=alice" /var/log/sentinelfs-audit.log
 ```
 
-## 🛡️ Security Operations
+## Security Operations
 
 ### Certificate Management
 
@@ -725,7 +739,7 @@ curl -X PUT http://localhost:8080/api/v1/users/alice/permissions \
 curl -X DELETE http://localhost:8080/api/v1/users/alice/access
 ```
 
-## 📈 Capacity Planning
+## Capacity Planning
 
 ### Storage Growth Planning
 
@@ -753,4 +767,4 @@ Establish and maintain performance baselines:
 
 This information enables proactive operations and capacity planning for SentinelFS deployments.
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_

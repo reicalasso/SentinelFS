@@ -1,4 +1,20 @@
+---
+title: "SentinelFS Performance Tuning Guide"
+description: "Optimization strategies and configuration recommendations to maximize the performance of SentinelFS for different use cases and workloads"
+date: "29.09.2025"
+---
+
 # ⚡ SentinelFS Performance Tuning Guide
+
+## 📋 Table of Contents
+- [Performance Overview](#performance-overview)
+- [Hardware Optimization](#hardware-optimization)
+- [Configuration Optimization](#configuration-optimization)
+- [Workload-Specific Tuning](#workload-specific-tuning)
+- [Advanced Optimization Techniques](#advanced-optimization-techniques)
+- [Monitoring Performance](#monitoring-performance)
+- [Performance Troubleshooting](#performance-troubleshooting)
+- [Benchmarking](#benchmarking)
 
 This guide provides optimization strategies and configuration recommendations to maximize the performance of SentinelFS for different use cases and workloads.
 
@@ -387,4 +403,4 @@ After tuning, validate performance improvements:
 cargo run --bin sentinel-benchmark -- --report /tmp/performance-report.pdf
 ```
 
-_last updated 29.09.2025_
+_last updated 01.10.2025_
