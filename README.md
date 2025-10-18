@@ -65,6 +65,7 @@ Bu proje, **üç temel bilgisayar bilimleri dersi**nin entegrasyonunu gösterir:
 - **Bandwidth Optimization**: Akıllı veri transfer algoritmaları
 - **Fault Tolerance**: Peer kaybında otomatik kurtarma
 - **Modular Architecture**: Kolay genişletilebilir yapı
+- **AI-Powered Anomaly Detection**: Makine öğrenimi ile dosya erişim anomalilerini tespit
 
 ---
 
@@ -85,8 +86,15 @@ Bu proje, **üç temel bilgisayar bilimleri dersi**nin entegrasyonunu gösterir:
 ├─────────────────────────────────────────────────────┤
 │           Storage Layer                              │
 │  Metadata DB / Hash Store / Device Cache             │
+├─────────────────────────────────────────────────────┤
+│           ML Layer                                   │
+│  Anomaly Detection / Behavior Analysis               │
 └─────────────────────────────────────────────────────┘
 ```
+
+**ML Layer:** Dosya erişim loglarını analiz eder ve anormal davranışları tespit eder. Python (scikit-learn) veya ONNX Runtime ile entegre edilebilir.
+
+---
 
 ### Modüller
 
@@ -111,6 +119,12 @@ Bu proje, **üç temel bilgisayar bilimleri dersi**nin entegrasyonunu gösterir:
 - `hash_store.cpp/hpp` - Hash yönetimi
 - `device_cache.cpp/hpp` - Cihaz bilgi önbelleği
 
+#### **ML Layer**
+- `ml_analyzer.cpp/hpp` - C++ ML arayüzü
+- `file_access_model.onnx` - Eğitilmiş ONNX modeli
+- `predict_anomaly.py` - Python prediction script
+- `train_model.py` - Model eğitim script
+
 Detaylı mimari bilgiler için: [📄 Architecture Documentation](docs/architecture.md)
 
 ---
@@ -119,10 +133,30 @@ Detaylı mimari bilgiler için: [📄 Architecture Documentation](docs/architect
 
 ### Gereksinimler
 
+#### Temel Bağımlılıklar
 - **C++ Compiler**: GCC 7+ veya Clang 6+ (C++17 desteği)
 - **CMake**: 3.12 veya üzeri
 - **SQLite3**: 3.x
 - **OpenSSL**: 1.1+ (opsiyonel, gelişmiş güvenlik için)
+
+#### ML Özellikleri İçin
+- **Python**: 3.7+ (model eğitimi ve prediction için)
+- **scikit-learn**: Isolation Forest modeli için
+- **ONNX Runtime**: 1.10+ (C++ inference için, yüksek performans)
+- **onnxruntime-cxx**: C++ binding
+- **skl2onnx**: scikit-learn → ONNX conversion
+
+ML bağımlılıklarını yüklemek için:
+```bash
+# Python packages
+pip install scikit-learn pandas joblib skl2onnx onnx
+
+# ONNX Runtime (Linux)
+wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.0/onnxruntime-linux-x64-1.16.0.tgz
+tar -xzf onnxruntime-linux-x64-1.16.0.tgz
+```
+
+---
 
 ### Linux/macOS
 

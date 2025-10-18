@@ -11,6 +11,8 @@ SentinelFS-Lite modüler bir yapıya sahiptir. Sistem, her biri farklı bir müh
 3.  **Network Layer (Ağ Katmanı)**
     
 4.  **Storage Layer (Veritabanı Katmanı)**
+
+5.  **ML Layer (Makine Öğrenimi Katmanı)** 
     
 
 Bu katmanlar arasında **net bir sorumluluk ayrımı** bulunur:
@@ -22,6 +24,8 @@ Bu katmanlar arasında **net bir sorumluluk ayrımı** bulunur:
 -   **Network Layer**, peer keşfi, bağlantı ve auto-remesh işlemlerini yönetir.
     
 -   **Storage Layer**, tüm metadata ve senkronizasyon durumlarını kaydeder.
+
+-   **ML Layer**, anomali tespiti ve davranış analizi yapar .
     
 
 ---
@@ -47,8 +51,15 @@ Bu katmanlar arasında **net bir sorumluluk ayrımı** bulunur:
 +----------------------------|----------------------+
 |          Storage Layer     |                      |
 | (Metadata DB, Hash Store, Device Cache)           |
++----------------------------▲----------------------+
+                             |
++----------------------------|----------------------+
+|          ML Layer                                 |
+| (Anomaly Detection, Behavior Analysis)            |
 +---------------------------------------------------+
 ```
+
+**Not:** ML Layer, dosya erişim loglarını analiz eder ve anormal davranışları tespit eder. FileWatcher'dan gelen olayları gerçek zamanlı işler.
 
 ---
 
@@ -145,6 +156,41 @@ Bu katmanlar arasında **net bir sorumluluk ayrımı** bulunur:
     
 -   `cache.cpp / cache.hpp` – önbellekleme sistemi
     
+
+---
+
+#### **2.3.5 ML Layer**
+
+-   Dosya erişim loglarını analiz eder ve **anormal davranışları tespit eder**.
+    
+-   **Isolation Forest** veya **LSTM** tabanlı makine öğrenimi modelleri kullanır.
+    
+-   İki entegrasyon yöntemi desteklenir:
+    
+    1. **Python Subprocess**: Basit ve hızlı prototipleme için
+    2. **ONNX Runtime**: Yüksek performans ve düşük latency için
+    
+-   FileWatcher callback'lerinde gerçek zamanlı analiz yapar.
+    
+-   Anormal aktivite tespit edildiğinde **alert** üretir ve logger'a kaydeder.
+    
+
+**Bileşenler:**
+
+-   `ml_analyzer.cpp / ml_analyzer.hpp` – C++ ML interface
+    
+-   `file_access_model.onnx` – Eğitilmiş ONNX modeli
+    
+-   `predict_anomaly.py` – Python prediction script (alternatif)
+    
+-   `train_model.py` – Model eğitim scripti
+
+**Veri Akışı:**
+```
+FileWatcher → Feature Extraction → ML Model → Anomaly Decision → Alert/Log
+```
+
+**Detaylı bilgi için:** [Bölüm 9.6 - AI Destekli Anomali Tespiti](future.plans.and.summary.md#96-ai-destekli-anomali-tespiti-detayları)
 
 ---
 
