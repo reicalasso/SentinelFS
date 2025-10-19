@@ -136,15 +136,22 @@ Detaylı mimari bilgiler için: [📄 Architecture Documentation](docs/architect
 #### Temel Bağımlılıklar
 - **C++ Compiler**: GCC 7+ veya Clang 6+ (C++17 desteği)
 - **CMake**: 3.12 veya üzeri
-- **SQLite3**: 3.x
-- **OpenSSL**: 1.1+ (opsiyonel, gelişmiş güvenlik için)
+- **SQLite3**: 3.x (development headers)
+- **OpenSSL**: 1.1+ (development headers)
+- **Development Tools**: make, build-essential
 
-#### ML Özellikleri İçin
+#### ML Özellikleri İçin (İsteğe Bağlı)
 - **Python**: 3.7+ (model eğitimi ve prediction için)
 - **scikit-learn**: Isolation Forest modeli için
 - **ONNX Runtime**: 1.10+ (C++ inference için, yüksek performans)
 - **onnxruntime-cxx**: C++ binding
 - **skl2onnx**: scikit-learn → ONNX conversion
+
+Ubuntu/Debian için gerekli bağımlılıkları yüklemek:
+```bash
+sudo apt update
+sudo apt install build-essential cmake libsqlite3-dev libssl-dev
+```
 
 ML bağımlılıklarını yüklemek için:
 ```bash
@@ -177,6 +184,62 @@ make -j$(nproc)
 # Kurulum (opsiyonel)
 sudo make install
 ```
+
+### Proje Yapısı
+
+```
+sentinelFS-neo/
+├── CMakeLists.txt          # Build yapılandırma dosyası
+├── build.sh               # Kolay derleme betiği
+├── README.md              # Bu belge
+├── docs/                  # Proje dokümantasyonu
+└── src/                   # Kaynak kod dosyaları
+    ├── app/               # Uygulama katmanı
+    │   ├── main.cpp       # Ana program girdi noktası
+    │   ├── cli.cpp/hpp    # Komut satırı arayüzü
+    │   └── logger.cpp/hpp # Loglama sistemi
+    ├── fs/                # Dosya sistemi katmanı
+    │   ├── watcher.cpp/hpp# Dosya değişiklik izleme
+    │   ├── delta_engine.cpp/hpp # Delta hesaplama motoru
+    │   └── file_queue.cpp/hpp   # Senkronizasyon kuyruğu
+    ├── net/               # Ağ katmanı
+    │   ├── discovery.cpp/hpp # Peer keşif sistemi
+    │   ├── remesh.cpp/hpp    # Auto-remesh yönetimi
+    │   └── transfer.cpp/hpp  # Veri transfer motoru
+    ├── db/                # Veritabanı katmanı
+    │   ├── db.cpp/hpp     # Metadata veritabanı
+    │   ├── cache.cpp/hpp  # Cache sistemi
+    │   └── models.hpp     # Paylaşılan veri modelleri
+    └── ml/                # ML katmanı
+        └── ml_analyzer.cpp/hpp # ML anomali analizi
+```
+
+---
+
+### Hızlı Başlatma
+
+```bash
+# Build dizinini oluşturun ve derleyin
+./build.sh
+
+# Yardım mesajını görüntüleyin
+./build/sentinelfs-neo --help
+
+# SentinelFS-Neo'yu başlatın (örnek)
+./build/sentinelfs-neo --session DEMO-2024-XYZ --path /path/to/sync --verbose
+```
+
+### Geliştirme
+
+SentinelFS-Neo, aşağıdaki 5 katmanlı mimaride geliştirilmiştir:
+
+1. **Application Layer**: CLI, yapılandırma ve loglama
+2. **File System Layer**: Dosya izleme, delta hesaplama ve senkronizasyon kuyruğu
+3. **Network Layer**: Peer discovery, auto-remesh ve veri transferi
+4. **Storage Layer**: Metadata yönetimi ve önbellekleme
+5. **ML Layer**: Anomali tespiti ve davranış analizi
+
+Her katman bağımsız olarak test edilebilir ve geliştirilebilir.
 
 ### Windows
 
