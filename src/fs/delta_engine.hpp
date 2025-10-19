@@ -22,6 +22,7 @@ struct DeltaData {
     std::string newHash;
     bool isCompressed;  // Flag to indicate if data is compressed
     
+    DeltaData() : filePath(""), isCompressed(false) {}  // Default constructor
     DeltaData(const std::string& path) : filePath(path), isCompressed(false) {}
 };
 

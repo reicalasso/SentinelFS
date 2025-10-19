@@ -11,6 +11,7 @@
 #include "fs/file_queue.hpp"
 #include "fs/conflict_resolver.hpp"
 #include "fs/file_locker.hpp"
+#include "security/security_manager.hpp"
 #include "net/discovery.hpp"
 #include "net/remesh.hpp"
 #include "net/transfer.hpp"
@@ -48,6 +49,10 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         logger.info("Metadata database initialized");
+        
+        // Initialize security components first
+        auto& securityManager = SecurityManager::getInstance();
+        securityManager.initialize();  // Initialize with default keys
         
         // Initialize network components
         Discovery discovery(config.sessionCode);
@@ -107,23 +112,60 @@ int main(int argc, char* argv[]) {
                 db.logAnomaly(event.path, features);
             }
             
-            // Compute delta for the changed file with compression
+            // Check access permissions
+            if (!securityManager.checkAccess("local", event.path, AccessLevel::READ_WRITE)) {
+                logger.warning("Access denied for file: " + event.path);
+                fileLocker.releaseLock(event.path);
+                return;
+            }
+            
+            // Compute delta for the changed file with compression and encryption
             DeltaEngine deltaEngine(event.path);
             deltaEngine.setCompression(CompressionAlgorithm::GZIP); // Use gzip compression
+            
+            // Get current peer list for access control
+            auto peers = discovery.getPeers();
+            
+            // Encrypt file before computing delta (simulated)
             auto delta = deltaEngine.computeCompressed("", event.path); // For now, comparing with empty old file
             
             if (!delta.chunks.empty()) {
                 logger.info("Computed delta for file: " + event.path + " (" + std::to_string(delta.chunks.size()) + " chunks), compressed: " + (delta.isCompressed ? "yes" : "no"));
                 
-                // Get current peer list
-                auto peers = discovery.getPeers();
+                // Process each peer for secure transmission
+                std::vector<PeerInfo> authorizedPeers;
+                for (const auto& peer : peers) {
+                    // Check if peer is authenticated
+                    if (securityManager.authenticatePeer(peer)) {
+                        // Check if this peer has access to this file
+                        if (securityManager.checkAccess(peer.id, event.path, AccessLevel::READ_WRITE)) {
+                            authorizedPeers.push_back(peer);
+                            
+                            // Record peer activity for rate limiting
+                            securityManager.recordPeerActivity(peer.id, event.file_size);
+                        } else {
+                            logger.debug("Peer " + peer.id + " not authorized for file: " + event.path);
+                        }
+                    } else {
+                        logger.warning("Unauthorized peer " + peer.id + " ignored");
+                    }
+                }
                 
-                // Send delta to all peers
-                if (!peers.empty()) {
-                    transfer.broadcastDelta(delta, peers);
-                    logger.info("Broadcasted delta to " + std::to_string(peers.size()) + " peers");
+                // Send delta to authorized peers only
+                if (!authorizedPeers.empty()) {
+                    // Encrypt the delta data before sending
+                    if (delta.isCompressed) {
+                        // Apply encryption to compressed data
+                        for (auto& chunk : delta.chunks) {
+                            auto encryptedData = securityManager.encryptData(chunk.data, authorizedPeers[0].id);
+                            chunk.data = encryptedData;
+                        }
+                    }
+                    
+                    transfer.broadcastDelta(delta, authorizedPeers);
+                    logger.info("Broadcasted encrypted delta to " + std::to_string(authorizedPeers.size()) + " authorized peers");
                 } else {
-                    logger.warning("No peers found to sync with");
+                    logger.warning("No authorized peers found for this file");
                 }
             }
             
@@ -145,6 +187,18 @@ int main(int argc, char* argv[]) {
             // Update peer information based on discovery results
             auto peers = discovery.getPeers();
             for (const auto& peer : peers) {
+                // Check if peer is authenticated and not rate-limited
+                if (!securityManager.authenticatePeer(peer)) {
+                    logger.warning("Unauthenticated peer detected: " + peer.id + ", removing from network");
+                    remesh.removePeer(peer.id);
+                    continue;
+                }
+                
+                if (securityManager.isRateLimited(peer.id)) {
+                    logger.warning("Rate-limited peer: " + peer.id + ", reducing sync priority");
+                    continue;
+                }
+                
                 // In a real implementation, we would measure actual bandwidth to each peer
                 // For now, we'll update the peer info in the remesh system
                 remesh.addPeer(peer.id);

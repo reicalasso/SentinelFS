@@ -19,6 +19,7 @@ endif()
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(APP_DIR ${SRC_DIR}/app)
 set(FS_DIR ${SRC_DIR}/fs)
+set(SECURITY_DIR ${SRC_DIR}/security)
 set(NET_DIR ${SRC_DIR}/net)
 set(DB_DIR ${SRC_DIR}/db)
 set(ML_DIR ${SRC_DIR}/ml)
@@ -34,9 +35,11 @@ set(SOURCES
     ${FS_DIR}/conflict_resolver.cpp
     ${FS_DIR}/compressor.cpp
     ${FS_DIR}/file_locker.cpp
+    ${SECURITY_DIR}/security_manager.cpp
     ${NET_DIR}/discovery.cpp
     ${NET_DIR}/remesh.cpp
     ${NET_DIR}/transfer.cpp
+    ${NET_DIR}/secure_transfer.cpp
     ${NET_DIR}/nat_traversal.cpp
     ${DB_DIR}/db.cpp
     ${DB_DIR}/cache.cpp
