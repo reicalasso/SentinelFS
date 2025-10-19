@@ -44,6 +44,7 @@ set(SOURCES
     ${DB_DIR}/db.cpp
     ${DB_DIR}/cache.cpp
     ${ML_DIR}/ml_analyzer.cpp
+    ${ML_DIR}/ml_data_generator.cpp
 )
 
 # Create executable

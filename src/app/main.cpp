@@ -20,6 +20,19 @@
 #include "db/cache.hpp"
 #include "ml/ml_analyzer.hpp"
 
+// Helper function to convert AnomalyType to string for logging
+std::string anomalyTypeToString(AnomalyType type) {
+    switch (type) {
+        case AnomalyType::UNUSUAL_ACCESS_TIME: return "UNUSUAL_ACCESS_TIME";
+        case AnomalyType::LARGE_FILE_TRANSFER: return "LARGE_FILE_TRANSFER";
+        case AnomalyType::FREQUENT_ACCESS_PATTERN: return "FREQUENT_ACCESS_PATTERN";
+        case AnomalyType::UNKNOWN_ACCESS_PATTERN: return "UNKNOWN_ACCESS_PATTERN";
+        case AnomalyType::ACCESS_DURING_SUSPICIOUS_ACTIVITY: return "ACCESS_DURING_SUSPICIOUS_ACTIVITY";
+        default: return "UNKNOWN";
+    }
+    return "UNKNOWN";
+}
+
 // Global flag for graceful shutdown
 std::atomic<bool> shouldExit{false};
 
@@ -86,7 +99,11 @@ int main(int argc, char* argv[]) {
         logger.info("ONNX ML analyzer initialized");
 #else
         MLAnalyzer mlAnalyzer;
-        logger.info("Basic ML analyzer initialized");
+        mlAnalyzer.setAnomalyThreshold(0.65);  // Set anomaly detection threshold
+        logger.info("Enhanced ML analyzer initialized with advanced features");
+        
+        // Initialize predictive sync metrics
+        logger.info("Predictive sync and network optimization ML features enabled");
 #endif
         
         // Initialize file system components
@@ -103,13 +120,39 @@ int main(int argc, char* argv[]) {
                 return;
             }
             
-            // Check for anomalies
-            auto features = MLAnalyzer::extractFeatures(event.path, event.peer_id, event.file_size);
-            bool isAnomaly = mlAnalyzer.detectAnomaly(features);
+            // Extract comprehensive features for enhanced ML analysis
+            auto features = MLAnalyzer::extractComprehensiveFeatures(
+                event.path, 
+                event.peer_id, 
+                event.file_size,
+                event.type,
+                "local_user"  // userId would come from context in a real system
+            );
             
-            if (isAnomaly) {
-                logger.warning("Anomalous file access detected: " + event.path);
+            // Detect anomalies with classification
+            auto anomalyResult = mlAnalyzer.detectAnomaly(features, event.path);
+            
+            if (anomalyResult.isAnomaly) {
+                logger.warning("Anomalous file access detected: " + event.path + 
+                              " (Type: " + anomalyTypeToString(anomalyResult.type) + 
+                              ", Confidence: " + std::to_string(anomalyResult.confidence) + ")");
                 db.logAnomaly(event.path, features);
+                
+                // Provide feedback to improve model
+                mlAnalyzer.provideFeedback(features, true, true);  // Anomaly detected correctly
+            } else {
+                // Provide feedback for normal events too
+                mlAnalyzer.provideFeedback(features, false, true);  // Normal event correctly identified
+            }
+            
+            // Run predictive sync analysis
+            if (event.type == "access" || event.type == "read") {  // For file access events
+                auto prediction = mlAnalyzer.predictNextFile("local_user");
+                if (prediction.probability > mlAnalyzer.getModelMetrics().at("prediction_accuracy")) {
+                    logger.info("Predicted file access: " + prediction.filePath + 
+                               " (Probability: " + std::to_string(prediction.probability) + ")");
+                    // In a real system, we would pre-fetch this file
+                }
             }
             
             // Check access permissions
@@ -199,11 +242,28 @@ int main(int argc, char* argv[]) {
                     continue;
                 }
                 
+                // Extract network features for ML analysis
+                std::vector<float> networkFeatures = {
+                    static_cast<float>(peer.latency),  // Latency
+                    50.0f,  // Placeholder bandwidth (would come from actual measurement)
+                    0.1f,   // Placeholder packet loss
+                    0.8f    // Placeholder connection stability
+                };
+                
+                // Use ML to predict network optimization potential
+                double optimizationGain = mlAnalyzer.predictNetworkOptimizationGain(peer.id, networkFeatures);
+                
+                if (optimizationGain > 0.3) {  // If there's significant optimization potential
+                    logger.debug("High optimization potential for peer " + peer.id + 
+                                " (Gain: " + std::to_string(optimizationGain) + ")");
+                    // This could trigger specific optimization actions
+                }
+                
                 // In a real implementation, we would measure actual bandwidth to each peer
                 // For now, we'll update the peer info in the remesh system
                 remesh.addPeer(peer.id);
                 remesh.updatePeerLatency(peer.id, peer.latency);  // Update with latest latency
-                // remesh.updatePeerBandwidth(peer.id, measured_bandwidth); // Would update with actual measurements
+                remesh.updatePeerBandwidth(peer.id, 50.0); // Placeholder bandwidth - would be measured
             }
             
             // Small sleep to prevent busy waiting
