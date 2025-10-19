@@ -10,6 +10,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pthread")
 # Find required packages
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(PkgConfig)
+if(PkgConfig_FOUND)
+    pkg_check_modules(ZLIB REQUIRED zlib)
+endif()
 
 # Source directories
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -27,6 +31,9 @@ set(SOURCES
     ${FS_DIR}/watcher.cpp
     ${FS_DIR}/delta_engine.cpp
     ${FS_DIR}/file_queue.cpp
+    ${FS_DIR}/conflict_resolver.cpp
+    ${FS_DIR}/compressor.cpp
+    ${FS_DIR}/file_locker.cpp
     ${NET_DIR}/discovery.cpp
     ${NET_DIR}/remesh.cpp
     ${NET_DIR}/transfer.cpp
@@ -44,10 +51,12 @@ target_link_libraries(sentinelfs-neo
     ${CMAKE_THREAD_LIBS_INIT}
     sqlite3
     ${OPENSSL_LIBRARIES}
+    ${ZLIB_LIBRARIES}
 )
 
 # Include directories
 target_include_directories(sentinelfs-neo PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OPENSSL_INCLUDE_DIR}
+    ${ZLIB_INCLUDE_DIRS}
 )

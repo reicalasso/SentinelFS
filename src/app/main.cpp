@@ -9,6 +9,8 @@
 #include "fs/watcher.hpp"
 #include "fs/delta_engine.hpp"
 #include "fs/file_queue.hpp"
+#include "fs/conflict_resolver.hpp"
+#include "fs/file_locker.hpp"
 #include "net/discovery.hpp"
 #include "net/remesh.hpp"
 #include "net/transfer.hpp"
@@ -80,9 +82,19 @@ int main(int argc, char* argv[]) {
         logger.info("Basic ML analyzer initialized");
 #endif
         
+        // Initialize file system components
+        ConflictResolver conflictResolver(ConflictResolutionStrategy::BACKUP);
+        FileLocker fileLocker;
+        
         // Set up file watcher
         FileWatcher watcher(config.syncPath, [&](const FileEvent& event) {
             logger.info("File event: " + event.type + " - " + event.path);
+            
+            // Acquire write lock on the file to prevent conflicts during processing
+            if (!fileLocker.acquireLock(event.path, LockType::WRITE)) {
+                logger.warning("Could not acquire lock on file: " + event.path + ", skipping sync");
+                return;
+            }
             
             // Check for anomalies
             auto features = MLAnalyzer::extractFeatures(event.path, event.peer_id, event.file_size);
@@ -93,12 +105,13 @@ int main(int argc, char* argv[]) {
                 db.logAnomaly(event.path, features);
             }
             
-            // Compute delta for the changed file
+            // Compute delta for the changed file with compression
             DeltaEngine deltaEngine(event.path);
-            auto delta = deltaEngine.compute();
+            deltaEngine.setCompression(CompressionAlgorithm::GZIP); // Use gzip compression
+            auto delta = deltaEngine.computeCompressed("", event.path); // For now, comparing with empty old file
             
             if (!delta.chunks.empty()) {
-                logger.info("Computed delta for file: " + event.path + " (" + std::to_string(delta.chunks.size()) + " chunks)");
+                logger.info("Computed delta for file: " + event.path + " (" + std::to_string(delta.chunks.size()) + " chunks), compressed: " + (delta.isCompressed ? "yes" : "no"));
                 
                 // Get current peer list
                 auto peers = discovery.getPeers();
@@ -111,6 +124,9 @@ int main(int argc, char* argv[]) {
                     logger.warning("No peers found to sync with");
                 }
             }
+            
+            // Release the file lock
+            fileLocker.releaseLock(event.path);
         });
         
         // Start file watching
