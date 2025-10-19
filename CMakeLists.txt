@@ -30,6 +30,7 @@ set(SOURCES
     ${NET_DIR}/discovery.cpp
     ${NET_DIR}/remesh.cpp
     ${NET_DIR}/transfer.cpp
+    ${NET_DIR}/nat_traversal.cpp
     ${DB_DIR}/db.cpp
     ${DB_DIR}/cache.cpp
     ${ML_DIR}/ml_analyzer.cpp

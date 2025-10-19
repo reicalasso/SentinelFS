@@ -13,14 +13,16 @@
 #include <unistd.h>
 #include "../fs/delta_engine.hpp"  // For DeltaData
 #include "../models.hpp"  // For PeerInfo
+#include "nat_traversal.hpp"  // For NAT traversal
 
 struct Connection {
     int socket;
     struct sockaddr_in addr;
     std::chrono::steady_clock::time_point lastUsed;
     bool connected;
+    void* ssl;  // For TLS connections (void* to avoid including openssl headers here)
     
-    Connection() : socket(-1), lastUsed(std::chrono::steady_clock::now()), connected(false) {}
+    Connection() : socket(-1), lastUsed(std::chrono::steady_clock::now()), connected(false), ssl(nullptr) {}
 };
 
 class Transfer {
@@ -64,4 +66,10 @@ private:
     int getOrCreateSocket(const PeerInfo& peer);
     bool sendWithRetry(int sock, const void* data, size_t length);
     bool receiveWithRetry(int sock, void* data, size_t length);
+    
+    // TLS/SSL methods
+    bool initializeTLS();
+    bool setupSecureConnection(int sock);
+    bool sendSecureData(int sock, const void* data, size_t length);
+    bool receiveSecureData(int sock, void* data, size_t length);
 };

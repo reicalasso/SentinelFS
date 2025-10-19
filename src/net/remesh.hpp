@@ -7,6 +7,9 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../models.hpp"
 
 class Remesh {
@@ -41,4 +44,5 @@ private:
     
     void remeshLoop();
     std::vector<std::string> calculateOptimalTopology();
+    void measureLatencies();
 };

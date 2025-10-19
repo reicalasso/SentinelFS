@@ -12,6 +12,7 @@
 #include "net/discovery.hpp"
 #include "net/remesh.hpp"
 #include "net/transfer.hpp"
+#include "net/nat_traversal.hpp"
 #include "db/db.hpp"
 #include "db/cache.hpp"
 #include "ml/ml_analyzer.hpp"
@@ -50,9 +51,19 @@ int main(int argc, char* argv[]) {
         Discovery discovery(config.sessionCode);
         Remesh remesh;
         Transfer transfer;
+        NATTraversal natTraversal;  // For NAT traversal functionality
         
         discovery.setDiscoveryInterval(config.discoveryInterval);
         remesh.setRemeshThreshold(config.remeshThreshold);
+        
+        // Test NAT traversal
+        std::string externalIP;
+        int externalPort;
+        if (natTraversal.discoverExternalAddress(externalIP, externalPort)) {
+            logger.info("NAT traversal successful. External IP: " + externalIP + ", Port: " + std::to_string(externalPort));
+        } else {
+            logger.warning("NAT traversal failed, direct connections may be limited");
+        }
         
         // Start network services
         discovery.start();
