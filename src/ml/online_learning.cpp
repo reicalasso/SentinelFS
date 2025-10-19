@@ -121,11 +121,12 @@ void OnlineLearner::handleConceptDrift(const ConceptDrift& drift) {
 PerformanceMetrics OnlineLearner::getPerformanceMetrics() const {
     PerformanceMetrics metrics;
     
-    metrics.samplesProcessed = processedSamples.load();
+    std::lock_guard<std::mutex> lock(metricsMutex);
+    metrics.samplesProcessed = processedSamples;
     metrics.accuracy = recentAccuracies.empty() ? 0.0 : 
                        (std::accumulate(recentAccuracies.begin(), recentAccuracies.end(), 0.0) / 
                         recentAccuracies.size());
-    metrics.loss = cumulativeLoss.load() / std::max(1.0, static_cast<double>(processedSamples.load()));
+    metrics.loss = cumulativeLoss / std::max(1.0, static_cast<double>(processedSamples));
     metrics.lastUpdate = std::chrono::system_clock::now();
     
     // Call performance callback if registered
@@ -171,19 +172,25 @@ std::vector<StreamingSample> OnlineLearner::getBatch() {
 }
 
 void OnlineLearner::updatePerformanceMetrics(bool predictionCorrect, double loss) {
-    cumulativeLoss += loss;
-    if (predictionCorrect) {
-        correctPredictions++;
+    {
+        std::lock_guard<std::mutex> metricsLock(metricsMutex);
+        cumulativeLoss += loss;
+        if (predictionCorrect) {
+            correctPredictions++;
+        }
+        processedSamples++;
     }
     
     // Update sliding window accuracy
     double currentAccuracy = predictionCorrect ? 1.0 : 0.0;
     
-    std::lock_guard<std::mutex> lock(bufferMutex);
-    recentAccuracies.push_back(currentAccuracy);
-    
-    if (recentAccuracies.size() > ACCURACY_WINDOW_SIZE) {
-        recentAccuracies.pop_front();
+    {
+        std::lock_guard<std::mutex> bufferLock(bufferMutex);
+        recentAccuracies.push_back(currentAccuracy);
+        
+        if (recentAccuracies.size() > ACCURACY_WINDOW_SIZE) {
+            recentAccuracies.pop_front();
+        }
     }
 }
 
@@ -459,13 +466,16 @@ void OnlineAnomalyDetector::adjustThreshold(double newScore, bool isActualAnomal
     // Simple threshold adjustment based on feedback
     if (isActualAnomaly && newScore < anomalyThreshold) {
         // Missed anomaly - decrease threshold
+        std::lock_guard<std::mutex> lock(thresholdMutex);
         anomalyThreshold *= 0.95;
     } else if (!isActualAnomaly && newScore > anomalyThreshold) {
         // False positive - increase threshold
+        std::lock_guard<std::mutex> lock(thresholdMutex);
         anomalyThreshold *= 1.05;
     }
     
     // Keep threshold within reasonable bounds
+    std::lock_guard<std::mutex> lock(thresholdMutex);
     anomalyThreshold = std::max(0.1, std::min(0.99, anomalyThreshold));
 }
 

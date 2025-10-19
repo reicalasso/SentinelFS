@@ -6,7 +6,9 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <atomic>
 #include <chrono>
+#include <functional>
 #include "neural_network.hpp"
 #include "../models.hpp"
 
@@ -115,7 +117,8 @@ private:
     std::vector<FederatedPeer> peers;
     mutable std::mutex peersMutex;
     
-    std::atomic<bool> running{false};
+    bool running{false};
+    mutable std::mutex runningMutex;  // Protect running state access
     std::thread flThread;
     
     // Model state

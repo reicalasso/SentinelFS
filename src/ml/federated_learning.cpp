@@ -5,6 +5,8 @@
 #include <sstream>
 #include <cmath>
 #include <cstring>
+#include <functional>
+#include <atomic>
 
 // FederatedLearning Implementation
 FederatedLearning::FederatedLearning(const FederatedConfig& config) 
@@ -40,18 +42,25 @@ void FederatedLearning::removePeer(const std::string& peerId) {
 }
 
 void FederatedLearning::startFederatedLearning() {
-    if (running.exchange(true)) {
+    std::lock_guard<std::mutex> lock(runningMutex);
+    if (running) {
         return;  // Already running
     }
     
+    running = true;
     flThread = std::thread(&FederatedLearning::federatedLearningLoop, this);
 }
 
 void FederatedLearning::stopFederatedLearning() {
-    if (running.exchange(false)) {
-        if (flThread.joinable()) {
-            flThread.join();
-        }
+    bool wasRunning = false;
+    {
+        std::lock_guard<std::mutex> lock(runningMutex);
+        wasRunning = running;
+        running = false;
+    }
+    
+    if (wasRunning && flThread.joinable()) {
+        flThread.join();
     }
 }
 
@@ -278,7 +287,13 @@ std::map<std::string, double> FederatedLearning::getStatistics() const {
 }
 
 void FederatedLearning::federatedLearningLoop() {
-    while (running.load()) {
+    while (true) {
+        {
+            std::lock_guard<std::mutex> lock(runningMutex);
+            if (!running) {
+                break;
+            }
+        }
         // Select peers for this round
         auto selectedPeers = selectPeersForRound();
         

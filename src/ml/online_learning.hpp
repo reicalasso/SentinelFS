@@ -119,9 +119,10 @@ protected:
     std::deque<StreamingSample> sampleBuffer;
     mutable std::mutex bufferMutex;
     
-    std::atomic<size_t> processedSamples{0};
-    std::atomic<double> cumulativeLoss{0.0};
-    std::atomic<double> correctPredictions{0.0};
+    size_t processedSamples{0};
+    double cumulativeLoss{0.0};
+    double correctPredictions{0.0};
+    mutable std::mutex metricsMutex;  // Protect metrics with mutex
     
     // Performance tracking
     std::deque<double> recentAccuracies;  // Sliding window of accuracies
@@ -172,7 +173,8 @@ private:
     std::vector<double> featureMaxValues;
     
     // Adaptive threshold
-    std::atomic<double> anomalyThreshold{0.7};
+    double anomalyThreshold{0.7};
+    mutable std::mutex thresholdMutex;  // Protect threshold with mutex
     
     // Internal methods
     void initializeStatisticalModels();
