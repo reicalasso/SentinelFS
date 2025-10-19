@@ -57,6 +57,8 @@ int main(int argc, char* argv[]) {
         
         discovery.setDiscoveryInterval(config.discoveryInterval);
         remesh.setRemeshThreshold(config.remeshThreshold);
+        remesh.setBandwidthWeight(0.4);  // 40% weight to bandwidth in calculations
+        remesh.setLatencyWeight(0.6);   // 60% weight to latency in calculations
         
         // Test NAT traversal
         std::string externalIP;
@@ -139,6 +141,16 @@ int main(int argc, char* argv[]) {
         while (!shouldExit) {
             // Periodic network maintenance
             remesh.evaluateAndOptimize();
+            
+            // Update peer information based on discovery results
+            auto peers = discovery.getPeers();
+            for (const auto& peer : peers) {
+                // In a real implementation, we would measure actual bandwidth to each peer
+                // For now, we'll update the peer info in the remesh system
+                remesh.addPeer(peer.id);
+                remesh.updatePeerLatency(peer.id, peer.latency);  // Update with latest latency
+                // remesh.updatePeerBandwidth(peer.id, measured_bandwidth); // Would update with actual measurements
+            }
             
             // Small sleep to prevent busy waiting
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
