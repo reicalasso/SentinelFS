@@ -45,6 +45,10 @@ set(SOURCES
     ${DB_DIR}/cache.cpp
     ${ML_DIR}/ml_analyzer.cpp
     ${ML_DIR}/ml_data_generator.cpp
+    ${ML_DIR}/neural_network.cpp
+    ${ML_DIR}/federated_learning.cpp
+    ${ML_DIR}/online_learning.cpp
+    ${ML_DIR}/advanced_forecasting.cpp
 )
 
 # Create executable
