@@ -49,10 +49,12 @@ public:
     // Send file to peer
     bool sendFile(const std::string& filePath, const PeerInfo& peer);
     bool sendFilePlain(const std::string& filePath, const PeerInfo& peer);
+    bool sendFilePayload(const std::string& remotePath, const std::vector<uint8_t>& contents, const PeerInfo& peer);
     
     // Receive file from peer
     bool receiveFile(const std::string& filePath, const PeerInfo& peer);
     bool receiveFilePlain(const std::string& filePath, const PeerInfo& peer);
+    bool receiveFilePayload(std::string& remotePath, std::vector<uint8_t>& contents, const PeerInfo& peer);
     
     // Broadcast delta to all peers
     bool broadcastDelta(const DeltaData& delta, const std::vector<PeerInfo>& peers);
@@ -75,6 +77,9 @@ public:
     
     // Get secure transfer instance
     SecureTransfer* getSecureTransfer() { return secureTransfer.get(); }
+
+    static std::vector<uint8_t> wrapPayload(const std::vector<uint8_t>& data, bool encrypted);
+    static bool unwrapPayload(const std::vector<uint8_t>& payload, std::vector<uint8_t>& data, bool& encrypted);
     
 private:
     std::atomic<bool> active{false};

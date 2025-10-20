@@ -25,6 +25,8 @@ public:
 private:
     Transfer& baseTransfer;
     SecurityManager* securityManager;
+
+    friend class Transfer;
     
     // Helper methods
     DeltaData encryptDelta(const DeltaData& delta, const PeerInfo& peer);

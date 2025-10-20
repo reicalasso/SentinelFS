@@ -1,5 +1,7 @@
 #include "secure_transfer.hpp"
 #include <iostream>
+#include <fstream>
+#include <iterator>
 
 SecureTransfer::SecureTransfer(Transfer& baseTransfer) 
     : baseTransfer(baseTransfer), securityManager(nullptr) {
@@ -27,7 +29,11 @@ bool SecureTransfer::sendSecureDelta(const DeltaData& delta, const PeerInfo& pee
     DeltaData encryptedDelta = encryptDelta(delta, peer);
     
     // Record activity for rate limiting
-    securityManager->recordPeerActivity(peer.id, delta.chunks.size() * sizeof(DeltaChunk));
+    size_t payloadBytes = 0;
+    for (const auto& chunk : encryptedDelta.chunks) {
+        payloadBytes += chunk.data.size();
+    }
+    securityManager->recordPeerActivity(peer.id, payloadBytes);
     
     // Send through base transfer
     return baseTransfer.sendDeltaPlain(encryptedDelta, peer);
@@ -83,7 +89,11 @@ bool SecureTransfer::broadcastSecureDelta(const DeltaData& delta, const std::vec
         DeltaData encryptedDelta = encryptDelta(delta, peer);
         
         // Record activity
-        securityManager->recordPeerActivity(peer.id, delta.chunks.size() * sizeof(DeltaChunk));
+        size_t payloadBytes = 0;
+        for (const auto& chunk : encryptedDelta.chunks) {
+            payloadBytes += chunk.data.size();
+        }
+        securityManager->recordPeerActivity(peer.id, payloadBytes);
         
     bool result = baseTransfer.sendDeltaPlain(encryptedDelta, peer);
         if (!result) {
@@ -113,15 +123,24 @@ bool SecureTransfer::sendSecureFile(const std::string& filePath, const PeerInfo&
     }
     
     // Encrypt the file before sending
-    auto encryptedFileData = securityManager->encryptFile(filePath);
-    if (encryptedFileData.empty()) {
-        std::cerr << "Failed to encrypt file: " << filePath << std::endl;
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open file for secure transfer: " << filePath << std::endl;
         return false;
     }
-    
-    // Send using base transfer (this is simplified - in reality you'd need to modify the transfer to send encrypted data)
-    // For now, we'll use the base transfer functionality
-    return baseTransfer.sendFilePlain(filePath, peer);
+
+    std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    auto encryptedBytes = securityManager->encryptData(bytes, peer.id);
+    if (encryptedBytes.empty() && !bytes.empty()) {
+        std::cerr << "Failed to encrypt file payload for " << filePath << std::endl;
+        return false;
+    }
+
+    auto wrapped = Transfer::wrapPayload(encryptedBytes.empty() ? bytes : encryptedBytes, !encryptedBytes.empty());
+    securityManager->recordPeerActivity(peer.id, wrapped.size());
+    return baseTransfer.sendFilePayload(filePath, wrapped, peer);
 }
 
 bool SecureTransfer::receiveSecureFile(const std::string& filePath, const PeerInfo& peer) {
@@ -141,15 +160,39 @@ bool SecureTransfer::receiveSecureFile(const std::string& filePath, const PeerIn
         return false;
     }
     
-    // Receive the file using base transfer
-    bool result = baseTransfer.receiveFilePlain(filePath, peer);
-    
-    if (result) {
-        // File is already in place, now decrypt it
-        // (In a real implementation, the file would be encrypted during transfer)
+    std::string remotePath;
+    std::vector<uint8_t> payload;
+    if (!baseTransfer.receiveFilePayload(remotePath, payload, peer)) {
+        return false;
     }
-    
-    return result;
+
+    std::vector<uint8_t> body;
+    bool encrypted = false;
+    if (!Transfer::unwrapPayload(payload, body, encrypted)) {
+        return false;
+    }
+
+    std::vector<uint8_t> bytes = body;
+    if (encrypted) {
+        auto decrypted = securityManager->decryptData(body, peer.id);
+        if (decrypted.empty() && !body.empty()) {
+            std::cerr << "Failed to decrypt incoming secure file from " << peer.id << std::endl;
+            return false;
+        }
+        bytes = std::move(decrypted);
+    }
+
+    const std::string& target = filePath.empty() ? remotePath : filePath;
+    std::ofstream out(target, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        std::cerr << "Failed to open destination for secure file: " << target << std::endl;
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    out.close();
+
+    securityManager->recordPeerActivity(peer.id, bytes.size());
+    return true;
 }
 
 DeltaData SecureTransfer::encryptDelta(const DeltaData& delta, const PeerInfo& peer) {
@@ -161,7 +204,13 @@ DeltaData SecureTransfer::encryptDelta(const DeltaData& delta, const PeerInfo& p
     
     // Encrypt each chunk
     for (auto& chunk : encryptedDelta.chunks) {
-        chunk.data = securityManager->encryptData(chunk.data, peer.id);
+        auto cipher = securityManager->encryptData(chunk.data, peer.id);
+        if (cipher.empty() && !chunk.data.empty()) {
+            std::cerr << "Failed to encrypt delta chunk for peer " << peer.id << std::endl;
+            chunk.data = Transfer::wrapPayload(chunk.data, false);
+        } else {
+            chunk.data = Transfer::wrapPayload(cipher, true);
+        }
     }
     
     return encryptedDelta;
@@ -176,7 +225,24 @@ DeltaData SecureTransfer::decryptDelta(const DeltaData& encryptedDelta, const Pe
     
     // Decrypt each chunk
     for (auto& chunk : delta.chunks) {
-        chunk.data = securityManager->decryptData(chunk.data, peer.id);
+        std::vector<uint8_t> body;
+        bool encrypted = false;
+        if (!Transfer::unwrapPayload(chunk.data, body, encrypted)) {
+            continue;
+        }
+
+        if (!encrypted) {
+            chunk.data = std::move(body);
+            continue;
+        }
+
+        auto plain = securityManager->decryptData(body, peer.id);
+        if (!plain.empty() || body.empty()) {
+            chunk.data = std::move(plain);
+        } else {
+            std::cerr << "Failed to decrypt delta chunk from peer " << peer.id << std::endl;
+            chunk.data.clear();
+        }
     }
     
     return delta;

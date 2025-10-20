@@ -125,6 +125,13 @@ int main(int argc, char* argv[]) {
         auto& securityManager = SecurityManager::getInstance();
         securityManager.initialize();  // Initialize with default keys
         logger.info("✅ Security Manager initialized with encryption enabled");
+
+        const std::filesystem::path trustDirectory = std::filesystem::path("config") / "certs";
+        if (securityManager.loadPeerCertificates(trustDirectory.string())) {
+            logger.info("✅ Loaded trusted peer certificates from " + trustDirectory.string());
+        } else {
+            logger.debug("No external peer certificates found at " + trustDirectory.string() + ", continuing with local trust store");
+        }
         
         // Initialize network components
         Discovery discovery(config.sessionCode);

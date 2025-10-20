@@ -54,6 +54,33 @@ bool readUint64(const std::vector<uint8_t>& data, size_t& offset, uint64_t& valu
 }
 }
 
+std::vector<uint8_t> Transfer::wrapPayload(const std::vector<uint8_t>& data, bool encrypted) {
+    std::vector<uint8_t> wrapped;
+    wrapped.reserve(data.size() + 1);
+    wrapped.push_back(encrypted ? 0x01 : 0x00);
+    wrapped.insert(wrapped.end(), data.begin(), data.end());
+    return wrapped;
+}
+
+bool Transfer::unwrapPayload(const std::vector<uint8_t>& payload, std::vector<uint8_t>& data, bool& encrypted) {
+    if (payload.empty()) {
+        encrypted = false;
+        data.clear();
+        return true;
+    }
+
+    uint8_t flag = payload.front();
+    if (flag == 0x00 || flag == 0x01) {
+        encrypted = (flag == 0x01);
+        data.assign(payload.begin() + 1, payload.end());
+        return true;
+    }
+
+    encrypted = false;
+    data = payload;
+    return true;
+}
+
 Transfer::Transfer() {
     // Initialize SecureTransfer
     secureTransfer = std::make_unique<SecureTransfer>(*this);
@@ -202,6 +229,11 @@ void Transfer::handleClient(int clientSock, const std::string& address, int port
             case MessageType::Delta: {
                 DeltaData delta;
                 if (decodeDelta(payload, delta)) {
+                    if (securityEnabled && securityManager && secureTransfer) {
+                        secureTransfer->setSecurityManager(*securityManager);
+                        delta = secureTransfer->decryptDelta(delta, peer);
+                    }
+
                     DeltaHandler handlerCopy;
                     {
                         std::lock_guard<std::mutex> handlerLock(handlerMutex);
@@ -217,6 +249,24 @@ void Transfer::handleClient(int clientSock, const std::string& address, int port
                 std::string remotePath;
                 std::vector<uint8_t> bytes;
                 if (decodeFilePayload(payload, remotePath, bytes)) {
+                    if (securityEnabled && securityManager) {
+                        std::vector<uint8_t> body;
+                        bool encrypted = false;
+                        if (unwrapPayload(bytes, body, encrypted)) {
+                            if (encrypted) {
+                                auto decrypted = securityManager->decryptData(body, peer.id);
+                                if (!decrypted.empty() || body.empty()) {
+                                    bytes = std::move(decrypted);
+                                } else {
+                                    std::cerr << "[Transfer] Failed to decrypt inbound file payload from " << peer.id << std::endl;
+                                    continue;
+                                }
+                            } else {
+                                bytes = std::move(body);
+                            }
+                        }
+                    }
+
                     FileHandler handlerCopy;
                     {
                         std::lock_guard<std::mutex> handlerLock(handlerMutex);
@@ -369,12 +419,36 @@ bool Transfer::sendFilePlain(const std::string& filePath, const PeerInfo& peer) 
     return sendFileInternal(filePath, peer, false);
 }
 
+bool Transfer::sendFilePayload(const std::string& remotePath, const std::vector<uint8_t>& contents, const PeerInfo& peer) {
+    auto payload = encodeFilePayload(remotePath, contents);
+    if (payload.empty()) {
+        std::cerr << "[Transfer] Failed to encode custom file payload for " << remotePath << std::endl;
+        return false;
+    }
+    return sendFramedData(MessageType::File, payload, peer);
+}
+
 bool Transfer::receiveFile(const std::string& filePath, const PeerInfo& peer) {
     return receiveFileInternal(filePath, peer, true);
 }
 
 bool Transfer::receiveFilePlain(const std::string& filePath, const PeerInfo& peer) {
     return receiveFileInternal(filePath, peer, false);
+}
+
+bool Transfer::receiveFilePayload(std::string& remotePath, std::vector<uint8_t>& contents, const PeerInfo& peer) {
+    MessageType type{MessageType::File};
+    std::vector<uint8_t> payload;
+    if (!receiveFramedData(type, payload, peer)) {
+        return false;
+    }
+
+    if (type != MessageType::File) {
+        std::cerr << "Unexpected message type while receiving custom file payload from peer " << peer.id << std::endl;
+        return false;
+    }
+
+    return decodeFilePayload(payload, remotePath, contents);
 }
 
 bool Transfer::broadcastDelta(const DeltaData& delta, const std::vector<PeerInfo>& peers) {

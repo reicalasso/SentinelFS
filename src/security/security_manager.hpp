@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <chrono>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
@@ -60,6 +61,7 @@ public:
     bool validateCertificate(const std::string& certificatePath);
     bool addPeerCertificate(const PeerCertificate& cert);
     PeerCertificate getPeerCertificate(const std::string& peerId) const;
+    bool loadPeerCertificates(const std::string& directory);
     
     // Encryption methods
     std::vector<uint8_t> encryptData(const std::vector<uint8_t>& data, 
@@ -91,7 +93,7 @@ public:
     
     // Traffic protection
     std::vector<uint8_t> padData(const std::vector<uint8_t>& data, size_t blockSize = 16);
-    std::vector<uint8_t> unpadData(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> unpadData(const std::vector<uint8_t>& data, bool& valid);
     
     // Get instance
     static SecurityManager& getInstance();
@@ -106,17 +108,24 @@ private:
     std::vector<FileAccessRule> accessRules;
     std::map<std::string, std::chrono::steady_clock::time_point> lastActivity;
     std::map<std::string, size_t> dataTransferred;
+    std::map<std::string, std::vector<uint8_t>> sessionKeys;
     std::mutex securityMutex;
     
     // Rate limiting configuration
     size_t maxDataPerSecond;  // in bytes
     std::chrono::seconds timeWindow;
+
+    // Local secrets
+    std::vector<uint8_t> localStorageKey;
+    std::string localPublicKeyPem;
     
     // Internal helper methods
-    std::string generateSessionKey();
+    std::vector<uint8_t> getSessionKeyForPeer(const std::string& peerId);
+    std::vector<uint8_t> getLocalStorageKey();
+    std::vector<uint8_t> generateRandomKey(size_t bytes = 32);
     std::vector<uint8_t> aesEncrypt(const std::vector<uint8_t>& data, 
-                                   const std::string& key);
+                                   const std::vector<uint8_t>& key);
     std::vector<uint8_t> aesDecrypt(const std::vector<uint8_t>& data, 
-                                   const std::string& key);
+                                   const std::vector<uint8_t>& key);
     std::string hashData(const std::vector<uint8_t>& data);
 };

@@ -1,10 +1,154 @@
-Stabilize networking core – add inbound listeners, integrate receive flows, make NAT discovery actually resolve hostnames, and clean up discovery socket lifecycle.
-Fix security primitives – use reusable session keys, repair signing/verification, preload legitimate peer certificates, and ensure secure transfers really encrypt/decrypt file data.
-Complete the sync pipeline – feed received deltas into DeltaEngine::apply, replace the simulated logic in SyncManager, and hook up selective sync, throttling, resume, and version history so they do real work.
-Improve filesystem watcher – guard thread shutdown, watch subdirectories, and capture real hashes/sizes before writing to the DB.
-Populate database features – start using transactions, batch APIs, stats, and conflict metadata so the schema matches runtime behavior.
-Bring ML features to life – swap placeholder heuristics for thin-but-real models or rule-based logic that actually influences sync/security, and stream real data into the online learners.
-Align documentation with reality – refresh README and docs so advertised features exist or are clearly marked as roadmap.
-Add GUI integration – wire runtime stats into the GTK UI and harden --gui argument handling.
-Introduce automated testing – stand up unit/integration coverage for security, networking, and sync, plus a CI entry point to run them.
-Polish build quality – eliminate the current warnings, add lint/static checks, and make sure every thread has a graceful shutdown path.
+# ✅ SentinelFS-Neo — Full Development To-Do List
+
+> **Durum Anahtarı:**  
+> 🟥 Kritik 🟧 Önemli 🟨 Orta 🟩 İyileştirme
+
+---
+
+## 🧠 Networking Core
+
+-    🟥 **Inbound listener ekle** — TCP acceptor oluştur, peer bağlantılarını dinle.
+    
+-    🟥 **Receive flow entegrasyonu** — `receiveDelta` ve `receiveFile` çağrılarını aktif hale getir.
+    
+-    🟧 **NAT discovery düzelt** — `stun.l.google.com` için DNS çözümleme ekle (şu an `inet_pton`’a direkt hostname veriliyor).
+    
+-    🟧 **Discovery socket yaşam döngüsünü temizle** — `Discovery::stop` sonrası socket race ve descriptor leak problemlerini çöz.
+    
+
+---
+
+## 🔐 Security Primitives
+
+-    🟥 **Session key yeniden kullanılabilir yap** — AES anahtarı sabit olmalı; encrypt/decrypt karşılıklı çalışmalı.
+    
+-    🟥 **RSA imzalama/signer düzelt** — `EVP_PKEY` bağlanmalı; `signData/verifySignature` artık sessizce başarısız olmamalı.
+    
+-    🟥 **Gerçek peer sertifikalarını yükle** — `addPeerCertificate` çağrıları eklenecek, sertifika kontrolü gerçek veriyle yapılacak.
+    
+-    🟥 **Gerçek şifreleme/deşifreleme uygula** — `sendSecureFile` plaintext göndermemeli, `receiveSecureFile` de decrypt etmeli.
+    
+-    🟧 **Rate-limit UB düzelt** — `erase(it)` sonrası iterator kullanımı tanımsız davranış; yeniden yazılmalı.
+    
+
+---
+
+## 🔁 Sync Pipeline
+
+-    🟥 **DeltaEngine::apply bağla** — alınan delta’lar dosya sistemine uygulanmalı.
+    
+-    🟥 **SyncManager işlevselleştir** — counters yerine gerçek IO işlemleri başlatılmalı.
+    
+-    🟧 **Selective sync, resume, versioning aktif et** — dummy objeler gerçek senkronizasyonla bağlanmalı.
+    
+-    🟨 **Throttle mekanizması ekle** — ağ ve disk yüküne göre hız sınırı getir.
+    
+
+---
+
+## 🗂️ Filesystem Layer
+
+-    🟥 **Watcher shutdown koruması** — `watchThread.join()` öncesi thread varlığı kontrol edilmeli.
+    
+-    🟧 **Alt dizin izleme ekle** — recursive inotify veya FS watcher ile alt klasörleri kapsa.
+    
+-    🟧 **Gerçek hash/sizes hesapla** — DB’ye yazmadan önce SHA256 ve dosya boyutlarını al.
+    
+-    🟨 **Delta generation geliştir** — “tam dosya gönder” yaklaşımını fark bazlı aktarım ile değiştir.
+    
+
+---
+
+## 🧱 Database Layer
+
+-    🟧 **Transaction & batch API kullanımı** — DB işlemlerini atomik hale getir.
+    
+-    🟧 **Stats ve conflict metadata doldur** — runtime davranışı DB şemasıyla hizala.
+    
+-    🟥 **Hash/conflict kolonlarını gerçek verilerle doldur** — delta tespiti ve conflict çözümü için zorunlu.
+    
+-    🟨 **Dead code temizliği** — `DEAD_CODE_ANALYSIS.md` altındaki kullanılmayan modülleri kaldır.
+    
+
+---
+
+## 🧬 Machine Learning Layer
+
+-    🟧 **Placeholder heuristics yerine gerçek modeller ekle** — minimal kural tabanlı veya küçük ML modelleriyle başla.
+    
+-    🟧 **Online/federated modülleri etkinleştir** — veri akışı ve prediction feedback’i aktif et.
+    
+-    🟨 **Model dosyaları yükleme & eğitim pipeline’ı başlat** — dummy verilerle temel eğitimi çalıştır.
+    
+
+---
+
+## 🪟 GUI Integration
+
+-    🟧 **Runtime data bağla** — `updateFileList`, `updatePeerList` fonksiyonlarını CLI/daemon çıktısına bağla.
+    
+-    🟨 **\--gui argüman parser’ını düzelt** — argv shifting yerine argparse benzeri güvenli yöntem kullan.
+    
+
+---
+
+## 🧪 Testing & Tooling
+
+-    🟥 **Unit & integration test altyapısı kur** — security, networking ve sync modülleri için kapsam oluştur.
+    
+-    🟧 **CI/CD pipeline ekle** — GitHub Actions veya CMake test runner ile temel entegrasyon kur.
+    
+-    🟧 **Lint & static analiz ekle** — `clang-tidy`, `cppcheck`, `clang-format` entegre et.
+    
+
+---
+
+## 🧰 Build & Quality
+
+-    🟩 **Derleme uyarılarını temizle** — `ML_FORECAST_INTERVAL` unused warning düzelt.
+    
+-    🟧 **Her thread için graceful shutdown path ekle** — join + timeout koruması ile düzgün kapanma sağla.
+    
+
+---
+
+## 📖 Documentation
+
+-    🟧 **README’yi gerçek duruma uyarla** — eksik modülleri “roadmap” olarak işaretle.
+    
+-    🟧 **Docs’ları revize et** — SQLite maintenance & conflict resolution bölümlerini güncel koda uygun hale getir.
+    
+-    🟩 **Roadmap bölümü ekle** — eksik modüller için kilometre taşları tanımla.
+    
+
+---
+
+## 🧭 Roadmap & Strategy
+
+-    🟧 **Feature downscope kararı al** — `auto-remesh`, `secure transfer`, `AI anomaly detection` gibi vaatleri yeniden değerlendir.
+    
+-    🟥 **Security fix’leri önceliklendir** — veri alışverişinden önce güvenlik temellerini tamamla.
+    
+-    🟧 **Kabul test harness’ı ekle** — minimum senaryoları CI’da çalıştıracak framework kur.
+    
+
+---
+
+## 📊 Progress Summary (güncellenecek)
+
+| Alan | Görev Sayısı | Durum |
+| --- | --- | --- |
+| Networking | 4 | ⏳ |
+| Security | 5 | ⏳ |
+| Sync | 4 | ⏳ |
+| Filesystem | 4 | ⏳ |
+| Database | 4 | ⏳ |
+| ML | 3 | ⏳ |
+| GUI | 2 | ⏳ |
+| Testing | 3 | ⏳ |
+| Build | 2 | ⏳ |
+| Docs | 3 | ⏳ |
+| Strategy | 3 | ⏳ |
+| **Toplam** | **37 Görev** | **0/37 tamamlandı** |
+
+---
