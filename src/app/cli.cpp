@@ -65,14 +65,19 @@ void CLI::printUsage() {
 Usage: sentinelfs-neo [OPTIONS]
 
 Options:
-  --session <CODE>      Session code (required)
-  --path <PATH>         Directory to sync (required)
+  --session <CODE>      Session code (required for CLI mode)
+  --path <PATH>         Directory to sync (required for CLI mode)
   --port <PORT>         Network port (default: 8080)
+  --gui                 Launch graphical interface (GTK3)
   --verbose             Verbose logging
   --daemon              Run as daemon
   --config <FILE>       Configuration file
   --help                Show this help
   --version             Show version
+
+Modes:
+  CLI Mode (default):   ./sentinelfs-neo --session CODE --path /sync/dir
+  GUI Mode:             ./sentinelfs-neo --gui
 )" << std::endl;
 }
 

@@ -79,3 +79,6 @@ target_include_directories(sentinelfs-neo PRIVATE
     ${ZLIB_INCLUDE_DIRS}
     ${GTK3_INCLUDE_DIRS}
 )
+
+# Enable GUI support flag
+target_compile_definitions(sentinelfs-neo PRIVATE ENABLE_GUI)

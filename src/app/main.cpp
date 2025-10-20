@@ -8,6 +8,12 @@
 
 #include "app/cli.hpp"
 #include "app/logger.hpp"
+
+// GUI support (optional)
+#ifdef ENABLE_GUI
+#include "gui/main_window.hpp"
+int runGUIMode(int argc, char* argv[]);
+#endif
 #include "fs/watcher.hpp"
 #include "fs/delta_engine.hpp"
 #include "fs/file_queue.hpp"
@@ -50,6 +56,30 @@ void signalHandler(int signal) {
 }
 
 int main(int argc, char* argv[]) {
+    // Check for GUI mode
+    bool guiMode = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::string(argv[i]) == "--gui") {
+            guiMode = true;
+            // Remove --gui from argv to avoid CLI parsing errors
+            for (int j = i; j < argc - 1; j++) {
+                argv[j] = argv[j + 1];
+            }
+            argc--;
+            break;
+        }
+    }
+    
+    if (guiMode) {
+        #ifdef ENABLE_GUI
+        return runGUIMode(argc, argv);
+        #else
+        std::cerr << "Error: GUI support not compiled in!" << std::endl;
+        std::cerr << "Please rebuild with GTK3 support." << std::endl;
+        return 1;
+        #endif
+    }
+    
     // Set up signal handling for graceful shutdown
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
@@ -510,3 +540,137 @@ int main(int argc, char* argv[]) {
     logger.info("SentinelFS-Neo shutdown complete");
     return 0;
 }
+
+// GUI Mode Implementation (compiled only if GTK3 is available)
+#ifdef ENABLE_GUI
+int runGUIMode(int argc, char* argv[]) {
+    try {
+        std::cout << "Starting SentinelFS-Neo in GUI mode..." << std::endl;
+        
+        // Create main window
+        MainWindow window(argc, argv);
+        
+        // Backend thread flag
+        std::atomic<bool> backendRunning{true};
+        
+        // Start backend thread
+        std::thread backendThread([&window, &backendRunning]() {
+            try {
+                // Logger setup
+                Logger logger;
+                logger.setLevel(LogLevel::INFO);
+                logger.info("Backend thread started");
+                
+                // Initialize backend components (minimal for GUI demo)
+                // In a real application, you would initialize:
+                // - MetadataDB
+                // - SyncManager
+                // - FileWatcher
+                // - PeerDiscovery
+                // - ML components
+                // etc.
+                
+                // Simulate backend updates
+                int counter = 0;
+                while (backendRunning) {
+                    GUIStatistics stats;
+                    stats.totalFiles = 125 + (counter % 10);
+                    stats.syncedFiles = 98 + (counter % 5);
+                    stats.activePeers = 3;
+                    stats.totalPeers = 5;
+                    stats.uploadRate = 2.5 + (counter % 3) * 0.5;
+                    stats.downloadRate = 4.2 + (counter % 4) * 0.3;
+                    stats.bytesTransferred = 1200000000 + counter * 1000000;
+                    stats.lastSync = "2025-10-20 16:00:00";
+                    stats.mlAccuracy = 0.87;
+                    stats.anomaliesDetected = 2;
+                    
+                    window.updateStatistics(stats);
+                    
+                    // Update file list (demo data)
+                    if (counter % 5 == 0) {
+                        std::vector<FileInfo> files;
+                        FileInfo f1;
+                        f1.path = "/home/user/documents/report.pdf";
+                        f1.size = 1200000;
+                        f1.lastModified = "2025-10-20 15:30:00";
+                        f1.conflictStatus = "none";
+                        files.push_back(f1);
+                        
+                        FileInfo f2;
+                        f2.path = "/home/user/images/photo.jpg";
+                        f2.size = 850000;
+                        f2.lastModified = "2025-10-20 14:15:00";
+                        f2.conflictStatus = "none";
+                        files.push_back(f2);
+                        
+                        window.updateFileList(files);
+                    }
+                    
+                    // Update peer list (demo data)
+                    if (counter % 3 == 0) {
+                        std::vector<PeerInfo> peers;
+                        PeerInfo p1;
+                        p1.id = "PEER-001";
+                        p1.address = "192.168.1.100";
+                        p1.port = 8080;
+                        p1.latency = 45 + (counter % 10);
+                        p1.active = true;
+                        peers.push_back(p1);
+                        
+                        PeerInfo p2;
+                        p2.id = "PEER-002";
+                        p2.address = "192.168.1.101";
+                        p2.port = 8080;
+                        p2.latency = 72 + (counter % 15);
+                        p2.active = true;
+                        peers.push_back(p2);
+                        
+                        window.updatePeerList(peers);
+                    }
+                    
+                    // Add log messages
+                    if (counter % 2 == 0) {
+                        std::string logMsg = "Backend update #" + std::to_string(counter);
+                        window.addLogMessage(logMsg, "INFO");
+                    }
+                    
+                    counter++;
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+                
+                logger.info("Backend thread stopped");
+            } catch (const std::exception& e) {
+                std::cerr << "Backend thread error: " << e.what() << std::endl;
+            }
+        });
+        
+        // Set up callbacks
+        window.setSyncButtonCallback([&window]() {
+            window.addLogMessage("Manual sync triggered", "INFO");
+            // In real implementation, trigger syncManager.syncNow()
+        });
+        
+        window.setFileSelectedCallback([&window](const std::string& path) {
+            window.addLogMessage("Selected file: " + path, "INFO");
+        });
+        
+        // Show window and run
+        window.show();
+        window.run();
+        
+        // Stop backend thread
+        backendRunning = false;
+        if (backendThread.joinable()) {
+            backendThread.join();
+        }
+        
+        std::cout << "GUI mode exited cleanly" << std::endl;
+        return 0;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error in GUI mode: " << e.what() << std::endl;
+        return 1;
+    }
+}
+#endif  // ENABLE_GUI
