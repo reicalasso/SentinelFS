@@ -44,21 +44,7 @@ struct ConceptDrift {
                      timestamp(std::chrono::system_clock::now()) {}
 };
 
-// Streaming Data Sample
-struct StreamingSample {
-    std::vector<double> features;
-    std::vector<double> labels;
-    std::chrono::system_clock::time_point timestamp;
-    std::string sourceId;  // Peer or source identifier
-    
-    StreamingSample() : timestamp(std::chrono::system_clock::now()) {}
-    
-    StreamingSample(const std::vector<double>& feats, 
-                    const std::vector<double>& lbls,
-                    const std::string& src = "")
-        : features(feats), labels(lbls), 
-          timestamp(std::chrono::system_clock::now()), sourceId(src) {}
-};
+// Note: StreamingSample is now defined in models.hpp
 
 // Model Performance Metrics
 struct PerformanceMetrics {
