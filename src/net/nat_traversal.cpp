@@ -141,11 +141,12 @@ bool NATTraversal::receiveSTUNResponse(int sock, std::string& externalIP, int& e
     unsigned char buffer[1024];
     socklen_t addrLen = sizeof(struct sockaddr_in);
     
-    ssize_t received = recvfrom(sock, buffer, sizeof(buffer), 0, nullptr, &addrLen);
-    
-    if (received < 20) {
+    ssize_t receivedRaw = recvfrom(sock, buffer, sizeof(buffer), 0, nullptr, &addrLen);
+    if (receivedRaw < 20) {
         return false; // Not enough data for STUN header
     }
+
+    const size_t received = static_cast<size_t>(receivedRaw);
     
     // Parse STUN response
     // Byte 0-1: Message type
@@ -158,15 +159,16 @@ bool NATTraversal::receiveSTUNResponse(int sock, std::string& externalIP, int& e
     
     // Parse attributes looking for XOR-MAPPED-ADDRESS
     size_t offset = 20; // Skip header
-    
-    while (offset < received) {
-        if (offset + 4 > received) break;
+
+    while (offset + 4 <= received) {
         
         uint16_t attrType = (buffer[offset] << 8) | buffer[offset + 1];
         uint16_t attrLen = (buffer[offset + 2] << 8) | buffer[offset + 3];
         offset += 4;
-        
-        if (offset + attrLen > received) break;
+
+        if (offset + attrLen > received) {
+            break;
+        }
         
         if (attrType == 0x0020) { // XOR-MAPPED-ADDRESS attribute
             if (attrLen >= 8 && buffer[offset] == 0x00) { // AF_INET (IPv4)
@@ -192,19 +194,20 @@ bool NATTraversal::receiveSTUNResponse(int sock, std::string& externalIP, int& e
         
         // Align to 4-byte boundary
         offset += attrLen;
-        while (offset % 4 != 0) offset++;
+        offset = (offset + 3) & ~static_cast<size_t>(3); // Align to 4-byte boundary
     }
     
     // If XOR-MAPPED-ADDRESS not found, try MAPPED-ADDRESS (deprecated but still used)
     offset = 20;
-    while (offset < received) {
-        if (offset + 4 > received) break;
+    while (offset + 4 <= received) {
         
         uint16_t attrType = (buffer[offset] << 8) | buffer[offset + 1];
         uint16_t attrLen = (buffer[offset + 2] << 8) | buffer[offset + 3];
         offset += 4;
-        
-        if (offset + attrLen > received) break;
+
+        if (offset + attrLen > received) {
+            break;
+        }
         
         if (attrType == 0x0001) { // MAPPED-ADDRESS attribute
             if (attrLen >= 8 && buffer[offset] == 0x01) { // IPv4
@@ -221,7 +224,7 @@ bool NATTraversal::receiveSTUNResponse(int sock, std::string& externalIP, int& e
         
         // Align to 4-byte boundary
         offset += attrLen;
-        while (offset % 4 != 0) offset++;
+        offset = (offset + 3) & ~static_cast<size_t>(3);
     }
     
     return false;

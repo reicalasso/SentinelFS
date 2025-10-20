@@ -2,8 +2,10 @@
 #include <thread>
 #include <memory>
 #include <atomic>
+#include <system_error>
 #include <signal.h>
 #include <filesystem>
+#include <fstream>
 #include <ctime>
 
 #include "app/cli.hpp"
@@ -101,6 +103,15 @@ int main(int argc, char* argv[]) {
         }
         logger.info("Metadata database initialized");
         
+        // Ensure sync root exists before proceeding
+        std::error_code dirEc;
+        std::filesystem::create_directories(config.syncPath, dirEc);
+        if (dirEc) {
+            logger.error("Failed to prepare sync directory '" + config.syncPath + "': " + dirEc.message());
+            return 1;
+        }
+        const std::filesystem::path syncRoot = std::filesystem::absolute(config.syncPath);
+
         // Display initial database statistics
         auto dbStats = db.getStatistics();
         logger.info("Database Statistics:");
@@ -125,6 +136,12 @@ int main(int argc, char* argv[]) {
         transfer.enableSecurity(true);
         transfer.setSecurityManager(&securityManager);
         logger.info("✅ SECURITY ACTIVATED: All transfers now encrypted!");
+
+        if (!transfer.startListener(config.port)) {
+            logger.warning("⚠️ Failed to start inbound transfer listener on port " + std::to_string(config.port));
+        } else {
+            logger.info("✅ Inbound transfer listener active on port " + std::to_string(config.port));
+        }
         
         discovery.setDiscoveryInterval(config.discoveryInterval);
         remesh.setRemeshThreshold(config.remeshThreshold);
@@ -244,6 +261,152 @@ int main(int argc, char* argv[]) {
         logger.info("✅ Delta Engine ready for efficient sync (per-file instances)");
         logger.info("✅ ConflictResolver active with BACKUP strategy");
         logger.info("✅ FileLocker active for concurrency protection");
+
+        auto makeRelativePath = [&](const std::string& absolutePath) -> std::string {
+            std::error_code relEc;
+            auto absolute = std::filesystem::absolute(absolutePath);
+            auto rel = std::filesystem::relative(absolute, syncRoot, relEc);
+            if (relEc || rel.empty()) {
+                return std::filesystem::path(absolutePath).filename().string();
+            }
+            for (const auto& part : rel) {
+                if (part == "..") {
+                    return std::filesystem::path(absolutePath).filename().string();
+                }
+            }
+            return rel.generic_string();
+        };
+
+        auto sanitizeInboundPath = [&](const std::string& remotePath) -> std::filesystem::path {
+            std::filesystem::path candidate(remotePath);
+            candidate = candidate.lexically_normal();
+            if (candidate.has_root_path()) {
+                candidate = candidate.relative_path();
+            }
+            if (candidate.empty()) {
+                candidate = std::filesystem::path(remotePath).filename();
+            }
+            bool safe = true;
+            for (const auto& part : candidate) {
+                if (part == "..") {
+                    safe = false;
+                    break;
+                }
+            }
+            if (!safe || candidate.empty()) {
+                candidate = candidate.filename();
+            }
+            return candidate;
+        };
+
+        transfer.setDeltaHandler([&, sanitizeInboundPath, syncRoot](const PeerInfo& peer, const DeltaData& inboundDelta) {
+            if (inboundDelta.filePath.empty()) {
+                logger.warning("Inbound delta from " + peer.id + " missing file path; ignoring");
+                return;
+            }
+
+            const auto relativePath = sanitizeInboundPath(inboundDelta.filePath);
+            const auto targetPath = (syncRoot / relativePath).lexically_normal();
+
+            std::error_code dirEc;
+            std::filesystem::create_directories(targetPath.parent_path(), dirEc);
+            if (dirEc) {
+                logger.error("Failed to prepare path for inbound delta '" + targetPath.string() + "': " + dirEc.message());
+                return;
+            }
+
+            if (!fileLocker.acquireLock(targetPath.string(), LockType::WRITE)) {
+                logger.warning("Could not lock file for inbound delta: " + targetPath.string());
+                return;
+            }
+
+            DeltaEngine applyEngine(targetPath.string());
+            bool applied = inboundDelta.isCompressed
+                               ? applyEngine.applyCompressed(inboundDelta, targetPath.string())
+                               : applyEngine.apply(inboundDelta, targetPath.string());
+
+            if (!applied) {
+                logger.error("Failed to apply inbound delta to " + targetPath.string());
+                fileLocker.releaseLock(targetPath.string());
+                return;
+            }
+
+            std::error_code sizeEc;
+            auto fileSize = std::filesystem::file_size(targetPath, sizeEc);
+
+            FileInfo fileInfo;
+            fileInfo.path = targetPath.string();
+            fileInfo.size = sizeEc ? 0 : static_cast<size_t>(fileSize);
+            fileInfo.lastModified = std::to_string(std::time(nullptr));
+            fileInfo.deviceId = peer.id;
+            fileInfo.hash = DeltaEngine::calculateHash(targetPath.string());
+
+            auto existing = db.getFile(fileInfo.path);
+            if (!existing.path.empty()) {
+                fileInfo.version = existing.version + 1;
+                db.updateFile(fileInfo);
+            } else {
+                db.addFile(fileInfo);
+            }
+
+            syncManager.createFileVersion(fileInfo.path, "Inbound delta from " + peer.id, peer.id);
+            securityManager.recordPeerActivity(peer.id, fileInfo.size);
+            logger.info("✅ Applied inbound delta for " + fileInfo.path + " from peer " + peer.id);
+
+            fileLocker.releaseLock(targetPath.string());
+        });
+
+        transfer.setFileHandler([&, sanitizeInboundPath, syncRoot](const PeerInfo& peer,
+                                                                  const std::string& remotePath,
+                                                                  const std::vector<uint8_t>& contents) {
+            auto relativePath = sanitizeInboundPath(remotePath);
+            auto targetPath = (syncRoot / relativePath).lexically_normal();
+
+            std::error_code dirEc;
+            std::filesystem::create_directories(targetPath.parent_path(), dirEc);
+            if (dirEc) {
+                logger.error("Failed to prepare path for inbound file '" + targetPath.string() + "': " + dirEc.message());
+                return;
+            }
+
+            if (!fileLocker.acquireLock(targetPath.string(), LockType::WRITE)) {
+                logger.warning("Could not lock file for inbound transfer: " + targetPath.string());
+                return;
+            }
+
+            std::ofstream out(targetPath, std::ios::binary | std::ios::trunc);
+            if (!out) {
+                logger.error("Failed to open destination for inbound file: " + targetPath.string());
+                fileLocker.releaseLock(targetPath.string());
+                return;
+            }
+            out.write(reinterpret_cast<const char*>(contents.data()), static_cast<std::streamsize>(contents.size()));
+            out.close();
+
+            std::error_code sizeEc;
+            auto fileSize = std::filesystem::file_size(targetPath, sizeEc);
+
+            FileInfo fileInfo;
+            fileInfo.path = targetPath.string();
+            fileInfo.size = sizeEc ? contents.size() : static_cast<size_t>(fileSize);
+            fileInfo.lastModified = std::to_string(std::time(nullptr));
+            fileInfo.deviceId = peer.id;
+            fileInfo.hash = DeltaEngine::calculateHash(targetPath.string());
+
+            auto existing = db.getFile(fileInfo.path);
+            if (!existing.path.empty()) {
+                fileInfo.version = existing.version + 1;
+                db.updateFile(fileInfo);
+            } else {
+                db.addFile(fileInfo);
+            }
+
+            syncManager.createFileVersion(fileInfo.path, "Inbound file from " + peer.id, peer.id);
+            securityManager.recordPeerActivity(peer.id, fileInfo.size);
+            logger.info("✅ Stored inbound file " + fileInfo.path + " from peer " + peer.id);
+
+            fileLocker.releaseLock(targetPath.string());
+        });
         
         // Set up file watcher
         FileWatcher watcher(config.syncPath, [&](const FileEvent& event) {
@@ -339,6 +502,8 @@ int main(int argc, char* argv[]) {
             
             // Encrypt file before computing delta (simulated)
             auto delta = deltaEngine.computeCompressed("", event.path); // For now, comparing with empty old file
+            const std::string relativePath = makeRelativePath(event.path);
+            delta.filePath = relativePath;
             
             if (!delta.chunks.empty()) {
                 logger.info("Computed delta for file: " + event.path + " (" + std::to_string(delta.chunks.size()) + " chunks), compressed: " + (delta.isCompressed ? "yes" : "no"));

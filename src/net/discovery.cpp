@@ -40,22 +40,21 @@ void Discovery::start() {
 }
 
 void Discovery::stop() {
-    if (!running.exchange(false)) {
-        return;
-    }
-
+    const bool wasRunning = running.exchange(false);
     if (discoverySocket >= 0) {
         shutdown(discoverySocket, SHUT_RDWR);
         close(discoverySocket);
         discoverySocket = -1;
     }
 
-    if (discoveryThread.joinable()) {
-        discoveryThread.join();
-    }
+    if (wasRunning) {
+        if (discoveryThread.joinable()) {
+            discoveryThread.join();
+        }
 
-    if (listenerThread.joinable()) {
-        listenerThread.join();
+        if (listenerThread.joinable()) {
+            listenerThread.join();
+        }
     }
 }
 
@@ -93,9 +92,9 @@ void Discovery::broadcastPresence() {
 void Discovery::listenForPeers() {
     char buffer[1024];
     struct sockaddr_in clientAddr;
-    socklen_t clientLen = sizeof(clientAddr);
     
     while (running) {
+        socklen_t clientLen = sizeof(clientAddr);
         ssize_t received = recvfrom(discoverySocket, 
                                    buffer, 
                                    sizeof(buffer) - 1, 
@@ -155,8 +154,13 @@ void Discovery::listenForPeers() {
         } else if (!running.load()) {
             break;
         } else {
+            if (errno == EINTR) {
+                continue;
+            }
+
             if (errno != EWOULDBLOCK && errno != EAGAIN) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                std::cerr << "Discovery recvfrom error: " << strerror(errno) << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             } else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -191,29 +195,40 @@ bool Discovery::initializeSocket() {
         return true;
     }
 
-    discoverySocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (discoverySocket < 0) {
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
         std::cerr << "Error creating discovery socket" << std::endl;
         return false;
     }
 
-    int broadcastEnable = 1;
-    if (setsockopt(discoverySocket, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
+    int flags = fcntl(sock, F_GETFL, 0);
+    if (flags >= 0) {
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+    }
+
+    const int broadcastEnable = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
         std::cerr << "Error setting broadcast option" << std::endl;
     }
 
-    int reuse = 1;
-    if (setsockopt(discoverySocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+    const int reuse = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
         std::cerr << "Error enabling SO_REUSEADDR" << std::endl;
     }
 
-    if (bind(discoverySocket, reinterpret_cast<struct sockaddr*>(&discoveryAddr), sizeof(discoveryAddr)) < 0) {
+#ifdef SO_REUSEPORT
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse)) < 0) {
+        std::cerr << "Error enabling SO_REUSEPORT" << std::endl;
+    }
+#endif
+
+    if (bind(sock, reinterpret_cast<struct sockaddr*>(&discoveryAddr), sizeof(discoveryAddr)) < 0) {
         std::cerr << "Error binding discovery socket" << std::endl;
-        close(discoverySocket);
-        discoverySocket = -1;
+        close(sock);
         return false;
     }
 
+    discoverySocket = sock;
     return true;
 }
 
