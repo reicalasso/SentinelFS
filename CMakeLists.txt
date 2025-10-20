@@ -10,9 +10,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pthread")
 # Find required packages
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(PkgConfig)
+find_package(PkgConfig REQUIRED)
 if(PkgConfig_FOUND)
     pkg_check_modules(ZLIB REQUIRED zlib)
+    pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 endif()
 
 # Source directories
@@ -24,6 +25,7 @@ set(NET_DIR ${SRC_DIR}/net)
 set(SYNC_DIR ${SRC_DIR}/sync)
 set(DB_DIR ${SRC_DIR}/db)
 set(ML_DIR ${SRC_DIR}/ml)
+set(GUI_DIR ${SRC_DIR}/gui)
 
 # Collect source files
 set(SOURCES
@@ -55,6 +57,7 @@ set(SOURCES
     ${ML_DIR}/federated_learning.cpp
     ${ML_DIR}/online_learning.cpp
     ${ML_DIR}/advanced_forecasting.cpp
+    ${GUI_DIR}/main_window.cpp
 )
 
 # Create executable
@@ -66,6 +69,7 @@ target_link_libraries(sentinelfs-neo
     sqlite3
     ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBRARIES}
+    ${GTK3_LIBRARIES}
 )
 
 # Include directories
@@ -73,4 +77,5 @@ target_include_directories(sentinelfs-neo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${OPENSSL_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS}
+    ${GTK3_INCLUDE_DIRS}
 )
