@@ -3,6 +3,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 NATTraversal::NATTraversal() : stunSocket(-1) {
     // Initialize with default values
@@ -25,18 +26,30 @@ bool NATTraversal::discoverExternalAddress(std::string& externalIP, int& externa
         std::cerr << "Failed to create socket for STUN" << std::endl;
         return false;
     }
-    
+
+    // Resolve STUN server using DNS to support hostnames (e.g. stun.l.google.com)
+    struct addrinfo hints{};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    struct addrinfo* result = nullptr;
+    int gaiStatus = getaddrinfo(stunServer.c_str(), nullptr, &hints, &result);
+    if (gaiStatus != 0 || result == nullptr) {
+        std::cerr << "Failed to resolve STUN server: " << stunServer
+                  << " (" << gai_strerror(gaiStatus) << ")" << std::endl;
+        if (result) {
+            freeaddrinfo(result);
+        }
+        close(sock);
+        return false;
+    }
+
     // Setup STUN server address
     struct sockaddr_in stunAddr;
     memset(&stunAddr, 0, sizeof(stunAddr));
     stunAddr.sin_family = AF_INET;
     stunAddr.sin_port = htons(stunPort);
-    
-    if (inet_pton(AF_INET, stunServer.c_str(), &stunAddr.sin_addr) <= 0) {
-        std::cerr << "Invalid STUN server address: " << stunServer << std::endl;
-        close(sock);
-        return false;
-    }
+    stunAddr.sin_addr = reinterpret_cast<struct sockaddr_in*>(result->ai_addr)->sin_addr;
+    freeaddrinfo(result);
     
     // Send STUN request
     if (!sendSTUNRequest(sock, stunAddr)) {
@@ -46,10 +59,10 @@ bool NATTraversal::discoverExternalAddress(std::string& externalIP, int& externa
     }
     
     // Receive STUN response
-    bool result = receiveSTUNResponse(sock, externalIP, externalPort);
+    bool success = receiveSTUNResponse(sock, externalIP, externalPort);
     close(sock);
     
-    return result;
+    return success;
 }
 
 bool NATTraversal::punchHoleForPeer(const PeerInfo& peer) {

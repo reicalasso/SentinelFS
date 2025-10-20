@@ -39,6 +39,7 @@ private:
     // Socket-related members
     int discoverySocket;
     struct sockaddr_in discoveryAddr;
+    bool initializeSocket();
     
     void discoveryLoop();
     bool sendDiscoveryPacket();

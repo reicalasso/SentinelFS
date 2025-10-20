@@ -30,7 +30,7 @@ bool SecureTransfer::sendSecureDelta(const DeltaData& delta, const PeerInfo& pee
     securityManager->recordPeerActivity(peer.id, delta.chunks.size() * sizeof(DeltaChunk));
     
     // Send through base transfer
-    return baseTransfer.sendDelta(encryptedDelta, peer);
+    return baseTransfer.sendDeltaPlain(encryptedDelta, peer);
 }
 
 bool SecureTransfer::receiveSecureDelta(DeltaData& delta, const PeerInfo& peer) {
@@ -47,7 +47,7 @@ bool SecureTransfer::receiveSecureDelta(DeltaData& delta, const PeerInfo& peer) 
     
     // Receive encrypted delta
     DeltaData encryptedDelta;
-    bool result = baseTransfer.receiveDelta(encryptedDelta, peer);
+    bool result = baseTransfer.receiveDeltaPlain(encryptedDelta, peer);
     
     if (result) {
         // Decrypt the delta
@@ -85,7 +85,7 @@ bool SecureTransfer::broadcastSecureDelta(const DeltaData& delta, const std::vec
         // Record activity
         securityManager->recordPeerActivity(peer.id, delta.chunks.size() * sizeof(DeltaChunk));
         
-        bool result = baseTransfer.sendDelta(encryptedDelta, peer);
+    bool result = baseTransfer.sendDeltaPlain(encryptedDelta, peer);
         if (!result) {
             allSuccessful = false;
             std::cerr << "Failed to send delta to peer: " << peer.id << std::endl;
@@ -121,7 +121,7 @@ bool SecureTransfer::sendSecureFile(const std::string& filePath, const PeerInfo&
     
     // Send using base transfer (this is simplified - in reality you'd need to modify the transfer to send encrypted data)
     // For now, we'll use the base transfer functionality
-    return baseTransfer.sendFile(filePath, peer);
+    return baseTransfer.sendFilePlain(filePath, peer);
 }
 
 bool SecureTransfer::receiveSecureFile(const std::string& filePath, const PeerInfo& peer) {
@@ -142,7 +142,7 @@ bool SecureTransfer::receiveSecureFile(const std::string& filePath, const PeerIn
     }
     
     // Receive the file using base transfer
-    bool result = baseTransfer.receiveFile(filePath, peer);
+    bool result = baseTransfer.receiveFilePlain(filePath, peer);
     
     if (result) {
         // File is already in place, now decrypt it
