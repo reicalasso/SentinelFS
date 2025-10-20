@@ -382,10 +382,13 @@ void ResumableTransferManager::cleanupOldCheckpoints(std::chrono::hours maxAge) 
     // Also cleanup from file system
     for (const auto& entry : std::filesystem::directory_iterator(checkpointDirectory)) {
         if (entry.path().extension() == ".ckpt") {
-            auto fileTime = std::filesystem::last_write_time(entry);
+            // Convert file_clock to system_clock properly
+            auto ftime = std::filesystem::last_write_time(entry);
+            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now()
+            );
             auto fileAge = std::chrono::duration_cast<std::chrono::hours>(
-                std::chrono::system_clock::now() - 
-                std::chrono::time_point_cast<std::chrono::system_clock::duration>(fileTime));
+                std::chrono::system_clock::now() - sctp);
             
             if (fileAge > maxAge) {
                 std::filesystem::remove(entry.path());

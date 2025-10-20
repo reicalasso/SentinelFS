@@ -9,6 +9,7 @@
 #include <set>
 #include <regex>
 #include "../models.hpp"
+#include "../fs/conflict_resolver.hpp"  // Use ConflictResolutionStrategy from here
 
 // Sync priority levels
 enum class SyncPriority {
@@ -16,17 +17,6 @@ enum class SyncPriority {
     NORMAL = 1,
     HIGH = 2,
     CRITICAL = 3
-};
-
-// Conflict resolution strategies
-enum class ConflictResolutionStrategy {
-    LATEST_WINS,      // Most recent version
-    OLDEST_WINS,      // Oldest version
-    LARGEST_WINS,     // Largest file size
-    SMALLEST_WINS,    // Smallest file size
-    PEER_PRIORITY,    // Based on peer priority
-    USER_DECISION,    // Ask user to decide
-    MERGE_FILES       // Merge conflicting versions (text files)
 };
 
 // Sync rule for selective sync

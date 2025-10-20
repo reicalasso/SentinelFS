@@ -1,4 +1,6 @@
 #include "transfer.hpp"
+#include "secure_transfer.hpp"
+#include "../security/security_manager.hpp"
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -7,7 +9,11 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-Transfer::Transfer() = default;
+Transfer::Transfer() {
+    // Initialize SecureTransfer
+    secureTransfer = std::make_unique<SecureTransfer>(*this);
+    std::cout << "[Transfer] Initialized with security enabled by default" << std::endl;
+}
 
 Transfer::~Transfer() {
     // Close all connections
@@ -20,6 +26,13 @@ Transfer::~Transfer() {
 }
 
 bool Transfer::sendDelta(const DeltaData& delta, const PeerInfo& peer) {
+    // If security is enabled and configured, use SecureTransfer
+    if (securityEnabled && securityManager && secureTransfer) {
+        std::cout << "[Transfer] Using SECURE transfer for delta to " << peer.id << std::endl;
+        secureTransfer->setSecurityManager(*securityManager);
+        return secureTransfer->sendSecureDelta(delta, peer);
+    }
+    
     std::cout << "Sending delta: " << delta.filePath 
               << " with " << delta.chunks.size() << " chunks to peer " << peer.id << std::endl;
     
@@ -53,6 +66,13 @@ bool Transfer::sendDelta(const DeltaData& delta, const PeerInfo& peer) {
 }
 
 bool Transfer::receiveDelta(DeltaData& delta, const PeerInfo& peer) {
+    // If security is enabled and configured, use SecureTransfer
+    if (securityEnabled && securityManager && secureTransfer) {
+        std::cout << "[Transfer] Using SECURE transfer for receiving delta from " << peer.id << std::endl;
+        secureTransfer->setSecurityManager(*securityManager);
+        return secureTransfer->receiveSecureDelta(delta, peer);
+    }
+    
     std::vector<uint8_t> data;
     if (!receiveRawData(data, peer)) {
         return false;
@@ -100,6 +120,13 @@ bool Transfer::receiveDelta(DeltaData& delta, const PeerInfo& peer) {
 }
 
 bool Transfer::sendFile(const std::string& filePath, const PeerInfo& peer) {
+    // If security is enabled and configured, use SecureTransfer
+    if (securityEnabled && securityManager && secureTransfer) {
+        std::cout << "[Transfer] Using SECURE transfer for file to " << peer.id << std::endl;
+        secureTransfer->setSecurityManager(*securityManager);
+        return secureTransfer->sendSecureFile(filePath, peer);
+    }
+    
     std::cout << "Sending file: " << filePath << " to peer " << peer.id << std::endl;
     
     // Open file and send it
@@ -150,6 +177,13 @@ bool Transfer::sendFile(const std::string& filePath, const PeerInfo& peer) {
 }
 
 bool Transfer::receiveFile(const std::string& filePath, const PeerInfo& peer) {
+    // If security is enabled and configured, use SecureTransfer
+    if (securityEnabled && securityManager && secureTransfer) {
+        std::cout << "[Transfer] Using SECURE transfer for receiving file from " << peer.id << std::endl;
+        secureTransfer->setSecurityManager(*securityManager);
+        return secureTransfer->receiveSecureFile(filePath, peer);
+    }
+    
     std::cout << "Receiving file: " << filePath << " from peer " << peer.id << std::endl;
     
     // First receive file info
@@ -198,6 +232,13 @@ bool Transfer::receiveFile(const std::string& filePath, const PeerInfo& peer) {
 }
 
 bool Transfer::broadcastDelta(const DeltaData& delta, const std::vector<PeerInfo>& peers) {
+    // If security is enabled, use SecureTransfer broadcast
+    if (securityEnabled && securityManager && secureTransfer) {
+        std::cout << "[Transfer] Using SECURE broadcast for delta to " << peers.size() << " peers" << std::endl;
+        secureTransfer->setSecurityManager(*securityManager);
+        return secureTransfer->broadcastSecureDelta(delta, peers);
+    }
+    
     bool allSuccessful = true;
     
     for (const auto& peer : peers) {

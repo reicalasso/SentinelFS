@@ -176,32 +176,7 @@ bool SyncManager::syncDirectory(const std::string& directoryPath) {
     return true;
 }
 
-bool SyncManager::syncDirectoryOriginal(const std::string& directoryPath) {
-    if (!running.load() || paused.load()) {
-        return false;
-    }
-    
-    try {
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
-            if (entry.is_regular_file()) {
-                std::string filePath = entry.path().string();
-                
-                // Skip hidden files and directories
-                if (filePath.find("/.") != std::string::npos || filePath.find("\\.") != std::string::npos) {
-                    continue;
-                }
-                
-                // Sync each file
-                syncFile(filePath);
-            }
-        }
-        
-        return true;
-    } catch (const std::exception& e) {
-        logEvent(SyncEvent(SyncEvent::Type::NETWORK_ERROR, directoryPath, "system"));
-        return false;
-    }
-}
+// Note: syncDirectoryOriginal removed - use syncDirectory instead
 
 void SyncManager::cancelSync(const std::string& filePath) {
     std::lock_guard<std::mutex> lock(stateMutex);
@@ -406,8 +381,8 @@ ConflictResolutionStrategy SyncManager::getConflictResolutionStrategy(const std:
         }
     }
     
-    // Default to latest wins
-    return ConflictResolutionStrategy::LATEST_WINS;
+    // Default to LATEST strategy
+    return ConflictResolutionStrategy::LATEST;
 }
 
 bool SyncManager::resolveConflict(const std::string& filePath, const std::vector<PeerInfo>& peers) {
@@ -455,7 +430,7 @@ double SyncManager::getSyncEfficiency() const {
 
 void SyncManager::cleanupOldVersions() {
     if (versionHistory) {
-        versionHistory->cleanupOldCheckpoints();
+        versionHistory->cleanupOldVersions();
     }
 }
 
@@ -729,7 +704,7 @@ void SyncManager::adaptiveBandwidthAdjustment() {
 
 void SyncManager::storageCleanup() {
     if (versionHistory) {
-        versionHistory->cleanupOldCheckpoints();
+        versionHistory->cleanupOldVersions();
     }
     
     if (resumableTransfers) {

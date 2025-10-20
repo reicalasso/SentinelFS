@@ -8,6 +8,8 @@
 #include <chrono>
 #include <map>
 #include <set>
+#include <functional>
+#include <thread>
 #include "../models.hpp"
 
 // File version information

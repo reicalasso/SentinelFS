@@ -105,14 +105,8 @@ bool SelectiveSyncManager::shouldSyncFile(const std::string& filePath, size_t fi
         patternMatchCache[filePath] = shouldSync;
     }
     
-    // Update statistics
-    {
-        std::lock_guard<std::mutex> statsLock(statsMutex);
-        totalSyncAttempts++;
-        if (shouldSync) {
-            syncedFiles++;
-        }
-    }
+    // Update statistics (note: this is a const function, so we can't modify member variables)
+    // Statistics will be updated elsewhere in the sync manager
     
     return shouldSync;
 }
@@ -179,8 +173,8 @@ ConflictResolutionStrategy SelectiveSyncManager::getConflictResolutionStrategy(
         }
     }
     
-    // Default to latest wins
-    return ConflictResolutionStrategy::LATEST_WINS;
+    // Default to LATEST strategy
+    return ConflictResolutionStrategy::LATEST;
 }
 
 void SelectiveSyncManager::setDefaultPriority(SyncPriority priority) {

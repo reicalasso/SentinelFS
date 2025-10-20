@@ -21,6 +21,7 @@ set(APP_DIR ${SRC_DIR}/app)
 set(FS_DIR ${SRC_DIR}/fs)
 set(SECURITY_DIR ${SRC_DIR}/security)
 set(NET_DIR ${SRC_DIR}/net)
+set(SYNC_DIR ${SRC_DIR}/sync)
 set(DB_DIR ${SRC_DIR}/db)
 set(ML_DIR ${SRC_DIR}/ml)
 
@@ -41,6 +42,11 @@ set(SOURCES
     ${NET_DIR}/transfer.cpp
     ${NET_DIR}/secure_transfer.cpp
     ${NET_DIR}/nat_traversal.cpp
+    ${SYNC_DIR}/selective_sync.cpp
+    ${SYNC_DIR}/bandwidth_throttling.cpp
+    ${SYNC_DIR}/resume_transfers.cpp
+    ${SYNC_DIR}/version_history.cpp
+    ${SYNC_DIR}/sync_manager.cpp
     ${DB_DIR}/db.cpp
     ${DB_DIR}/cache.cpp
     ${ML_DIR}/ml_analyzer.cpp

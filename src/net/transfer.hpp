@@ -15,6 +15,10 @@
 #include "../models.hpp"  // For PeerInfo
 #include "nat_traversal.hpp"  // For NAT traversal
 
+// Forward declarations
+class SecureTransfer;
+class SecurityManager;
+
 struct Connection {
     int socket;
     struct sockaddr_in addr;
@@ -50,6 +54,14 @@ public:
     void closeConnection(const PeerInfo& peer);
     void cleanupConnections();
     
+    // Enable/disable security
+    void enableSecurity(bool enable) { securityEnabled = enable; }
+    void setSecurityManager(SecurityManager* mgr) { securityManager = mgr; }
+    bool isSecurityEnabled() const { return securityEnabled; }
+    
+    // Get secure transfer instance
+    SecureTransfer* getSecureTransfer() { return secureTransfer.get(); }
+    
 private:
     std::atomic<bool> active{false};
     std::mutex transferMutex;
@@ -57,6 +69,11 @@ private:
     // Connection pooling
     std::map<std::string, Connection> connectionPool;
     std::mutex connectionMutex;
+    
+    // Security
+    bool securityEnabled{true};  // Security ON by default
+    SecurityManager* securityManager{nullptr};
+    std::unique_ptr<SecureTransfer> secureTransfer;
     
     // Internal transfer methods
     bool sendRawData(const std::vector<uint8_t>& data, const PeerInfo& peer);
