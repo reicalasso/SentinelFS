@@ -34,3 +34,16 @@ void FileQueue::waitForItem() {
     std::unique_lock<std::mutex> lock(queueMutex);
     condition.wait(lock, [this] { return !queue.empty(); });
 }
+
+std::vector<SyncItem> FileQueue::dequeueBatch(size_t maxItems) {
+    std::lock_guard<std::mutex> lock(queueMutex);
+    std::vector<SyncItem> batch;
+    batch.reserve(std::min(maxItems, queue.size()));
+    
+    while (!queue.empty() && batch.size() < maxItems) {
+        batch.push_back(queue.front());
+        queue.pop();
+    }
+    
+    return batch;
+}

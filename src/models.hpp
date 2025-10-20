@@ -11,10 +11,12 @@ struct FileInfo {
     std::string lastModified;
     size_t size;
     std::string deviceId;
+    int version;                    // Version number for conflict resolution
+    std::string conflictStatus;     // "none", "conflicted", "resolved"
     
-    FileInfo() : size(0) {}
+    FileInfo() : size(0), version(1), conflictStatus("none") {}
     FileInfo(const std::string& p, const std::string& h, size_t s, const std::string& id) 
-        : path(p), hash(h), size(s), deviceId(id) {
+        : path(p), hash(h), size(s), deviceId(id), version(1), conflictStatus("none") {
         // Set current timestamp
         time_t now = time(0);
         lastModified = std::string(ctime(&now));

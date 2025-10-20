@@ -28,6 +28,9 @@ public:
     
     void waitForItem();
     
+    // Batch operations - dequeue multiple items at once for efficient processing
+    std::vector<SyncItem> dequeueBatch(size_t maxItems = 100);
+    
 private:
     std::queue<SyncItem> queue;
     mutable std::mutex queueMutex;

@@ -16,6 +16,18 @@ bool MetadataDB::initialize() {
         return false;
     }
     
+    // Enable foreign keys for referential integrity
+    executeQuery("PRAGMA foreign_keys = ON;");
+    
+    // Use Write-Ahead Logging for better performance
+    executeQuery("PRAGMA journal_mode = WAL;");
+    
+    // Optimize synchronous mode
+    executeQuery("PRAGMA synchronous = NORMAL;");
+    
+    // Set page size for better performance
+    executeQuery("PRAGMA page_size = 4096;");
+    
     return prepareTables();
 }
 
@@ -26,7 +38,9 @@ bool MetadataDB::prepareTables() {
             hash TEXT NOT NULL,
             last_modified TEXT NOT NULL,
             size INTEGER NOT NULL,
-            device_id TEXT NOT NULL
+            device_id TEXT NOT NULL,
+            version INTEGER DEFAULT 1,
+            conflict_status TEXT DEFAULT 'none'
         );
     )";
     
@@ -70,13 +84,29 @@ bool MetadataDB::prepareTables() {
         return false;
     }
     
+    // Create indexes for better query performance
+    const char* createIndexes = R"(
+        CREATE INDEX IF NOT EXISTS idx_files_hash ON files(hash);
+        CREATE INDEX IF NOT EXISTS idx_files_device ON files(device_id);
+        CREATE INDEX IF NOT EXISTS idx_files_modified ON files(last_modified);
+        CREATE INDEX IF NOT EXISTS idx_peers_active ON peers(active);
+        CREATE INDEX IF NOT EXISTS idx_peers_latency ON peers(latency);
+        CREATE INDEX IF NOT EXISTS idx_anomalies_timestamp ON anomalies(timestamp);
+    )";
+    
+    if (sqlite3_exec(db, createIndexes, 0, 0, &errMsg) != SQLITE_OK) {
+        std::cerr << "Error creating indexes: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        return false;
+    }
+    
     return true;
 }
 
 bool MetadataDB::addFile(const FileInfo& fileInfo) {
     const char* sql = R"(
-        INSERT OR REPLACE INTO files (path, hash, last_modified, size, device_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO files (path, hash, last_modified, size, device_id, version, conflict_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     )";
     
     sqlite3_stmt* stmt;
@@ -91,6 +121,8 @@ bool MetadataDB::addFile(const FileInfo& fileInfo) {
     sqlite3_bind_text(stmt, 3, fileInfo.lastModified.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int64(stmt, 4, fileInfo.size);
     sqlite3_bind_text(stmt, 5, fileInfo.deviceId.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 6, fileInfo.version);
+    sqlite3_bind_text(stmt, 7, fileInfo.conflictStatus.c_str(), -1, SQLITE_STATIC);
     
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -120,7 +152,7 @@ bool MetadataDB::deleteFile(const std::string& filePath) {
 }
 
 FileInfo MetadataDB::getFile(const std::string& filePath) {
-    const char* sql = "SELECT path, hash, last_modified, size, device_id FROM files WHERE path = ?";
+    const char* sql = "SELECT path, hash, last_modified, size, device_id, version, conflict_status FROM files WHERE path = ?";
     
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -138,6 +170,8 @@ FileInfo MetadataDB::getFile(const std::string& filePath) {
         fileInfo.lastModified = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
         fileInfo.size = sqlite3_column_int64(stmt, 3);
         fileInfo.deviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+        fileInfo.version = sqlite3_column_int(stmt, 5);
+        fileInfo.conflictStatus = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
     }
     
     sqlite3_finalize(stmt);
@@ -145,7 +179,7 @@ FileInfo MetadataDB::getFile(const std::string& filePath) {
 }
 
 std::vector<FileInfo> MetadataDB::getAllFiles() {
-    const char* sql = "SELECT path, hash, last_modified, size, device_id FROM files";
+    const char* sql = "SELECT path, hash, last_modified, size, device_id, version, conflict_status FROM files";
     
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -159,6 +193,8 @@ std::vector<FileInfo> MetadataDB::getAllFiles() {
             fileInfo.lastModified = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
             fileInfo.size = sqlite3_column_int64(stmt, 3);
             fileInfo.deviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            fileInfo.version = sqlite3_column_int(stmt, 5);
+            fileInfo.conflictStatus = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
             files.push_back(fileInfo);
         }
     }
@@ -350,4 +386,246 @@ std::string MetadataDB::escapeString(const std::string& str) {
         pos += 2;
     }
     return escaped;
+}
+
+// Transaction Management (ACID Support)
+bool MetadataDB::beginTransaction() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return executeQuery("BEGIN TRANSACTION;");
+}
+
+bool MetadataDB::commit() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return executeQuery("COMMIT;");
+}
+
+bool MetadataDB::rollback() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return executeQuery("ROLLBACK;");
+}
+
+// Batch Operations
+bool MetadataDB::addFilesBatch(const std::vector<FileInfo>& files) {
+    if (files.empty()) return true;
+    
+    if (!beginTransaction()) {
+        return false;
+    }
+    
+    bool success = true;
+    for (const auto& file : files) {
+        if (!addFile(file)) {
+            success = false;
+            break;
+        }
+    }
+    
+    if (success) {
+        return commit();
+    } else {
+        rollback();
+        return false;
+    }
+}
+
+bool MetadataDB::updateFilesBatch(const std::vector<FileInfo>& files) {
+    if (files.empty()) return true;
+    
+    if (!beginTransaction()) {
+        return false;
+    }
+    
+    bool success = true;
+    for (const auto& file : files) {
+        if (!updateFile(file)) {
+            success = false;
+            break;
+        }
+    }
+    
+    if (success) {
+        return commit();
+    } else {
+        rollback();
+        return false;
+    }
+}
+
+// Query Helpers
+std::vector<FileInfo> MetadataDB::getFilesModifiedAfter(const std::string& timestamp) {
+    const char* sql = "SELECT path, hash, last_modified, size, device_id, version, conflict_status FROM files WHERE last_modified > ? ORDER BY last_modified DESC";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    
+    std::vector<FileInfo> files;
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, timestamp.c_str(), -1, SQLITE_STATIC);
+        
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            FileInfo fileInfo;
+            fileInfo.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            fileInfo.hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            fileInfo.lastModified = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            fileInfo.size = sqlite3_column_int64(stmt, 3);
+            fileInfo.deviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            fileInfo.version = sqlite3_column_int(stmt, 5);
+            fileInfo.conflictStatus = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+            files.push_back(fileInfo);
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    return files;
+}
+
+std::vector<FileInfo> MetadataDB::getFilesByDevice(const std::string& deviceId) {
+    const char* sql = "SELECT path, hash, last_modified, size, device_id, version, conflict_status FROM files WHERE device_id = ?";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    
+    std::vector<FileInfo> files;
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, deviceId.c_str(), -1, SQLITE_STATIC);
+        
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            FileInfo fileInfo;
+            fileInfo.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            fileInfo.hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            fileInfo.lastModified = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            fileInfo.size = sqlite3_column_int64(stmt, 3);
+            fileInfo.deviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            fileInfo.version = sqlite3_column_int(stmt, 5);
+            fileInfo.conflictStatus = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+            files.push_back(fileInfo);
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    return files;
+}
+
+std::vector<PeerInfo> MetadataDB::getActivePeers() {
+    const char* sql = "SELECT id, address, port, latency, active, last_seen FROM peers WHERE active = 1 ORDER BY latency ASC";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    
+    std::vector<PeerInfo> peers;
+    if (rc == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            PeerInfo peerInfo;
+            peerInfo.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            peerInfo.address = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            peerInfo.port = sqlite3_column_int(stmt, 2);
+            peerInfo.latency = sqlite3_column_double(stmt, 3);
+            peerInfo.active = sqlite3_column_int(stmt, 4) != 0;
+            peerInfo.lastSeen = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+            peers.push_back(peerInfo);
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    return peers;
+}
+
+std::vector<FileInfo> MetadataDB::getFilesByHashPrefix(const std::string& hashPrefix) {
+    std::string pattern = hashPrefix + "%";
+    const char* sql = "SELECT path, hash, last_modified, size, device_id, version, conflict_status FROM files WHERE hash LIKE ?";
+    
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    
+    std::vector<FileInfo> files;
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
+        
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            FileInfo fileInfo;
+            fileInfo.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            fileInfo.hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            fileInfo.lastModified = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            fileInfo.size = sqlite3_column_int64(stmt, 3);
+            fileInfo.deviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            fileInfo.version = sqlite3_column_int(stmt, 5);
+            fileInfo.conflictStatus = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+            files.push_back(fileInfo);
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    return files;
+}
+
+// Statistics
+MetadataDB::DBStats MetadataDB::getStatistics() {
+    DBStats stats = {0, 0, 0, 0, 0};
+    
+    // Count files
+    const char* sqlFiles = "SELECT COUNT(*) FROM files";
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sqlFiles, -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            stats.totalFiles = sqlite3_column_int64(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    // Count total peers
+    const char* sqlPeers = "SELECT COUNT(*) FROM peers";
+    if (sqlite3_prepare_v2(db, sqlPeers, -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            stats.totalPeers = sqlite3_column_int64(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    // Count active peers
+    const char* sqlActivePeers = "SELECT COUNT(*) FROM peers WHERE active = 1";
+    if (sqlite3_prepare_v2(db, sqlActivePeers, -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            stats.activePeers = sqlite3_column_int64(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    // Count anomalies
+    const char* sqlAnomalies = "SELECT COUNT(*) FROM anomalies";
+    if (sqlite3_prepare_v2(db, sqlAnomalies, -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            stats.totalAnomalies = sqlite3_column_int64(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    // Get database size
+    const char* sqlSize = "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()";
+    if (sqlite3_prepare_v2(db, sqlSize, -1, &stmt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            stats.dbSizeBytes = sqlite3_column_int64(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return stats;
+}
+
+// Maintenance
+bool MetadataDB::vacuum() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return executeQuery("VACUUM;");
+}
+
+bool MetadataDB::analyze() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    return executeQuery("ANALYZE;");
+}
+
+bool MetadataDB::optimize() {
+    std::lock_guard<std::mutex> lock(dbMutex);
+    bool success = true;
+    success &= executeQuery("PRAGMA optimize;");
+    success &= analyze();
+    return success;
 }

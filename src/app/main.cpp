@@ -63,6 +63,15 @@ int main(int argc, char* argv[]) {
         }
         logger.info("Metadata database initialized");
         
+        // Display initial database statistics
+        auto dbStats = db.getStatistics();
+        logger.info("Database Statistics:");
+        logger.info("  - Total Files: " + std::to_string(dbStats.totalFiles));
+        logger.info("  - Total Peers: " + std::to_string(dbStats.totalPeers));
+        logger.info("  - Active Peers: " + std::to_string(dbStats.activePeers));
+        logger.info("  - Anomalies Logged: " + std::to_string(dbStats.totalAnomalies));
+        logger.info("  - Database Size: " + std::to_string(dbStats.dbSizeBytes / 1024) + " KB");
+        
         // Initialize security components first
         auto& securityManager = SecurityManager::getInstance();
         securityManager.initialize();  // Initialize with default keys
@@ -223,9 +232,44 @@ int main(int argc, char* argv[]) {
         // Main loop
         logger.info("SentinelFS-Neo is running with session code: " + config.sessionCode);
         
+        // Database maintenance counters
+        int loopCounter = 0;
+        const int STATS_INTERVAL = 100;      // Log stats every 100 loops (~10 seconds)
+        const int MAINTENANCE_INTERVAL = 3000; // Run maintenance every 3000 loops (~5 minutes)
+        
         while (!shouldExit) {
+            loopCounter++;
+            
+            // Periodic statistics logging
+            if (loopCounter % STATS_INTERVAL == 0) {
+                auto stats = db.getStatistics();
+                logger.debug("DB Stats: Files=" + std::to_string(stats.totalFiles) + 
+                           ", Peers=" + std::to_string(stats.activePeers) + "/" + std::to_string(stats.totalPeers) +
+                           ", Size=" + std::to_string(stats.dbSizeBytes / 1024) + "KB");
+            }
+            
+            // Periodic database maintenance
+            if (loopCounter % MAINTENANCE_INTERVAL == 0) {
+                auto stats = db.getStatistics();
+                // Run optimization if DB is larger than 10MB
+                if (stats.dbSizeBytes > 10 * 1024 * 1024) {
+                    logger.info("Running database optimization (Size: " + 
+                               std::to_string(stats.dbSizeBytes / (1024 * 1024)) + " MB)");
+                    if (db.optimize()) {
+                        logger.info("Database optimization completed successfully");
+                    }
+                }
+            }
+            
             // Periodic network maintenance
             remesh.evaluateAndOptimize();
+            
+            // Get active peers from database (sorted by latency) for optimization
+            auto activePeersFromDB = db.getActivePeers();
+            if (!activePeersFromDB.empty() && loopCounter % 50 == 0) {
+                logger.debug("Active peers in DB: " + std::to_string(activePeersFromDB.size()) + 
+                           " (Best latency: " + std::to_string(activePeersFromDB[0].latency) + "ms)");
+            }
             
             // Update peer information based on discovery results
             auto peers = discovery.getPeers();

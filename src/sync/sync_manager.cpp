@@ -145,6 +145,42 @@ bool SyncManager::syncDirectory(const std::string& directoryPath) {
         return false;
     }
     
+    // Collect files to sync in batch
+    std::vector<std::string> filesToSync;
+    
+    try {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
+            if (entry.is_regular_file()) {
+                filesToSync.push_back(entry.path().string());
+            }
+        }
+    } catch (const std::exception& e) {
+        logEvent(SyncEvent(SyncEvent::Type::TRANSFER_FAILED, directoryPath, ""));
+        return false;
+    }
+    
+    // Use batch processing for efficiency (process in chunks of 100)
+    const size_t BATCH_SIZE = 100;
+    for (size_t i = 0; i < filesToSync.size(); i += BATCH_SIZE) {
+        size_t end = std::min(i + BATCH_SIZE, filesToSync.size());
+        
+        // Process batch with implicit transaction support
+        for (size_t j = i; j < end; ++j) {
+            if (!syncFile(filesToSync[j])) {
+                // Continue on failure, but log it
+                logEvent(SyncEvent(SyncEvent::Type::TRANSFER_FAILED, filesToSync[j], ""));
+            }
+        }
+    }
+    
+    return true;
+}
+
+bool SyncManager::syncDirectoryOriginal(const std::string& directoryPath) {
+    if (!running.load() || paused.load()) {
+        return false;
+    }
+    
     try {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
