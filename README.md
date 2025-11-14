@@ -13,9 +13,7 @@
 - [Proje Hakkında](#-proje-hakkında)
 - [Özellikler](#-özellikler)
 - [Mimari](#-mimari)
-- [Kurulum](#-kurulum)
-- [Kullanım](#-kullanım)
-- [Akademik Bağlantılar](#-akademik-bağlantılar)
+- [Proje Rolleri](#-proje-rolleri)
 - [Geliştirme](#-geliştirme)
 - [Katkıda Bulunma](#-katkıda-bulunma)
 - [Lisans](#-lisans)
@@ -93,6 +91,57 @@ Bu proje, **üç temel bilgisayar bilimleri dersi**nin entegrasyonunu gösterir:
 ```
 
 **ML Layer:** Dosya erişim loglarını analiz eder ve anormal davranışları tespit eder. Python (scikit-learn) veya ONNX Runtime ile entegre edilebilir.
+
+---
+
+## 👥 Proje Rolleri
+
+### 1. Rol: Ağ Mimarı (P2P & Network Lead)
+
+**Ana Görevler**
+- Peer Discovery (cihaz keşfi) ve NAT Traversal mekanizmalarının geliştirilmesi
+- Auto-Remesh algoritmasının tasarlanması ve C++ ile uygulanması
+- Güvenli TCP/UDP veri transfer motorunun altyapısının kurulması
+- "Session Code" tabanlı oturum doğrulamasının ağ katmanına entegre edilmesi
+
+**İlgili Teknolojiler**: C++17, ağ programlama (sockets), UDP/TCP
+
+**Ağırlık Puanı**: 10/10 — Projenin kalbi, yüksek karmaşıklık
+
+### 2. Rol: Dosya Sistemi & Delta Motoru Geliştiricisi (File System & Core Lead)
+
+**Ana Görevler**
+- İşletim sistemine özgü dosya izleyicilerin (inotify, FSEvents, ReadDirectoryChangesW) kodlanması
+- Delta Engine algoritmasının geliştirilmesi (örneğin rsync benzeri blok karşılaştırma)
+- Dosya hash işlemlerinin ve senkronizasyon kuyruğunun (Sync Queue) yönetilmesi
+
+**İlgili Teknolojiler**: C++17, sistem programlama, OS API'leri, hash algoritmaları
+
+**Ağırlık Puanı**: 9/10 — Teknik olarak zorlu, OS bağımlılığı yüksek
+
+### 3. Rol: Veri & ML Sorumlusu (Data & ML Lead)
+
+**Ana Görevler**
+- Metadata veritabanı (Storage Layer) şemasının tasarlanması ve uygulanması (SQLite veya KV-Store)
+- Dosya hash, timestamp ve cihaz bilgilerinin verimli şekilde yazılması/okunması
+- ONNX Runtime'ın C++ projesine entegre edilmesi
+- ML katmanının, dosya erişim loglarını analiz edecek şekilde bağlanması
+
+**İlgili Teknolojiler**: C++17, SQLite/SQL, ONNX Runtime, temel ML bilgisi
+
+**Ağırlık Puanı**: 8/10 — Veritabanı tasarımı kritik, ML entegrasyonu yenilikçi
+
+### 4. Rol: Entegrasyon & Uygulama Lideri (Integration & Application Lead)
+
+**Ana Görevler**
+- Projenin çok platformlu derlenebilirliği için build sisteminin (örn: CMake) yönetilmesi
+- CLI ve konfigürasyon yönetimini içeren uygulama katmanının geliştirilmesi
+- Tüm katmanların entegrasyonunun ve CI/CD pipeline'ının (örn: GitHub Actions) kurulması
+- Merkezi loglama (Logger) altyapısının inşa edilmesi
+
+**İlgili Teknolojiler**: C++17, CMake/Make, CLI, Git, CI/CD, sistem mimarisi
+
+**Ağırlık Puanı**: 7/10 — Algoritmik olarak daha az zorlu olsa da mühendislik ve koordinasyon açısından kritik
 
 ---
 
