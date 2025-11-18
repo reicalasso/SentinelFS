@@ -46,8 +46,9 @@ set(CORE_HEADERS
 # Create core library
 add_library(sfs-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 
-# Add peer_registry subdirectory
+# Add subdirectories
 add_subdirectory(peer_registry)
+add_subdirectory(auto_remesh)
 
 # Include directories
 target_include_directories(sfs-core

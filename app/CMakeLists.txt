@@ -99,7 +99,24 @@ target_include_directories(sentinelfs-sprint5
         ${CMAKE_SOURCE_DIR}
 )
 
+# Sprint 6 test executable (Auto-Remesh Engine)
+add_executable(sentinelfs-sprint6
+    sprint6_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint6
+    PRIVATE
+        sfs-core
+        peer_registry
+        auto_remesh
+)
+
+target_include_directories(sentinelfs-sprint6
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
 # Install executables
-install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple sentinelfs-sprint4 sentinelfs-sprint5
+install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple sentinelfs-sprint4 sentinelfs-sprint5 sentinelfs-sprint6
     RUNTIME DESTINATION bin
 )
