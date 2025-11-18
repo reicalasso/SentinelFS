@@ -1,0 +1,11 @@
+Burada sadece filesystem pluginleri geliştirilmeli:
+- watcher.linux
+- watcher.macos
+- watcher.windows
+- delta.rsync
+- delta.bsdiff
+
+Plugin formatı zorunludur:
+plugin_info, plugin_create, plugin_destroy.
+
+OS bağımlı kod burada yazılır.

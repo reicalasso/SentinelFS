@@ -1,0 +1,4 @@
+SQLite, LMDB ve hash store implementasyonları burada yapılır.
+IMetadataStore interface zorunludur.
+
+Core’a hiçbir ek yapı yazma.

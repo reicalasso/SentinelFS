@@ -1,0 +1,13 @@
+Bu klasörde yalnızca:
+- EventBus
+- PluginLoader
+- Config
+- Logger
+- FileAPI
+- SnapshotEngine
+
+kodları yazılmalıdır.
+
+Core katmanına iş mantığı ekleme.
+Plugin’lere bağlanma.
+OS bağımlı kod yazma.
