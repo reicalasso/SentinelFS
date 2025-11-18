@@ -35,6 +35,9 @@ if(BUILD_EXAMPLES)
     add_subdirectory(plugins/examples/hello_plugin)
 endif()
 
+# Filesystem plugins
+add_subdirectory(plugins/filesystem)
+
 # Application
 add_subdirectory(app)
 

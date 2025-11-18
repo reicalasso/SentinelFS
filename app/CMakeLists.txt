@@ -35,7 +35,38 @@ target_include_directories(sentinelfs-sprint2
         ${CMAKE_SOURCE_DIR}
 )
 
+# Sprint 3 test executable (full)
+add_executable(sentinelfs-sprint3
+    sprint3_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint3
+    PRIVATE
+        sfs-core
+        watcher-common
+)
+
+target_include_directories(sentinelfs-sprint3
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
+# Sprint 3 simple test (plugin loading only)
+add_executable(sentinelfs-sprint3-simple
+    sprint3_simple_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint3-simple
+    PRIVATE
+        sfs-core
+)
+
+target_include_directories(sentinelfs-sprint3-simple
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
 # Install executables
-install(TARGETS sentinelfs-test sentinelfs-sprint2
+install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple
     RUNTIME DESTINATION bin
 )
