@@ -26,6 +26,8 @@ set(CORE_SOURCES
     config/config.cpp
     file_api/file_api_impl.cpp
     file_api/snapshot_engine.cpp
+    delta_engine/delta_types.cpp
+    delta_engine/delta_engine.cpp
 )
 
 set(CORE_HEADERS
@@ -37,6 +39,8 @@ set(CORE_HEADERS
     file_api/file_api.h
     file_api/file_api_impl.h
     file_api/snapshot_engine.h
+    delta_engine/delta_types.h
+    delta_engine/delta_engine.h
 )
 
 # Create core library

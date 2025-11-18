@@ -66,7 +66,22 @@ target_include_directories(sentinelfs-sprint3-simple
         ${CMAKE_SOURCE_DIR}
 )
 
+# Sprint 4 test executable (Delta Engine)
+add_executable(sentinelfs-sprint4
+    sprint4_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint4
+    PRIVATE
+        sfs-core
+)
+
+target_include_directories(sentinelfs-sprint4
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
 # Install executables
-install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple
+install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple sentinelfs-sprint4
     RUNTIME DESTINATION bin
 )
