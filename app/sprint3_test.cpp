@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <csignal>
+#include <atomic>
 
 /**
  * @brief Sprint 3 Test - Filesystem Watcher Plugin
@@ -20,7 +21,7 @@
 using namespace sfs::core;
 using namespace sfs::plugins;
 
-static std::atomic<bool> keep_running(true);
+static std::atomic<bool> keep_running{true};
 
 void signal_handler(int signal) {
     if (signal == SIGINT) {

@@ -81,7 +81,25 @@ target_include_directories(sentinelfs-sprint4
         ${CMAKE_SOURCE_DIR}
 )
 
+# Sprint 5 test executable (Network Layer)
+add_executable(sentinelfs-sprint5
+    sprint5_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint5
+    PRIVATE
+        sfs-core
+        peer_registry
+        discovery_udp
+        transfer_tcp
+)
+
+target_include_directories(sentinelfs-sprint5
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
 # Install executables
-install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple sentinelfs-sprint4
+install(TARGETS sentinelfs-test sentinelfs-sprint2 sentinelfs-sprint3 sentinelfs-sprint3-simple sentinelfs-sprint4 sentinelfs-sprint5
     RUNTIME DESTINATION bin
 )

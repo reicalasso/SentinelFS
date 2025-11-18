@@ -46,6 +46,9 @@ set(CORE_HEADERS
 # Create core library
 add_library(sfs-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 
+# Add peer_registry subdirectory
+add_subdirectory(peer_registry)
+
 # Include directories
 target_include_directories(sfs-core
     PUBLIC
@@ -54,7 +57,7 @@ target_include_directories(sfs-core
 
 # Find OpenSSL (required for SHA-256)
 find_package(OpenSSL REQUIRED)
-target_link_libraries(sfs-core PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(sfs-core PUBLIC OpenSSL::SSL OpenSSL::Crypto peer_registry)
 
 # Platform-specific libraries
 if(UNIX AND NOT APPLE)

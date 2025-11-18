@@ -38,6 +38,9 @@ endif()
 # Filesystem plugins
 add_subdirectory(plugins/filesystem)
 
+# Network plugins
+add_subdirectory(plugins/network)
+
 # Application
 add_subdirectory(app)
 
