@@ -5,24 +5,37 @@ project(SentinelFS-App VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Create test executable
+# Sprint 1 test executable
 add_executable(sentinelfs-test
     main.cpp
 )
 
-# Link against core library
 target_link_libraries(sentinelfs-test
     PRIVATE
         sfs-core
 )
 
-# Include directories
 target_include_directories(sentinelfs-test
     PRIVATE
         ${CMAKE_SOURCE_DIR}
 )
 
-# Install executable
-install(TARGETS sentinelfs-test
+# Sprint 2 test executable
+add_executable(sentinelfs-sprint2
+    sprint2_test.cpp
+)
+
+target_link_libraries(sentinelfs-sprint2
+    PRIVATE
+        sfs-core
+)
+
+target_include_directories(sentinelfs-sprint2
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}
+)
+
+# Install executables
+install(TARGETS sentinelfs-test sentinelfs-sprint2
     RUNTIME DESTINATION bin
 )

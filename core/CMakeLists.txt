@@ -24,6 +24,8 @@ set(CORE_SOURCES
     plugin_loader/plugin_loader.cpp
     logger/logger.cpp
     config/config.cpp
+    file_api/file_api_impl.cpp
+    file_api/snapshot_engine.cpp
 )
 
 set(CORE_HEADERS
@@ -32,6 +34,9 @@ set(CORE_HEADERS
     plugin_loader/plugin_loader.h
     logger/logger.h
     config/config.h
+    file_api/file_api.h
+    file_api/file_api_impl.h
+    file_api/snapshot_engine.h
 )
 
 # Create core library
@@ -42,6 +47,10 @@ target_include_directories(sfs-core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
+
+# Find OpenSSL (required for SHA-256)
+find_package(OpenSSL REQUIRED)
+target_link_libraries(sfs-core PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 
 # Platform-specific libraries
 if(UNIX AND NOT APPLE)
