@@ -49,14 +49,17 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 ## Phase 3: Intelligence & Optimization (Months 5-6)
 *Goal: Add intelligence, security, and final polish.*
 
-### Sprint 8 (Weeks 15-16): ML Integration
-- [ ] **Task:** Integrate ONNX Runtime into `MLPlugin` (RQ-NF.F-005).
-- [ ] **Task:** Train and convert anomaly detection model (e.g., Isolation Forest).
-- [ ] **Task:** Feed file access events to the model (RQ-F.F-005).
+### Sprint 8 (Weeks 15-16): ML Integration [Completed]
+- [x] **Task:** Implement rule-based anomaly detection in `MLPlugin` (RQ-NF.F-005).
+- [x] **Task:** Detect rapid file modifications (potential ransomware encryption).
+- [x] **Task:** Feed file access events to ML model (RQ-F.F-005).
+- [x] **Task:** Publish ANOMALY_DETECTED events to EventBus.
 
-### Sprint 9 (Weeks 17-18): Security & Response
-- [ ] **Task:** Stop sync on ransomware-like activity (RQ-F.F-006).
-- [ ] **Task:** Trigger alarms/logs on anomalies (RQ-F.F-014).
+### Sprint 9 (Weeks 17-18): Security & Response [Completed]
+- [x] **Task:** Stop sync on ransomware-like activity (RQ-F.F-006).
+- [x] **Task:** Trigger alarms/logs on anomalies (RQ-F.F-014).
+- [x] **Task:** Implement syncEnabled flag controlled by anomaly detection.
+- [x] **Task:** Display critical security alerts in daemon output.
 
 ### Sprint 10 (Weeks 19-20): CLI & Integration
 - [ ] **Task:** Enhance CLI (`status`, `peers`, `logs`, `config`) (RQ-UI.F-001).

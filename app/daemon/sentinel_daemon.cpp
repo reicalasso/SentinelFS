@@ -187,16 +187,22 @@ int main(int argc, char* argv[]) {
     auto storagePlugin = loader.loadPlugin(pluginDir + "/storage/libstorage_plugin.so", &eventBus);
     auto networkPlugin = loader.loadPlugin(pluginDir + "/network/libnetwork_plugin.so", &eventBus);
     auto fsPlugin = loader.loadPlugin(pluginDir + "/filesystem/libfilesystem_plugin.so", &eventBus);
+    auto mlPlugin = loader.loadPlugin(pluginDir + "/ml/libml_plugin.so", &eventBus);
 
     // Check if plugin files exist
     std::cout << "Checking plugin paths:" << std::endl;
     std::cout << "  Storage: " << (std::filesystem::exists(pluginDir + "/storage/libstorage_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/storage/libstorage_plugin.so") << std::endl;
     std::cout << "  Network: " << (std::filesystem::exists(pluginDir + "/network/libnetwork_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/network/libnetwork_plugin.so") << std::endl;
     std::cout << "  Filesystem: " << (std::filesystem::exists(pluginDir + "/filesystem/libfilesystem_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/filesystem/libfilesystem_plugin.so") << std::endl;
+    std::cout << "  ML: " << (std::filesystem::exists(pluginDir + "/ml/libml_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/ml/libml_plugin.so") << std::endl;
 
     if (!storagePlugin || !networkPlugin || !fsPlugin) {
-        std::cerr << "Failed to load one or more plugins. Exiting." << std::endl;
+        std::cerr << "Failed to load one or more critical plugins. Exiting." << std::endl;
         return 1;
+    }
+    
+    if (!mlPlugin) {
+        std::cout << "Warning: ML Plugin not loaded. Continuing without anomaly detection." << std::endl;
     }
 
     // Cast to Interfaces
@@ -212,6 +218,7 @@ int main(int argc, char* argv[]) {
     // --- State ---
     std::mutex ignoreMutex;
     std::map<std::string, std::chrono::steady_clock::time_point> ignoreList;
+    std::atomic<bool> syncEnabled{true}; // Anomaly detection can disable this
 
     // --- Event Handlers ---
 
@@ -270,6 +277,12 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            // Check if sync is enabled (anomaly detection check)
+            if (!syncEnabled) {
+                std::cout << "⚠️  Sync disabled due to anomaly detection. Skipping update broadcast." << std::endl;
+                return;
+            }
+
             // Broadcast UPDATE_AVAILABLE
             auto peers = storage->getAllPeers();
             for (const auto& peer : peers) {
@@ -280,6 +293,23 @@ int main(int argc, char* argv[]) {
 
         } catch (...) {
             std::cerr << "Error handling FILE_MODIFIED" << std::endl;
+        }
+    });
+
+    // 2b. Anomaly Detection -> Stop Sync
+    eventBus.subscribe("ANOMALY_DETECTED", [&](const std::any& data) {
+        try {
+            std::string anomalyType = std::any_cast<std::string>(data);
+            std::cerr << "\n🚨 CRITICAL ALERT: Anomaly detected - " << anomalyType << std::endl;
+            std::cerr << "🛑 Sync operations PAUSED for safety!" << std::endl;
+            std::cerr << "   Manual intervention required to resume." << std::endl;
+            
+            syncEnabled = false;
+            
+            // Could add: notify admin, create backup, etc.
+            
+        } catch (...) {
+            std::cerr << "Error handling ANOMALY_DETECTED" << std::endl;
         }
     });
 
