@@ -5,12 +5,17 @@
 #include <mutex>
 #include <map>
 #include <chrono>
+#include <memory>
+#include <filesystem>
 #include "EventBus.h"
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 
 namespace SentinelFS {
+
+class FileSyncHandler;
+class DeltaSyncProtocolHandler;
 
 /**
  * @brief Event handler coordinator
@@ -63,11 +68,6 @@ private:
     void handleDataReceived(const std::any& data);
     void handleAnomalyDetected(const std::any& data);
     
-    // Delta sync protocol handlers
-    void handleUpdateAvailable(const std::string& peerId, const std::vector<uint8_t>& rawData);
-    void handleDeltaRequest(const std::string& peerId, const std::vector<uint8_t>& rawData);
-    void handleDeltaData(const std::string& peerId, const std::vector<uint8_t>& rawData);
-    
     EventBus& eventBus_;
     INetworkAPI* network_;
     IStorageAPI* storage_;
@@ -75,6 +75,10 @@ private:
     std::string watchDirectory_;
     
     std::atomic<bool> syncEnabled_{true};
+    
+    // Specialized handlers
+    std::unique_ptr<FileSyncHandler> fileSyncHandler_;
+    std::unique_ptr<DeltaSyncProtocolHandler> deltaProtocolHandler_;
     
     // Ignore list to prevent sync loops
     std::mutex ignoreMutex_;

@@ -6,7 +6,7 @@ project(StoragePlugin)
 find_package(SQLite3 REQUIRED)
 
 add_library(storage_plugin SHARED
-    storage_plugin_new.cpp
+    storage_plugin.cpp
     SQLiteHandler.cpp
     FileMetadataManager.cpp
     PeerManager.cpp
