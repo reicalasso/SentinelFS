@@ -35,16 +35,16 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 - [ ] **Task:** Implement "Session Code" validation (RQ-F.F-002).
 - [x] **Task:** Cache discovered peers in `StoragePlugin` (RQ-DB.F-011).
 
-### Sprint 6 (Weeks 11-12): Connection & Data Transfer [In Progress]
+### Sprint 6 (Weeks 11-12): Connection & Data Transfer [Completed]
 - [x] **Task:** Establish reliable TCP transfer infrastructure.
 - [x] **Task:** Implement Shared-Key handshake (RQ-F.F-008).
 - [x] **Task:** Implement Daemon logic to coordinate plugins.
-- [ ] **Task:** Transfer and reassemble delta blocks.
+- [x] **Task:** Transfer and reassemble delta blocks.
 
-### Sprint 7 (Weeks 13-14): Auto-Remesh Algorithm (v1)
-- [ ] **Task:** Implement RTT (Ping) measurement (RQ-F.F-013).
-- [ ] **Task:** Implement dynamic peer selection based on latency (RQ-F.F-003).
-- [ ] **Task:** Handle topology changes automatically.
+### Sprint 7 (Weeks 13-14): Auto-Remesh Algorithm (v1) [Completed]
+- [x] **Task:** Implement RTT (Ping) measurement (RQ-F.F-013).
+- [x] **Task:** Implement dynamic peer selection based on latency (RQ-F.F-003).
+- [x] **Task:** Handle topology changes automatically (disconnect detection, reconnection).
 
 ## Phase 3: Intelligence & Optimization (Months 5-6)
 *Goal: Add intelligence, security, and final polish.*

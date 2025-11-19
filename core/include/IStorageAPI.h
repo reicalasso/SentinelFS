@@ -20,6 +20,7 @@ namespace SentinelFS {
         int port;
         long long lastSeen;
         std::string status; // "active", "offline"
+        int latency; // RTT in milliseconds, -1 if not measured
     };
 
     class IStorageAPI : public IPlugin {
@@ -59,5 +60,20 @@ namespace SentinelFS {
          * @brief Get all known peers.
          */
         virtual std::vector<PeerInfo> getAllPeers() = 0;
+
+        /**
+         * @brief Update peer latency.
+         * @param peerId The ID of the peer.
+         * @param latency RTT in milliseconds.
+         */
+        virtual bool updatePeerLatency(const std::string& peerId, int latency) = 0;
+
+        /**
+         * @brief Get all peers sorted by latency (lowest first).
+         * @return Vector of peers sorted by latency, offline/unknown latency peers at end.
+         */
+        virtual std::vector<PeerInfo> getPeersByLatency() = 0;
     };
 }
+
+

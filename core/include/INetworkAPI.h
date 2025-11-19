@@ -45,5 +45,34 @@ namespace SentinelFS {
          * @param tcpPort The TCP port this peer is listening on.
          */
         virtual void broadcastPresence(int discoveryPort, int tcpPort) = 0;
+
+        /**
+         * @brief Measure round-trip time (RTT) to a peer.
+         * @param peerId The ID of the peer to ping.
+         * @return RTT in milliseconds, or -1 if failed.
+         */
+        virtual int measureRTT(const std::string& peerId) = 0;
+
+        /**
+         * @brief Get the current RTT to a peer.
+         * @param peerId The ID of the peer.
+         * @return Last measured RTT in milliseconds, or -1 if not available.
+         */
+        virtual int getPeerRTT(const std::string& peerId) = 0;
+
+        /**
+         * @brief Disconnect from a specific peer.
+         * @param peerId The ID of the peer to disconnect.
+         */
+        virtual void disconnectPeer(const std::string& peerId) = 0;
+
+        /**
+         * @brief Check if a peer is currently connected.
+         * @param peerId The ID of the peer.
+         * @return true if connected, false otherwise.
+         */
+        virtual bool isPeerConnected(const std::string& peerId) = 0;
     };
 }
+
+

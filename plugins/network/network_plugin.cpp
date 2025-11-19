@@ -268,6 +268,82 @@ namespace SentinelFS {
             std::cout << "Broadcast sent: " << msg << " to port " << discoveryPort << std::endl;
         }
 
+        int measureRTT(const std::string& peerId) override {
+            std::lock_guard<std::mutex> lock(connectionMutex_);
+            auto it = connections_.find(peerId);
+            if (it == connections_.end()) {
+                return -1; // Not connected
+            }
+
+            int sock = it->second;
+            
+            // Send PING message
+            std::string ping = "PING";
+            auto start = std::chrono::high_resolution_clock::now();
+            
+            if (send(sock, ping.c_str(), ping.length(), 0) < 0) {
+                return -1;
+            }
+
+            // Wait for PONG response (with timeout)
+            char buffer[64];
+            struct timeval tv;
+            tv.tv_sec = 2;  // 2 second timeout
+            tv.tv_usec = 0;
+            setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+            
+            ssize_t len = recv(sock, buffer, sizeof(buffer) - 1, MSG_PEEK);
+            if (len <= 0) {
+                return -1;
+            }
+            
+            auto end = std::chrono::high_resolution_clock::now();
+            int rtt = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+            
+            // Store RTT
+            {
+                std::lock_guard<std::mutex> rttLock(rttMutex_);
+                peerRTT_[peerId] = rtt;
+            }
+            
+            std::cout << "RTT to " << peerId << ": " << rtt << "ms" << std::endl;
+            return rtt;
+        }
+
+        int getPeerRTT(const std::string& peerId) override {
+            std::lock_guard<std::mutex> lock(rttMutex_);
+            auto it = peerRTT_.find(peerId);
+            if (it != peerRTT_.end()) {
+                return it->second;
+            }
+            return -1;
+        }
+
+        void disconnectPeer(const std::string& peerId) override {
+            std::lock_guard<std::mutex> lock(connectionMutex_);
+            auto it = connections_.find(peerId);
+            if (it != connections_.end()) {
+                close(it->second);
+                connections_.erase(it);
+                std::cout << "Disconnected from peer: " << peerId << std::endl;
+                
+                if (eventBus_) {
+                    eventBus_->publish("PEER_DISCONNECTED", peerId);
+                }
+            }
+            
+            // Clear RTT data
+            {
+                std::lock_guard<std::mutex> rttLock(rttMutex_);
+                peerRTT_.erase(peerId);
+            }
+        }
+
+        bool isPeerConnected(const std::string& peerId) override {
+            std::lock_guard<std::mutex> lock(connectionMutex_);
+            return connections_.find(peerId) != connections_.end();
+        }
+
     private:
         EventBus* eventBus_ = nullptr;
         std::string localPeerId_;
@@ -283,6 +359,10 @@ namespace SentinelFS {
         std::atomic<bool> discoveryRunning_{false};
         std::thread discoveryThread_;
         int discoverySocket_ = -1;
+
+        // RTT tracking
+        std::map<std::string, int> peerRTT_;
+        std::mutex rttMutex_;
 
         void readLoop(int sock, std::string remotePeerId) {
             while (true) {

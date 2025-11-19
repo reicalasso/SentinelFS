@@ -239,6 +239,7 @@ int main(int argc, char* argv[]) {
                 peer.port = port;
                 peer.lastSeen = std::time(nullptr);
                 peer.status = "active";
+                peer.latency = -1; // Not measured yet
 
                 storage->addPeer(peer);
                 
@@ -394,12 +395,62 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Daemon running. Press Ctrl+C to stop." << std::endl;
 
+    // RTT Measurement Thread
+    std::thread rttThread([&]() {
+        while (running) {
+            std::this_thread::sleep_for(std::chrono::seconds(15));
+            
+            // Measure RTT to all connected peers
+            auto peers = storage->getAllPeers();
+            for (const auto& peer : peers) {
+                if (network->isPeerConnected(peer.id)) {
+                    int rtt = network->measureRTT(peer.id);
+                    if (rtt >= 0) {
+                        storage->updatePeerLatency(peer.id, rtt);
+                        std::cout << "Updated latency for " << peer.id << ": " << rtt << "ms" << std::endl;
+                    } else {
+                        std::cout << "Failed to measure RTT for " << peer.id << std::endl;
+                        // Mark peer as potentially offline
+                        network->disconnectPeer(peer.id);
+                    }
+                } else {
+                    std::cout << "Peer " << peer.id << " not connected, attempting reconnect..." << std::endl;
+                    network->connectToPeer(peer.ip, peer.port);
+                }
+            }
+        }
+    });
+
     // Main Loop
+    int loopCount = 0;
     while (running) {
         // Periodic tasks (e.g., broadcast presence)
         network->broadcastPresence(discoveryPort, tcpPort); // Broadcast TCP port
+        
+        // Show peer status every 30 seconds
+        if (loopCount % 6 == 0) {
+            auto sortedPeers = storage->getPeersByLatency();
+            if (!sortedPeers.empty()) {
+                std::cout << "\n=== Connected Peers (sorted by latency) ===" << std::endl;
+                for (const auto& peer : sortedPeers) {
+                    std::cout << "  " << peer.id << " (" << peer.ip << ":" << peer.port << ") - ";
+                    if (peer.latency >= 0) {
+                        std::cout << peer.latency << "ms";
+                    } else {
+                        std::cout << "N/A";
+                    }
+                    std::cout << " [" << peer.status << "]" << std::endl;
+                }
+                std::cout << "==========================================\n" << std::endl;
+            }
+        }
+        
+        loopCount++;
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
+
+    // Shutdown
+    if (rttThread.joinable()) rttThread.join();
 
     // Shutdown
     fs->shutdown();
