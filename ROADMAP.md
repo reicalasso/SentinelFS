@@ -61,9 +61,11 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 - [x] **Task:** Implement syncEnabled flag controlled by anomaly detection.
 - [x] **Task:** Display critical security alerts in daemon output.
 
-### Sprint 10 (Weeks 19-20): CLI & Integration
-- [ ] **Task:** Enhance CLI (`status`, `peers`, `logs`, `config`) (RQ-UI.F-001).
-- [ ] **Task:** Improve Daemon-CLI IPC.
+### Sprint 10 (Weeks 19-20): CLI & Integration [Completed]
+- [x] **Task:** Enhance CLI with commands: `status`, `peers`, `config`, `pause`, `resume`, `stats`, `help` (RQ-UI.F-001).
+- [x] **Task:** Implement Daemon-CLI IPC using Unix domain sockets.
+- [x] **Task:** Add IPC server thread in daemon for handling CLI requests.
+- [x] **Task:** Implement real-time sync control (pause/resume) via CLI.
 
 ### Sprint 11 (Weeks 21-22): Testing & Documentation
 - [ ] **Task:** End-to-End synchronization tests.

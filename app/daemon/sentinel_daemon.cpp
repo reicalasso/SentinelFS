@@ -18,6 +18,9 @@
 #include "DeltaEngine.h"
 #include <cstring>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sstream>
 
 using namespace SentinelFS;
 
@@ -144,6 +147,141 @@ std::vector<DeltaInstruction> deserializeDelta(const std::vector<uint8_t>& data)
 void signalHandler(int signum) {
     std::cout << "\nInterrupt signal (" << signum << ") received. Shutting down...\n";
     running = false;
+}
+
+// IPC Command Handler
+std::string handleIPCCommand(const std::string& command, 
+                             IStorageAPI* storage, 
+                             INetworkAPI* network,
+                             std::atomic<bool>& syncEnabled,
+                             int tcpPort, 
+                             int discoveryPort,
+                             const std::string& watchDir) {
+    std::stringstream response;
+    
+    if (command == "STATUS") {
+        response << "=== SentinelFS Daemon Status ===\n";
+        response << "TCP Port: " << tcpPort << "\n";
+        response << "Discovery Port: " << discoveryPort << "\n";
+        response << "Watch Directory: " << watchDir << "\n";
+        response << "Sync Status: " << (syncEnabled ? "ENABLED" : "PAUSED") << "\n";
+        
+        auto peers = storage->getAllPeers();
+        response << "Connected Peers: " << peers.size() << "\n";
+        
+    } else if (command == "PEERS") {
+        auto sortedPeers = storage->getPeersByLatency();
+        response << "=== Discovered Peers ===\n";
+        if (sortedPeers.empty()) {
+            response << "No peers discovered yet.\n";
+        } else {
+            for (const auto& peer : sortedPeers) {
+                response << peer.id << " @ " << peer.ip << ":" << peer.port;
+                if (peer.latency >= 0) {
+                    response << " [" << peer.latency << "ms]";
+                }
+                response << " (" << peer.status << ")\n";
+            }
+        }
+        
+    } else if (command.substr(0, 4) == "LOGS") {
+        response << "Log functionality not yet implemented.\n";
+        response << "(Would show last N daemon log entries)\n";
+        
+    } else if (command == "CONFIG") {
+        response << "=== Configuration ===\n";
+        response << "TCP Port: " << tcpPort << "\n";
+        response << "Discovery Port: " << discoveryPort << "\n";
+        response << "Watch Directory: " << watchDir << "\n";
+        
+    } else if (command == "PAUSE") {
+        syncEnabled = false;
+        response << "Synchronization PAUSED.\n";
+        
+    } else if (command == "RESUME") {
+        syncEnabled = true;
+        response << "Synchronization RESUMED.\n";
+        
+    } else if (command == "STATS") {
+        response << "=== Transfer Statistics ===\n";
+        response << "Stats tracking not yet implemented.\n";
+        response << "(Would show: files synced, bytes transferred, etc.)\n";
+        
+    } else {
+        response << "Unknown command: " << command << "\n";
+    }
+    
+    return response.str();
+}
+
+// IPC Server Thread
+void ipcServerThread(IStorageAPI* storage, 
+                     INetworkAPI* network,
+                     std::atomic<bool>& syncEnabled,
+                     int tcpPort,
+                     int discoveryPort,
+                     const std::string& watchDir) {
+    const char* SOCKET_PATH = "/tmp/sentinel_daemon.sock";
+    
+    // Remove old socket if exists
+    unlink(SOCKET_PATH);
+    
+    int serverFd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (serverFd < 0) {
+        std::cerr << "IPC: Cannot create socket" << std::endl;
+        return;
+    }
+    
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    
+    if (bind(serverFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        std::cerr << "IPC: Cannot bind socket" << std::endl;
+        close(serverFd);
+        return;
+    }
+    
+    if (listen(serverFd, 5) < 0) {
+        std::cerr << "IPC: Cannot listen" << std::endl;
+        close(serverFd);
+        return;
+    }
+    
+    std::cout << "IPC Server listening on " << SOCKET_PATH << std::endl;
+    
+    while (running) {
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(serverFd, &readfds);
+        
+        struct timeval tv;
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        
+        int activity = select(serverFd + 1, &readfds, NULL, NULL, &tv);
+        if (activity <= 0) continue;
+        
+        int clientFd = accept(serverFd, NULL, NULL);
+        if (clientFd < 0) continue;
+        
+        char buffer[1024];
+        ssize_t n = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+        if (n > 0) {
+            buffer[n] = '\0';
+            std::string command(buffer);
+            std::string response = handleIPCCommand(command, storage, network, 
+                                                    syncEnabled, tcpPort, 
+                                                    discoveryPort, watchDir);
+            send(clientFd, response.c_str(), response.length(), 0);
+        }
+        
+        close(clientFd);
+    }
+    
+    close(serverFd);
+    unlink(SOCKET_PATH);
 }
 
 int main(int argc, char* argv[]) {
@@ -425,6 +563,12 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Daemon running. Press Ctrl+C to stop." << std::endl;
 
+    // Start IPC Server Thread for CLI communication
+    std::thread ipcThread([&]() {
+        ipcServerThread(storage.get(), network.get(), syncEnabled, 
+                       tcpPort, discoveryPort, watchDir);
+    });
+
     // RTT Measurement Thread
     std::thread rttThread([&]() {
         while (running) {
@@ -479,10 +623,11 @@ int main(int argc, char* argv[]) {
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
-    // Shutdown
+    // Shutdown threads
     if (rttThread.joinable()) rttThread.join();
+    if (ipcThread.joinable()) ipcThread.join();
 
-    // Shutdown
+    // Shutdown plugins
     fs->shutdown();
     network->shutdown();
     storage->shutdown();
