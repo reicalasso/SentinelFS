@@ -8,7 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_library(SENTINEL_CORE_LIB sentinel_core PATHS ${CMAKE_BINARY_DIR}/core)
 
-add_executable(sentinel_daemon sentinel_daemon.cpp)
+add_executable(sentinel_daemon 
+    sentinel_daemon.cpp
+    DaemonCore.cpp
+    IPCHandler.cpp
+    EventHandlers.cpp
+)
 
 target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread)
 target_include_directories(sentinel_daemon PRIVATE ../../core/include)

@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Validate configuration
-    if (!config.sessionCode.empty() && !SessionCode::isValid(config.sessionCode)) {
+    if (!config.sessionCode.empty() && !SessionCode::validate(config.sessionCode)) {
         std::cerr << "Error: Invalid session code format. Must be 6 alphanumeric characters." << std::endl;
         return 1;
     }
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
 
     // --- Setup Event Handlers ---
     EventHandlers eventHandlers(
-        *daemon.getEventBus(),  // Dereference pointer to get reference
+        daemon.getEventBus(),
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
         daemon.getFilesystemPlugin(),
