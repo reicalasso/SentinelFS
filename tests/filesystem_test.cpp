@@ -16,7 +16,9 @@ int main() {
     SentinelFS::EventBus eventBus;
     SentinelFS::PluginLoader loader;
     
-    std::string pluginPath = "../plugins/filesystem/libfilesystem_plugin.so"; 
+    // Path to the filesystem plugin shared library
+    // Assuming running from build root
+    std::string pluginPath = "plugins/filesystem/libfilesystem_plugin.so"; 
     auto plugin = loader.loadPlugin(pluginPath, &eventBus);
 
     if (!plugin) {

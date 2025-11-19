@@ -16,3 +16,7 @@ add_executable(delta_test delta_test.cpp)
 target_link_libraries(delta_test sentinel_core)
 target_include_directories(delta_test PRIVATE ../core/include)
 
+add_executable(discovery_test discovery_test.cpp)
+target_link_libraries(discovery_test sentinel_core dl)
+target_include_directories(discovery_test PRIVATE ../core/include)
+

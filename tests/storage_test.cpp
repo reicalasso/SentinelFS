@@ -11,7 +11,8 @@ int main() {
     SentinelFS::PluginLoader loader;
     
     // Path to the storage plugin shared library
-    std::string pluginPath = "../plugins/storage/libstorage_plugin.so"; 
+    // Assuming running from build root
+    std::string pluginPath = "plugins/storage/libstorage_plugin.so"; 
 
     std::cout << "Loading plugin from: " << pluginPath << std::endl;
     auto plugin = loader.loadPlugin(pluginPath, &eventBus);
@@ -53,6 +54,37 @@ int main() {
             }
         } else {
             std::cerr << "Failed to retrieve file metadata" << std::endl;
+            return 1;
+        }
+
+        // Test Peer Storage
+        SentinelFS::PeerInfo peer;
+        peer.id = "peer_123";
+        peer.ip = "192.168.1.50";
+        peer.port = 8888;
+        peer.lastSeen = 1000;
+        peer.status = "active";
+
+        if (storagePlugin->addPeer(peer)) {
+             std::cout << "Successfully added peer" << std::endl;
+        } else {
+             std::cerr << "Failed to add peer" << std::endl;
+             return 1;
+        }
+
+        auto peers = storagePlugin->getAllPeers();
+        std::cout << "Retrieved " << peers.size() << " peers" << std::endl;
+        bool found = false;
+        for (const auto& p : peers) {
+            if (p.id == peer.id) {
+                std::cout << "Found peer: " << p.id << " at " << p.ip << std::endl;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            std::cerr << "Failed to retrieve added peer" << std::endl;
             return 1;
         }
 

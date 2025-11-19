@@ -30,15 +30,12 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 ## Phase 2: Network & P2P Communication (Months 3-4)
 *Goal: Devices can discover each other and transfer data.*
 
-### Sprint 5 (Weeks 9-10): Peer Discovery [Next Focus]
-*Goal: Devices can discover each other and transfer data.*
-
-### Sprint 5 (Weeks 9-10): Peer Discovery
-- [ ] **Task:** Implement UDP Broadcast in `NetworkPlugin` (RQ-F.F-011).
+### Sprint 5 (Weeks 9-10): Peer Discovery [Completed]
+- [x] **Task:** Implement UDP Broadcast in `NetworkPlugin` (RQ-F.F-011).
 - [ ] **Task:** Implement "Session Code" validation (RQ-F.F-002).
-- [ ] **Task:** Cache discovered peers in `StoragePlugin` (RQ-DB.F-011).
+- [x] **Task:** Cache discovered peers in `StoragePlugin` (RQ-DB.F-011).
 
-### Sprint 6 (Weeks 11-12): Connection & Data Transfer
+### Sprint 6 (Weeks 11-12): Connection & Data Transfer [Next Focus]
 - [ ] **Task:** Establish reliable TCP transfer infrastructure.
 - [ ] **Task:** Implement Shared-Key handshake (RQ-F.F-008).
 - [ ] **Task:** Transfer and reassemble delta blocks.

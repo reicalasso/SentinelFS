@@ -32,6 +32,17 @@ namespace SentinelFS {
          * @param port The port to listen on.
          */
         virtual void startListening(int port) = 0;
-    };
 
+        /**
+         * @brief Start peer discovery (UDP Broadcast).
+         * @param port The UDP port to use for discovery.
+         */
+        virtual void startDiscovery(int port) = 0;
+
+        /**
+         * @brief Broadcast presence to the network.
+         * @param port The destination UDP port.
+         */
+        virtual void broadcastPresence(int port) = 0;
+    };
 }

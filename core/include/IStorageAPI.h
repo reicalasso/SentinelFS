@@ -3,6 +3,7 @@
 #include "IPlugin.h"
 #include <string>
 #include <optional>
+#include <vector>
 
 namespace SentinelFS {
 
@@ -13,9 +14,19 @@ namespace SentinelFS {
         long long size;
     };
 
+    struct PeerInfo {
+        std::string id;
+        std::string ip;
+        int port;
+        long long lastSeen;
+        std::string status; // "active", "offline"
+    };
+
     class IStorageAPI : public IPlugin {
     public:
         virtual ~IStorageAPI() = default;
+
+        // --- File Operations ---
 
         /**
          * @brief Add or update file metadata in the storage.
@@ -31,6 +42,22 @@ namespace SentinelFS {
          * @brief Remove file metadata by path.
          */
         virtual bool removeFile(const std::string& path) = 0;
-    };
 
+        // --- Peer Operations ---
+
+        /**
+         * @brief Add or update a peer in the storage.
+         */
+        virtual bool addPeer(const PeerInfo& peer) = 0;
+
+        /**
+         * @brief Get a peer by ID.
+         */
+        virtual std::optional<PeerInfo> getPeer(const std::string& peerId) = 0;
+
+        /**
+         * @brief Get all known peers.
+         */
+        virtual std::vector<PeerInfo> getAllPeers() = 0;
+    };
 }
