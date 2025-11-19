@@ -20,6 +20,10 @@ namespace SentinelFS {
 
     class NetworkPlugin : public INetworkAPI {
     public:
+        ~NetworkPlugin() {
+            shutdown();
+        }
+
         bool initialize(EventBus* eventBus) override {
             std::cout << "NetworkPlugin initialized" << std::endl;
             eventBus_ = eventBus;
@@ -243,7 +247,7 @@ namespace SentinelFS {
             discoveryThread_ = std::thread(&NetworkPlugin::discoveryLoop, this);
         }
 
-        void broadcastPresence(int port) override {
+        void broadcastPresence(int discoveryPort, int tcpPort) override {
             int sock = socket(AF_INET, SOCK_DGRAM, 0);
             if (sock < 0) return;
 
@@ -253,14 +257,15 @@ namespace SentinelFS {
             struct sockaddr_in addr;
             memset(&addr, 0, sizeof(addr));
             addr.sin_family = AF_INET;
-            addr.sin_port = htons(port);
+            addr.sin_port = htons(discoveryPort);
             addr.sin_addr.s_addr = INADDR_BROADCAST;
 
-            std::string msg = "SENTINEL_DISCOVERY|MY_ID_123|" + std::to_string(port);
+            std::cout << "DEBUG: BROADCASTING NOW!!!" << std::endl;
+            std::string msg = "SENTINEL_DISCOVERY|" + localPeerId_ + "|" + std::to_string(tcpPort);
             sendto(sock, msg.c_str(), msg.length(), 0, (struct sockaddr*)&addr, sizeof(addr));
             
             close(sock);
-            std::cout << "Broadcast sent: " << msg << std::endl;
+            std::cout << "Broadcast sent: " << msg << " to port " << discoveryPort << std::endl;
         }
 
     private:

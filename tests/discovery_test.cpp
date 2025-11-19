@@ -48,20 +48,21 @@ int main() {
     });
 
     int port = 9999;
+    int tcpPort = 8080;
     network->startDiscovery(port);
 
     std::cout << "Broadcasting presence..." << std::endl;
     // Give the receiver thread a moment to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
-    network->broadcastPresence(port);
+    network->broadcastPresence(port, tcpPort);
 
     // Wait for discovery
     for (int i = 0; i < 5; ++i) {
         if (discovered) break;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "Retrying broadcast..." << std::endl;
-        network->broadcastPresence(port); 
+        network->broadcastPresence(port, tcpPort); 
     }
 
     network->shutdown();

@@ -18,6 +18,10 @@ namespace SentinelFS {
 
     class FilesystemPlugin : public IFileAPI {
     public:
+        ~FilesystemPlugin() {
+            shutdown();
+        }
+
         bool initialize(EventBus* eventBus) override {
             std::cout << "FilesystemPlugin initialized" << std::endl;
             eventBus_ = eventBus;

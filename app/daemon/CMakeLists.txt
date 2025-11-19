@@ -4,9 +4,11 @@ project(SentinelDaemon)
 set(CMAKE_CXX_STANDARD 17)
 
 # Add Core
-add_subdirectory(../../core core_build)
+# add_subdirectory(../../core core_build)
+
+find_library(SENTINEL_CORE_LIB sentinel_core PATHS ${CMAKE_BINARY_DIR}/core)
 
 add_executable(sentinel_daemon sentinel_daemon.cpp)
 
-target_link_libraries(sentinel_daemon sentinel_core dl pthread)
+target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread)
 target_include_directories(sentinel_daemon PRIVATE ../../core/include)

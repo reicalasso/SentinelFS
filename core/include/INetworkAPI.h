@@ -41,8 +41,9 @@ namespace SentinelFS {
 
         /**
          * @brief Broadcast presence to the network.
-         * @param port The destination UDP port.
+         * @param discoveryPort The UDP port to broadcast to.
+         * @param tcpPort The TCP port this peer is listening on.
          */
-        virtual void broadcastPresence(int port) = 0;
+        virtual void broadcastPresence(int discoveryPort, int tcpPort) = 0;
     };
 }

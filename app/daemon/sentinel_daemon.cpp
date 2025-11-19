@@ -153,18 +153,46 @@ int main(int argc, char* argv[]) {
 
     std::cout << "SentinelFS Daemon Starting..." << std::endl;
 
+    // Default Configuration
+    int tcpPort = 8080;
+    int discoveryPort = 9999;
+    std::string watchDir = "./watched_folder";
+
+    // Parse Arguments
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--port" && i + 1 < argc) {
+            tcpPort = std::stoi(argv[++i]);
+        } else if (arg == "--discovery" && i + 1 < argc) {
+            discoveryPort = std::stoi(argv[++i]);
+        } else if (arg == "--dir" && i + 1 < argc) {
+            watchDir = argv[++i];
+        }
+    }
+
+    std::cout << "Configuration:" << std::endl;
+    std::cout << "  TCP Port: " << tcpPort << std::endl;
+    std::cout << "  Discovery Port: " << discoveryPort << std::endl;
+    std::cout << "  Watch Directory: " << watchDir << std::endl;
+
+    // Print CWD
+    std::cout << "Current Working Directory: " << std::filesystem::current_path() << std::endl;
+
     EventBus eventBus;
     PluginLoader loader;
 
     // Load Plugins
-    // Note: Paths might need adjustment based on installation
-    std::string storagePath = "./plugins/storage/libstorage_plugin.so";
-    std::string networkPath = "./plugins/network/libnetwork_plugin.so";
-    std::string fsPath = "./plugins/filesystem/libfilesystem_plugin.so";
+    std::string pluginDir = "./plugins";
+    std::cout << "Loading plugins from: " << pluginDir << std::endl;
+    auto storagePlugin = loader.loadPlugin(pluginDir + "/storage/libstorage_plugin.so", &eventBus);
+    auto networkPlugin = loader.loadPlugin(pluginDir + "/network/libnetwork_plugin.so", &eventBus);
+    auto fsPlugin = loader.loadPlugin(pluginDir + "/filesystem/libfilesystem_plugin.so", &eventBus);
 
-    auto storagePlugin = loader.loadPlugin(storagePath, &eventBus);
-    auto networkPlugin = loader.loadPlugin(networkPath, &eventBus);
-    auto fsPlugin = loader.loadPlugin(fsPath, &eventBus);
+    // Check if plugin files exist
+    std::cout << "Checking plugin paths:" << std::endl;
+    std::cout << "  Storage: " << (std::filesystem::exists(pluginDir + "/storage/libstorage_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/storage/libstorage_plugin.so") << std::endl;
+    std::cout << "  Network: " << (std::filesystem::exists(pluginDir + "/network/libnetwork_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/network/libnetwork_plugin.so") << std::endl;
+    std::cout << "  Filesystem: " << (std::filesystem::exists(pluginDir + "/filesystem/libfilesystem_plugin.so") ? "Found" : "NOT FOUND") << " at " << std::filesystem::absolute(pluginDir + "/filesystem/libfilesystem_plugin.so") << std::endl;
 
     if (!storagePlugin || !networkPlugin || !fsPlugin) {
         std::cerr << "Failed to load one or more plugins. Exiting." << std::endl;
@@ -178,12 +206,6 @@ int main(int argc, char* argv[]) {
 
     if (!storage || !network || !fs) {
         std::cerr << "Failed to cast plugins to interfaces. Exiting." << std::endl;
-        return 1;
-    }
-
-    // Initialize Plugins
-    if (!storage->initialize(&eventBus) || !network->initialize(&eventBus) || !fs->initialize(&eventBus)) {
-        std::cerr << "Failed to initialize plugins. Exiting." << std::endl;
         return 1;
     }
 
@@ -281,7 +303,7 @@ int main(int argc, char* argv[]) {
                 
                 std::cout << "Peer " << peerId << " has update for: " << filename << std::endl;
                 
-                std::string localPath = "./watched_folder/" + filename;
+                std::string localPath = watchDir + "/" + filename;
                 
                 std::vector<BlockSignature> sigs;
                 if (std::filesystem::exists(localPath)) {
@@ -308,7 +330,7 @@ int main(int argc, char* argv[]) {
                         
                         std::cout << "Received delta request for: " << filename << " from " << peerId << std::endl;
                         
-                        std::string localPath = "./watched_folder/" + filename;
+                        std::string localPath = watchDir + "/" + filename;
                         if (std::filesystem::exists(localPath)) {
                             auto deltas = DeltaEngine::calculateDelta(localPath, sigs);
                             auto serializedDelta = serializeDelta(deltas);
@@ -335,7 +357,7 @@ int main(int argc, char* argv[]) {
                         
                         std::cout << "Received delta data for: " << filename << " from " << peerId << std::endl;
                         
-                        std::string localPath = "./watched_folder/" + filename;
+                        std::string localPath = watchDir + "/" + filename;
                         
                         if (!std::filesystem::exists(localPath)) {
                             std::ofstream outfile(localPath);
@@ -363,14 +385,10 @@ int main(int argc, char* argv[]) {
 
 
     // --- Start Services ---
-    int discoveryPort = 9999;
-    int tcpPort = 8080; // Should be configurable
-
     network->startListening(tcpPort);
     network->startDiscovery(discoveryPort);
     
-    // Start watching a test directory
-    std::string watchDir = "./watched_folder";
+    // Start watching
     std::filesystem::create_directories(watchDir);
     fs->startWatching(watchDir);
 
@@ -379,7 +397,7 @@ int main(int argc, char* argv[]) {
     // Main Loop
     while (running) {
         // Periodic tasks (e.g., broadcast presence)
-        network->broadcastPresence(tcpPort); // Broadcast TCP port
+        network->broadcastPresence(discoveryPort, tcpPort); // Broadcast TCP port
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
