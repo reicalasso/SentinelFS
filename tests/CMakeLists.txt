@@ -20,3 +20,7 @@ add_executable(discovery_test discovery_test.cpp)
 target_link_libraries(discovery_test sentinel_core dl)
 target_include_directories(discovery_test PRIVATE ../core/include)
 
+add_executable(transfer_test transfer_test.cpp)
+target_link_libraries(transfer_test sentinel_core dl)
+target_include_directories(transfer_test PRIVATE ../core/include)
+

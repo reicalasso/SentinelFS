@@ -73,7 +73,7 @@ namespace SentinelFS {
             return true;
         }
 
-        void watchDirectory(const std::string& path) override {
+        void startWatching(const std::string& path) override {
             std::cout << "Watching directory: " << path << std::endl;
             int wd = inotify_add_watch(inotifyFd_, path.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM);
             if (wd < 0) {
@@ -81,6 +81,10 @@ namespace SentinelFS {
             } else {
                 watchDescriptors_[wd] = path;
             }
+        }
+
+        void stopWatching(const std::string& path) override {
+            // TODO: Implement remove watch
         }
 
     private:

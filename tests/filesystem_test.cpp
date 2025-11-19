@@ -68,7 +68,7 @@ int main() {
     eventBus.subscribe("FILE_MODIFIED", callback);
 
     // Start watching
-    filePlugin->watchDirectory(testDir);
+    filePlugin->startWatching(testDir);
 
     // Give some time for the watcher to start
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
