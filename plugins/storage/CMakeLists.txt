@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 3.10)
 project(StoragePlugin)
 
 add_library(storage_plugin SHARED
-    # Add source files here
+    storage_plugin.cpp
 )
 
 target_include_directories(storage_plugin PUBLIC
-    # Add include directories here
+    ../../core/include
 )
