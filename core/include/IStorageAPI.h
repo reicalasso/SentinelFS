@@ -12,6 +12,7 @@ namespace SentinelFS {
         std::string hash;
         long long timestamp;
         long long size;
+        std::string vectorClock;  // Serialized vector clock for conflict detection
     };
 
     struct PeerInfo {
@@ -21,6 +22,22 @@ namespace SentinelFS {
         long long lastSeen;
         std::string status; // "active", "offline"
         int latency; // RTT in milliseconds, -1 if not measured
+    };
+    
+    struct ConflictInfo {
+        int id;
+        std::string path;
+        std::string localHash;
+        std::string remoteHash;
+        std::string remotePeerId;
+        long long localTimestamp;
+        long long remoteTimestamp;
+        long long localSize;
+        long long remoteSize;
+        int strategy;  // ResolutionStrategy as int
+        bool resolved;
+        long long detectedAt;
+        long long resolvedAt;
     };
 
     class IStorageAPI : public IPlugin {
@@ -73,6 +90,34 @@ namespace SentinelFS {
          * @return Vector of peers sorted by latency, offline/unknown latency peers at end.
          */
         virtual std::vector<PeerInfo> getPeersByLatency() = 0;
+        
+        // --- Conflict Operations ---
+        
+        /**
+         * @brief Record a detected conflict.
+         */
+        virtual bool addConflict(const ConflictInfo& conflict) = 0;
+        
+        /**
+         * @brief Get all unresolved conflicts.
+         */
+        virtual std::vector<ConflictInfo> getUnresolvedConflicts() = 0;
+        
+        /**
+         * @brief Get all conflicts for a specific file.
+         */
+        virtual std::vector<ConflictInfo> getConflictsForFile(const std::string& path) = 0;
+        
+        /**
+         * @brief Mark a conflict as resolved.
+         */
+        virtual bool markConflictResolved(int conflictId) = 0;
+        
+        /**
+         * @brief Get conflict statistics.
+         * @return Pair of (total_conflicts, unresolved_conflicts)
+         */
+        virtual std::pair<int, int> getConflictStats() = 0;
     };
 }
 

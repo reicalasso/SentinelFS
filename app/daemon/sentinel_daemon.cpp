@@ -223,8 +223,41 @@ std::string handleIPCCommand(const std::string& command,
         response << "Stats tracking not yet implemented.\n";
         response << "(Would show: files synced, bytes transferred, etc.)\n";
         
+    } else if (command == "CONFLICTS") {
+        // List all unresolved conflicts
+        auto conflicts = storage->getUnresolvedConflicts();
+        response << "=== File Conflicts ===\n";
+        
+        if (conflicts.empty()) {
+            response << "No conflicts detected. ✓\n";
+        } else {
+            response << "Found " << conflicts.size() << " unresolved conflict(s):\n\n";
+            for (const auto& c : conflicts) {
+                response << "  ID: " << c.id << "\n";
+                response << "  File: " << c.path << "\n";
+                response << "  Remote Peer: " << c.remotePeerId << "\n";
+                response << "  Local: " << c.localSize << " bytes @ " << c.localTimestamp << "\n";
+                response << "  Remote: " << c.remoteSize << " bytes @ " << c.remoteTimestamp << "\n";
+                response << "  Strategy: " << c.strategy << "\n";
+                response << "  ---\n";
+            }
+        }
+        
+        auto [total, unresolved] = storage->getConflictStats();
+        response << "\nTotal conflicts: " << total << " (Unresolved: " << unresolved << ")\n";
+        
+    } else if (command.find("RESOLVE ") == 0) {
+        // Resolve a specific conflict by ID
+        int conflictId = std::stoi(command.substr(8));
+        if (storage->markConflictResolved(conflictId)) {
+            response << "Conflict " << conflictId << " marked as resolved.\n";
+        } else {
+            response << "Failed to resolve conflict " << conflictId << ".\n";
+        }
+        
     } else {
         response << "Unknown command: " << command << "\n";
+        response << "Available commands: STATUS, PEERS, CONFIG, PAUSE, RESUME, STATS, CONFLICTS, RESOLVE <id>\n";
     }
     
     return response.str();

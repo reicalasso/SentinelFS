@@ -15,3 +15,6 @@ add_library(sentinel_core SHARED ${SOURCES})
 target_include_directories(sentinel_core PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto)
 
+# Export for parent CMakeLists
+set(SENTINEL_CORE_LIB sentinel_core PARENT_SCOPE)
+
