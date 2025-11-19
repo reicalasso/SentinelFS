@@ -6,7 +6,11 @@ project(StoragePlugin)
 find_package(SQLite3 REQUIRED)
 
 add_library(storage_plugin SHARED
-    storage_plugin.cpp
+    storage_plugin_new.cpp
+    SQLiteHandler.cpp
+    FileMetadataManager.cpp
+    PeerManager.cpp
+    ConflictManager.cpp
 )
 
 target_include_directories(storage_plugin PUBLIC

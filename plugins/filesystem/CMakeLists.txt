@@ -6,7 +6,9 @@ project(FilesystemPlugin)
 find_package(OpenSSL REQUIRED)
 
 add_library(filesystem_plugin SHARED
-    filesystem_plugin.cpp
+    filesystem_plugin_new.cpp
+    InotifyWatcher.cpp
+    FileHasher.cpp
 )
 
 target_include_directories(filesystem_plugin PUBLIC

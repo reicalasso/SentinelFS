@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 project(MLPlugin)
 
 add_library(ml_plugin SHARED
-    ml_plugin.cpp
+    ml_plugin_new.cpp
+    AnomalyDetector.cpp
 )
 
 target_include_directories(ml_plugin PUBLIC
