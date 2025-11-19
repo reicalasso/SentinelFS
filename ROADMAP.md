@@ -18,12 +18,12 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 - [x] **Task:** Implement basic CRUD operations (Create/Read/Update/Delete).
 - [x] **Optimization:** Refactor to use Prepared Statements (`sqlite3_prepare_v2`) for security (SQL Injection prevention).
 
-### Sprint 3 (Weeks 5-6): File System Monitoring [Next Focus]
-- [ ] **Task:** Integrate `inotify` (Linux) into `FilesystemPlugin` (RQ-UI.F-002).
-- [ ] **Task:** Capture file changes and publish via `EventBus` (RQ-F.F-010).
-- [ ] **Task:** Implement file hashing (SHA-256) (RQ-F.F-009).
+### Sprint 3 (Weeks 5-6): File System Monitoring [Completed]
+- [x] **Task:** Integrate `inotify` (Linux) into `FilesystemPlugin` (RQ-UI.F-002).
+- [x] **Task:** Capture file changes and publish via `EventBus` (RQ-F.F-010).
+- [x] **Task:** Implement file hashing (SHA-256) (RQ-F.F-009).
 
-### Sprint 4 (Weeks 7-8): Delta Engine
+### Sprint 4 (Weeks 7-8): Delta Engine [Next Focus]
 - [ ] **Task:** Implement block splitting and Rolling Checksum (Adler32) (RQ-F.F-004, RQ-F.F-012).
 - [ ] **Task:** Implement delta calculation algorithm.
 

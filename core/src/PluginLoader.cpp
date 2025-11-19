@@ -7,7 +7,7 @@ namespace SentinelFS {
     using CreatePluginFunc = IPlugin* (*)();
     using DestroyPluginFunc = void (*)(IPlugin*);
 
-    std::shared_ptr<IPlugin> PluginLoader::loadPlugin(const std::string& path) {
+    std::shared_ptr<IPlugin> PluginLoader::loadPlugin(const std::string& path, EventBus* eventBus) {
         void* handle = dlopen(path.c_str(), RTLD_LAZY);
         if (!handle) {
             std::cerr << "Cannot open library: " << dlerror() << '\n';
@@ -47,7 +47,7 @@ namespace SentinelFS {
             destroy(p);
         });
 
-        if (!plugin->initialize()) {
+        if (!plugin->initialize(eventBus)) {
              std::cerr << "Failed to initialize plugin\n";
              // plugin destructor will be called here, which calls destroy
              dlclose(handle);

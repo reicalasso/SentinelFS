@@ -4,15 +4,18 @@
 
 namespace SentinelFS {
 
+    class EventBus; // Forward declaration
+
     class IPlugin {
     public:
         virtual ~IPlugin() = default;
 
         /**
          * @brief Initialize the plugin.
+         * @param eventBus Pointer to the central EventBus.
          * @return true if initialization was successful, false otherwise.
          */
-        virtual bool initialize() = 0;
+        virtual bool initialize(EventBus* eventBus) = 0;
 
         /**
          * @brief Shutdown the plugin and release resources.

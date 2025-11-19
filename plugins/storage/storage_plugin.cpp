@@ -7,7 +7,7 @@ namespace SentinelFS {
 
     class StoragePlugin : public IStorageAPI {
     public:
-        bool initialize() override {
+        bool initialize(EventBus* eventBus) override {
             std::cout << "StoragePlugin initialized" << std::endl;
             if (sqlite3_open("sentinel.db", &db_) != SQLITE_OK) {
                 std::cerr << "Cannot open database: " << sqlite3_errmsg(db_) << std::endl;

@@ -12,9 +12,10 @@ namespace SentinelFS {
         /**
          * @brief Load a plugin from a shared library.
          * @param path The path to the shared library (.so file).
+         * @param eventBus Pointer to the central EventBus.
          * @return A shared pointer to the loaded plugin instance, or nullptr if failed.
          */
-        std::shared_ptr<IPlugin> loadPlugin(const std::string& path);
+        std::shared_ptr<IPlugin> loadPlugin(const std::string& path, EventBus* eventBus);
 
         /**
          * @brief Unload a plugin by name.

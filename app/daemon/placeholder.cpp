@@ -8,6 +8,7 @@
 int main() {
     std::cout << "Starting SentinelFS Daemon..." << std::endl;
 
+    SentinelFS::EventBus eventBus;
     SentinelFS::PluginLoader loader;
     std::vector<std::shared_ptr<SentinelFS::IPlugin>> plugins;
 
@@ -22,7 +23,7 @@ int main() {
     };
 
     for (const auto& path : pluginPaths) {
-        auto plugin = loader.loadPlugin(path);
+        auto plugin = loader.loadPlugin(path, &eventBus);
         if (plugin) {
             std::cout << "Loaded plugin: " << plugin->getName() << std::endl;
             plugins.push_back(plugin);

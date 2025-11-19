@@ -1,11 +1,13 @@
 #include "PluginLoader.h"
 #include "IFileAPI.h"
+#include "EventBus.h"
 #include <iostream>
 #include <cassert>
 #include <vector>
 #include <memory>
 
 int main() {
+    SentinelFS::EventBus eventBus;
     SentinelFS::PluginLoader loader;
     
     // Path to the filesystem plugin shared library
@@ -14,7 +16,7 @@ int main() {
     std::string pluginPath = "../plugins/filesystem/libfilesystem_plugin.so"; 
 
     std::cout << "Loading plugin from: " << pluginPath << std::endl;
-    auto plugin = loader.loadPlugin(pluginPath);
+    auto plugin = loader.loadPlugin(pluginPath, &eventBus);
 
     if (!plugin) {
         std::cerr << "Failed to load plugin" << std::endl;

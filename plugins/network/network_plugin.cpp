@@ -8,7 +8,7 @@ namespace SentinelFS {
 
     class NetworkPlugin : public INetworkAPI {
     public:
-        bool initialize() override {
+        bool initialize(EventBus* eventBus) override {
             std::cout << "NetworkPlugin initialized" << std::endl;
             return true;
         }

@@ -5,7 +5,7 @@ namespace SentinelFS {
 
     class MLPlugin : public IPlugin {
     public:
-        bool initialize() override {
+        bool initialize(EventBus* eventBus) override {
             std::cout << "MLPlugin initialized" << std::endl;
             return true;
         }

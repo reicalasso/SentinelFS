@@ -8,3 +8,7 @@ add_executable(storage_test storage_test.cpp)
 target_link_libraries(storage_test sentinel_core)
 target_include_directories(storage_test PRIVATE ../core/include)
 
+add_executable(filesystem_test filesystem_test.cpp)
+target_link_libraries(filesystem_test sentinel_core)
+target_include_directories(filesystem_test PRIVATE ../core/include)
+
