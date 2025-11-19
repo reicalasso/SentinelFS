@@ -16,6 +16,7 @@
 #include "INetworkAPI.h"
 #include "IFileAPI.h"
 #include "DeltaEngine.h"
+#include "SessionCode.h"
 #include <cstring>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -165,6 +166,14 @@ std::string handleIPCCommand(const std::string& command,
         response << "Discovery Port: " << discoveryPort << "\n";
         response << "Watch Directory: " << watchDir << "\n";
         response << "Sync Status: " << (syncEnabled ? "ENABLED" : "PAUSED") << "\n";
+        response << "Encryption: " << (network->isEncryptionEnabled() ? "ENABLED 🔒" : "Disabled") << "\n";
+        
+        std::string code = network->getSessionCode();
+        if (!code.empty()) {
+            response << "Session Code: " << SessionCode::format(code) << " ✓\n";
+        } else {
+            response << "Session Code: Not set ⚠️\n";
+        }
         
         auto peers = storage->getAllPeers();
         response << "Connected Peers: " << peers.size() << "\n";
@@ -193,6 +202,13 @@ std::string handleIPCCommand(const std::string& command,
         response << "TCP Port: " << tcpPort << "\n";
         response << "Discovery Port: " << discoveryPort << "\n";
         response << "Watch Directory: " << watchDir << "\n";
+        response << "Encryption: " << (network->isEncryptionEnabled() ? "Enabled 🔒" : "Disabled") << "\n";
+        std::string code = network->getSessionCode();
+        if (!code.empty()) {
+            response << "Session Code: " << SessionCode::format(code) << "\n";
+        } else {
+            response << "Session Code: Not set (WARNING: Insecure!)\n";
+        }
         
     } else if (command == "PAUSE") {
         syncEnabled = false;
@@ -295,8 +311,11 @@ int main(int argc, char* argv[]) {
     int tcpPort = 8080;
     int discoveryPort = 9999;
     std::string watchDir = "./watched_folder";
+    std::string sessionCode;
 
     // Parse Arguments
+    bool encryptionEnabled = false;
+    
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--port" && i + 1 < argc) {
@@ -305,6 +324,15 @@ int main(int argc, char* argv[]) {
             discoveryPort = std::stoi(argv[++i]);
         } else if (arg == "--dir" && i + 1 < argc) {
             watchDir = argv[++i];
+        } else if (arg == "--session-code" && i + 1 < argc) {
+            sessionCode = SessionCode::normalize(argv[++i]);
+        } else if (arg == "--generate-code") {
+            std::string code = SessionCode::generate();
+            std::cout << "\nGenerated Session Code: " << SessionCode::format(code) << std::endl;
+            std::cout << "Use this code with: --session-code " << code << std::endl;
+            return 0;
+        } else if (arg == "--encrypt") {
+            encryptionEnabled = true;
         }
     }
 
@@ -312,6 +340,27 @@ int main(int argc, char* argv[]) {
     std::cout << "  TCP Port: " << tcpPort << std::endl;
     std::cout << "  Discovery Port: " << discoveryPort << std::endl;
     std::cout << "  Watch Directory: " << watchDir << std::endl;
+    std::cout << "  Encryption: " << (encryptionEnabled ? "Enabled" : "Disabled") << std::endl;
+    
+    if (!sessionCode.empty()) {
+        if (!SessionCode::isValid(sessionCode)) {
+            std::cerr << "Error: Invalid session code format. Must be 6 alphanumeric characters." << std::endl;
+            return 1;
+        }
+        std::cout << "  Session Code: " << SessionCode::format(sessionCode) << " ✓" << std::endl;
+        
+        if (encryptionEnabled) {
+            std::cout << "  🔒 Encryption key will be derived from session code" << std::endl;
+        }
+    } else {
+        std::cout << "  Session Code: Not set (any peer can connect)" << std::endl;
+        std::cout << "  ⚠️  WARNING: For security, use --generate-code to create a session code!" << std::endl;
+        
+        if (encryptionEnabled) {
+            std::cerr << "Error: Cannot enable encryption without a session code!" << std::endl;
+            return 1;
+        }
+    }
 
     // Print CWD
     std::cout << "Current Working Directory: " << std::filesystem::current_path() << std::endl;
@@ -351,6 +400,16 @@ int main(int argc, char* argv[]) {
     if (!storage || !network || !fs) {
         std::cerr << "Failed to cast plugins to interfaces. Exiting." << std::endl;
         return 1;
+    }
+
+    // Set session code if provided
+    if (!sessionCode.empty()) {
+        network->setSessionCode(sessionCode);
+    }
+    
+    // Enable encryption if requested
+    if (encryptionEnabled) {
+        network->setEncryptionEnabled(true);
     }
 
     // --- State ---

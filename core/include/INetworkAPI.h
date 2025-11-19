@@ -72,7 +72,33 @@ namespace SentinelFS {
          * @return true if connected, false otherwise.
          */
         virtual bool isPeerConnected(const std::string& peerId) = 0;
+
+        /**
+         * @brief Set the session code for this peer group.
+         * @param code The 6-character session code.
+         */
+        virtual void setSessionCode(const std::string& code) = 0;
+
+        /**
+         * @brief Get the current session code.
+         * @return The session code, or empty string if not set.
+         */
+        virtual std::string getSessionCode() const = 0;
+
+        /**
+         * @brief Enable or disable encryption for data transfer.
+         * @param enable true to enable encryption, false to disable.
+         */
+        virtual void setEncryptionEnabled(bool enable) = 0;
+
+        /**
+         * @brief Check if encryption is enabled.
+         * @return true if encryption is enabled, false otherwise.
+         */
+        virtual bool isEncryptionEnabled() const = 0;
     };
 }
+
+
 
 

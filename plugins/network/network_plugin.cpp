@@ -1,5 +1,6 @@
 #include "INetworkAPI.h"
 #include "EventBus.h"
+#include "Crypto.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -91,8 +92,8 @@ namespace SentinelFS {
                 return false;
             }
 
-            // Handshake: Send HELLO
-            std::string hello = "SENTINEL_HELLO|1.0|" + localPeerId_;
+            // Handshake: Send HELLO with session code
+            std::string hello = "SENTINEL_HELLO|1.0|" + localPeerId_ + "|" + sessionCode_;
             if (send(sock, hello.c_str(), hello.length(), 0) < 0) {
                 std::cerr << "Failed to send handshake" << std::endl;
                 close(sock);
@@ -109,6 +110,13 @@ namespace SentinelFS {
             }
             buffer[len] = '\0';
             std::string response(buffer);
+            
+            if (response.find("ERROR|INVALID_SESSION_CODE") == 0) {
+                std::cerr << "🚫 Connection rejected: Invalid session code!" << std::endl;
+                std::cerr << "   Make sure all peers use the same session code." << std::endl;
+                close(sock);
+                return false;
+            }
             
             if (response.find("SENTINEL_WELCOME|") != 0) {
                 std::cerr << "Handshake failed: Invalid response: " << response << std::endl;
@@ -143,21 +151,44 @@ namespace SentinelFS {
             
             int sock = connections_[peerId];
             
+            std::vector<uint8_t> dataToSend = data;
+            
+            // Encrypt if enabled
+            if (encryptionEnabled_ && !encryptionKey_.empty()) {
+                try {
+                    auto iv = sentinel::Crypto::generateIV();
+                    auto ciphertext = sentinel::Crypto::encrypt(data, encryptionKey_, iv);
+                    auto hmac = sentinel::Crypto::hmacSHA256(ciphertext, encryptionKey_);
+                    
+                    sentinel::EncryptedMessage msg;
+                    msg.iv = iv;
+                    msg.ciphertext = ciphertext;
+                    msg.hmac = hmac;
+                    
+                    dataToSend = msg.serialize();
+                    std::cout << "Data encrypted (" << data.size() << " -> " << dataToSend.size() << " bytes)" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Encryption failed: " << e.what() << std::endl;
+                    return false;
+                }
+            }
+            
             // Send Length Prefix
-            uint32_t len = htonl(data.size());
+            uint32_t len = htonl(dataToSend.size());
             if (send(sock, &len, sizeof(len), 0) < 0) {
                 std::cerr << "Failed to send length prefix to " << peerId << std::endl;
                 return false;
             }
 
             // Send Data
-            ssize_t sent = send(sock, data.data(), data.size(), 0);
+            ssize_t sent = send(sock, dataToSend.data(), dataToSend.size(), 0);
             if (sent < 0) {
                 std::cerr << "Failed to send data to " << peerId << std::endl;
                 return false;
             }
             
-            std::cout << "Sent " << sent << " bytes to peer " << peerId << std::endl;
+            std::cout << "Sent " << sent << " bytes to peer " << peerId 
+                      << (encryptionEnabled_ ? " (encrypted)" : "") << std::endl;
             return true;
         }
 
@@ -344,9 +375,58 @@ namespace SentinelFS {
             return connections_.find(peerId) != connections_.end();
         }
 
+        void setSessionCode(const std::string& code) override {
+            sessionCode_ = code;
+            std::cout << "Session code set for peer group" << std::endl;
+            
+            // Derive encryption key from session code if encryption is enabled
+            if (encryptionEnabled_ && !code.empty()) {
+                try {
+                    // Use a fixed salt derived from "SentinelFS" for deterministic key derivation
+                    std::vector<uint8_t> salt = {0x53, 0x65, 0x6E, 0x74, 0x69, 0x6E, 0x65, 0x6C, 
+                                                   0x46, 0x53, 0x5F, 0x32, 0x30, 0x32, 0x35};
+                    encryptionKey_ = sentinel::Crypto::deriveKeyFromSessionCode(code, salt);
+                    std::cout << "Encryption key derived from session code" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to derive encryption key: " << e.what() << std::endl;
+                }
+            }
+        }
+
+        std::string getSessionCode() const override {
+            return sessionCode_;
+        }
+
+        void setEncryptionEnabled(bool enable) override {
+            encryptionEnabled_ = enable;
+            std::cout << "Encryption " << (enable ? "enabled" : "disabled") << std::endl;
+            
+            // Derive key if enabling and session code exists
+            if (enable && !sessionCode_.empty()) {
+                try {
+                    std::vector<uint8_t> salt = {0x53, 0x65, 0x6E, 0x74, 0x69, 0x6E, 0x65, 0x6C, 
+                                                   0x46, 0x53, 0x5F, 0x32, 0x30, 0x32, 0x35};
+                    encryptionKey_ = sentinel::Crypto::deriveKeyFromSessionCode(sessionCode_, salt);
+                    std::cout << "Encryption key derived" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to derive encryption key: " << e.what() << std::endl;
+                    encryptionEnabled_ = false;
+                }
+            } else if (!enable) {
+                encryptionKey_.clear();
+            }
+        }
+
+        bool isEncryptionEnabled() const override {
+            return encryptionEnabled_;
+        }
+
     private:
         EventBus* eventBus_ = nullptr;
         std::string localPeerId_;
+        std::string sessionCode_;  // Session code for this peer group
+        bool encryptionEnabled_ = false;  // Encryption toggle
+        std::vector<uint8_t> encryptionKey_;  // Derived from session code
         
         // TCP
         std::atomic<bool> listening_{false};
@@ -371,10 +451,33 @@ namespace SentinelFS {
                 if (received <= 0) break;
 
                 uint32_t len = ntohl(netLen);
-                std::vector<uint8_t> data(len);
+                std::vector<uint8_t> receivedData(len);
                 
-                received = recv(sock, data.data(), len, MSG_WAITALL);
+                received = recv(sock, receivedData.data(), len, MSG_WAITALL);
                 if (received <= 0) break;
+
+                std::vector<uint8_t> data = receivedData;
+                
+                // Decrypt if encryption is enabled
+                if (encryptionEnabled_ && !encryptionKey_.empty()) {
+                    try {
+                        auto msg = sentinel::EncryptedMessage::deserialize(receivedData);
+                        
+                        // Verify HMAC
+                        auto expectedHmac = sentinel::Crypto::hmacSHA256(msg.ciphertext, encryptionKey_);
+                        if (msg.hmac != expectedHmac) {
+                            std::cerr << "HMAC verification failed from " << remotePeerId << std::endl;
+                            break;
+                        }
+                        
+                        // Decrypt
+                        data = sentinel::Crypto::decrypt(msg.ciphertext, encryptionKey_, msg.iv);
+                        std::cout << "Data decrypted (" << receivedData.size() << " -> " << data.size() << " bytes)" << std::endl;
+                    } catch (const std::exception& e) {
+                        std::cerr << "Decryption failed from " << remotePeerId << ": " << e.what() << std::endl;
+                        break;
+                    }
+                }
 
                 if (eventBus_) {
                     eventBus_->publish("DATA_RECEIVED", std::make_pair(remotePeerId, data));
@@ -407,14 +510,42 @@ namespace SentinelFS {
                 return;
             }
 
-            // Parse ID (SENTINEL_HELLO|VER|ID)
+            // Parse ID and Session Code (SENTINEL_HELLO|VER|ID|CODE)
             size_t firstPipe = msg.find('|');
             size_t secondPipe = msg.find('|', firstPipe + 1);
+            size_t thirdPipe = msg.find('|', secondPipe + 1);
+            
             if (secondPipe == std::string::npos) {
                 close(sock);
                 return;
             }
-            std::string remotePeerId = msg.substr(secondPipe + 1);
+            
+            std::string remotePeerId;
+            std::string remoteSessionCode;
+            
+            if (thirdPipe != std::string::npos) {
+                // New format with session code
+                remotePeerId = msg.substr(secondPipe + 1, thirdPipe - secondPipe - 1);
+                remoteSessionCode = msg.substr(thirdPipe + 1);
+            } else {
+                // Old format without session code (backward compatibility)
+                remotePeerId = msg.substr(secondPipe + 1);
+            }
+            
+            // Validate session code if set
+            if (!sessionCode_.empty()) {
+                if (remoteSessionCode != sessionCode_) {
+                    std::cerr << "⚠️  Session code mismatch! Expected: " << sessionCode_ 
+                              << ", Got: " << remoteSessionCode << std::endl;
+                    std::cerr << "🚫 Rejecting connection from " << ip << std::endl;
+                    
+                    std::string error = "ERROR|INVALID_SESSION_CODE";
+                    send(sock, error.c_str(), error.length(), 0);
+                    close(sock);
+                    return;
+                }
+                std::cout << "✓ Session code validated for " << remotePeerId << std::endl;
+            }
 
             // Send WELCOME
             std::string welcome = "SENTINEL_WELCOME|" + localPeerId_;
