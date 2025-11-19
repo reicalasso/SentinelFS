@@ -157,7 +157,9 @@ std::string handleIPCCommand(const std::string& command,
                              std::atomic<bool>& syncEnabled,
                              int tcpPort, 
                              int discoveryPort,
-                             const std::string& watchDir) {
+                             const std::string& watchDir,
+                             size_t uploadLimit,
+                             size_t downloadLimit) {
     std::stringstream response;
     
     if (command == "STATUS") {
@@ -255,9 +257,16 @@ std::string handleIPCCommand(const std::string& command,
             response << "Failed to resolve conflict " << conflictId << ".\n";
         }
         
+    } else if (command == "BANDWIDTH") {
+        response << "=== Bandwidth Settings ===\n";
+        response << "Upload Limit: " << (uploadLimit > 0 ? std::to_string(uploadLimit / 1024) + " KB/s" : "Unlimited") << "\n";
+        response << "Download Limit: " << (downloadLimit > 0 ? std::to_string(downloadLimit / 1024) + " KB/s" : "Unlimited") << "\n";
+        response << "\nNote: Bandwidth limits configured at daemon start.\n";
+        response << "Use --upload-limit <KB/s> and --download-limit <KB/s> flags.\n";
+        
     } else {
         response << "Unknown command: " << command << "\n";
-        response << "Available commands: STATUS, PEERS, CONFIG, PAUSE, RESUME, STATS, CONFLICTS, RESOLVE <id>\n";
+        response << "Available commands: STATUS, PEERS, CONFIG, PAUSE, RESUME, STATS, CONFLICTS, RESOLVE <id>, BANDWIDTH\n";
     }
     
     return response.str();
@@ -269,7 +278,9 @@ void ipcServerThread(IStorageAPI* storage,
                      std::atomic<bool>& syncEnabled,
                      int tcpPort,
                      int discoveryPort,
-                     const std::string& watchDir) {
+                     const std::string& watchDir,
+                     size_t uploadLimit,
+                     size_t downloadLimit) {
     const char* SOCKET_PATH = "/tmp/sentinel_daemon.sock";
     
     // Remove old socket if exists
@@ -322,7 +333,8 @@ void ipcServerThread(IStorageAPI* storage,
             std::string command(buffer);
             std::string response = handleIPCCommand(command, storage, network, 
                                                     syncEnabled, tcpPort, 
-                                                    discoveryPort, watchDir);
+                                                    discoveryPort, watchDir,
+                                                    uploadLimit, downloadLimit);
             send(clientFd, response.c_str(), response.length(), 0);
         }
         
@@ -348,6 +360,8 @@ int main(int argc, char* argv[]) {
 
     // Parse Arguments
     bool encryptionEnabled = false;
+    size_t uploadLimit = 0;  // 0 = unlimited
+    size_t downloadLimit = 0;  // 0 = unlimited
     
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -366,6 +380,10 @@ int main(int argc, char* argv[]) {
             return 0;
         } else if (arg == "--encrypt") {
             encryptionEnabled = true;
+        } else if (arg == "--upload-limit" && i + 1 < argc) {
+            uploadLimit = std::stoull(argv[++i]) * 1024;  // Convert KB/s to B/s
+        } else if (arg == "--download-limit" && i + 1 < argc) {
+            downloadLimit = std::stoull(argv[++i]) * 1024;  // Convert KB/s to B/s
         }
     }
 
@@ -374,6 +392,8 @@ int main(int argc, char* argv[]) {
     std::cout << "  Discovery Port: " << discoveryPort << std::endl;
     std::cout << "  Watch Directory: " << watchDir << std::endl;
     std::cout << "  Encryption: " << (encryptionEnabled ? "Enabled" : "Disabled") << std::endl;
+    std::cout << "  Upload Limit: " << (uploadLimit > 0 ? std::to_string(uploadLimit / 1024) + " KB/s" : "Unlimited") << std::endl;
+    std::cout << "  Download Limit: " << (downloadLimit > 0 ? std::to_string(downloadLimit / 1024) + " KB/s" : "Unlimited") << std::endl;
     
     if (!sessionCode.empty()) {
         if (!SessionCode::isValid(sessionCode)) {
@@ -658,7 +678,8 @@ int main(int argc, char* argv[]) {
     // Start IPC Server Thread for CLI communication
     std::thread ipcThread([&]() {
         ipcServerThread(storage.get(), network.get(), syncEnabled, 
-                       tcpPort, discoveryPort, watchDir);
+                       tcpPort, discoveryPort, watchDir,
+                       uploadLimit, downloadLimit);
     });
 
     // RTT Measurement Thread

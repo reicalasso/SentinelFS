@@ -1,6 +1,7 @@
 #include "INetworkAPI.h"
 #include "EventBus.h"
 #include "Crypto.h"
+#include "BandwidthLimiter.h"
 #include <iostream>
 #include <thread>
 #include <atomic>

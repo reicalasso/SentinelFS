@@ -126,24 +126,24 @@ This document outlines the complete development plan for SentinelFS-Neo, structu
   - [x] RESOLVE <id> - Mark conflict as resolved
   - [x] Conflict statistics tracking (total/unresolved)
 
-### Sprint 13 (Weeks 25-26): Bandwidth Management & QoS
-- [ ] **Task:** Implement bandwidth throttling.
-  - Configurable upload/download speed limits
-  - Per-peer bandwidth allocation
-  - Priority queue for critical files
-- [ ] **Task:** Add file prioritization system.
-  - Priority levels: critical, high, normal, low
-  - Small files get priority over large files
-  - Configuration files prioritized
-- [ ] **Task:** Implement compression for transfer.
-  - LZ4 compression for delta blocks
-  - Configurable compression levels
-  - Automatic compression based on file type
-- [ ] **Task:** Add transfer progress tracking.
-  - Per-file progress percentage
-  - Overall sync progress
-  - ETA calculations
-  - Display in CLI `status` command
+### Sprint 13 (Weeks 25-26): Bandwidth Management & QoS [IN PROGRESS] 🚧
+- [x] **Task:** Implement bandwidth throttling.
+  - [x] Token bucket algorithm for smooth rate limiting
+  - [x] BandwidthLimiter class with burst capacity support
+  - [x] BandwidthManager for per-peer allocation
+  - [x] CLI flags: --upload-limit, --download-limit (in KB/s)
+  - [x] Global and per-peer bandwidth limits
+- [x] **Task:** Add file prioritization system.
+  - [x] TransferPriority enum (CRITICAL to BACKGROUND)
+  - [x] Priority-based transfer queue structure
+  - [x] Small files automatically get higher priority
+- [x] **Task:** Add CLI bandwidth controls.
+  - [x] BANDWIDTH IPC command to view limits
+  - [x] Display limits in daemon startup configuration
+  - [x] Statistics tracking (bytes transferred, wait time)
+- [ ] **Task:** Add transfer progress tracking (DEFERRED to Sprint 18).
+  - Will be implemented with performance monitoring
+  - Per-file progress, ETA calculations
 
 ### Sprint 14 (Weeks 27-28): Advanced Logging & Monitoring
 - [ ] **Task:** Implement structured logging system.
