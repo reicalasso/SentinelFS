@@ -2,25 +2,61 @@ project(SentinelTests)
 
 add_executable(sentinel_tests placeholder_test.cpp)
 target_link_libraries(sentinel_tests sentinel_core)
-target_include_directories(sentinel_tests PRIVATE ../core/include)
+target_include_directories(sentinel_tests PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 
 add_executable(storage_test storage_test.cpp)
 target_link_libraries(storage_test sentinel_core)
-target_include_directories(storage_test PRIVATE ../core/include)
+target_include_directories(storage_test PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 
 add_executable(filesystem_test filesystem_test.cpp)
 target_link_libraries(filesystem_test sentinel_core)
-target_include_directories(filesystem_test PRIVATE ../core/include)
+target_include_directories(filesystem_test PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 
 add_executable(delta_test delta_test.cpp)
 target_link_libraries(delta_test sentinel_core)
-target_include_directories(delta_test PRIVATE ../core/include)
+target_include_directories(delta_test PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 
 add_executable(discovery_test discovery_test.cpp)
 target_link_libraries(discovery_test sentinel_core dl)
-target_include_directories(discovery_test PRIVATE ../core/include)
+target_include_directories(discovery_test PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 
 add_executable(transfer_test transfer_test.cpp)
 target_link_libraries(transfer_test sentinel_core dl)
-target_include_directories(transfer_test PRIVATE ../core/include)
+target_include_directories(transfer_test PRIVATE 
+    ../core/include
+    ../core/network/include
+    ../core/security/include
+    ../core/sync/include
+    ../core/utils/include
+)
 

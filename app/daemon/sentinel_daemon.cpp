@@ -4,7 +4,7 @@
 #include "DaemonCore.h"
 #include "IPCHandler.h"
 #include "EventHandlers.h"
-#include "../../core/include/SessionCode.h"
+#include "SessionCode.h"
 
 using namespace SentinelFS;
 

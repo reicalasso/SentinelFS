@@ -16,4 +16,10 @@ add_executable(sentinel_daemon
 )
 
 target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread)
-target_include_directories(sentinel_daemon PRIVATE ../../core/include)
+target_include_directories(sentinel_daemon PRIVATE 
+    ../../core/include
+    ../../core/network/include
+    ../../core/security/include
+    ../../core/sync/include
+    ../../core/utils/include
+)

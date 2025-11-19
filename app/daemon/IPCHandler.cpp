@@ -1,5 +1,5 @@
 #include "IPCHandler.h"
-#include "../../core/include/SessionCode.h"
+#include "SessionCode.h"
 #include <iostream>
 #include <sstream>
 #include <cstring>

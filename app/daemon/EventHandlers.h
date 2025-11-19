@@ -5,10 +5,10 @@
 #include <mutex>
 #include <map>
 #include <chrono>
-#include "../../core/include/EventBus.h"
-#include "../../core/include/INetworkAPI.h"
-#include "../../core/include/IStorageAPI.h"
-#include "../../core/include/IFileAPI.h"
+#include "EventBus.h"
+#include "INetworkAPI.h"
+#include "IStorageAPI.h"
+#include "IFileAPI.h"
 
 namespace SentinelFS {
 

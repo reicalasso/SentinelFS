@@ -11,6 +11,10 @@ add_library(storage_plugin SHARED
 
 target_include_directories(storage_plugin PUBLIC
     ../../core/include
+    ../../core/network/include
+    ../../core/security/include
+    ../../core/sync/include
+    ../../core/utils/include
     ${SQLite3_INCLUDE_DIRS}
 )
 

@@ -9,4 +9,8 @@ add_library(ml_plugin SHARED
 
 target_include_directories(ml_plugin PUBLIC
     ../../core/include
+    ../../core/network/include
+    ../../core/security/include
+    ../../core/sync/include
+    ../../core/utils/include
 )

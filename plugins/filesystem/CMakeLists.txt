@@ -11,6 +11,10 @@ add_library(filesystem_plugin SHARED
 
 target_include_directories(filesystem_plugin PUBLIC
     ../../core/include
+    ../../core/network/include
+    ../../core/security/include
+    ../../core/sync/include
+    ../../core/utils/include
     ${OPENSSL_INCLUDE_DIR}
 )
 

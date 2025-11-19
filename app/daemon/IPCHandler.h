@@ -5,9 +5,9 @@
 #include <thread>
 #include <memory>
 #include <functional>
-#include "../../core/include/INetworkAPI.h"
-#include "../../core/include/IStorageAPI.h"
-#include "../../core/include/IFileAPI.h"
+#include "INetworkAPI.h"
+#include "IStorageAPI.h"
+#include "IFileAPI.h"
 
 namespace SentinelFS {
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "HandshakeProtocol.h"
-#include "../../core/include/EventBus.h"
+#include "EventBus.h"
 #include <string>
 #include <vector>
 #include <map>

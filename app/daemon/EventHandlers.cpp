@@ -1,5 +1,5 @@
 #include "EventHandlers.h"
-#include "../../core/include/DeltaEngine.h"
+#include "DeltaEngine.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../core/include/EventBus.h"
+#include "EventBus.h"
 #include <string>
 #include <thread>
 #include <atomic>
