@@ -1,0 +1,56 @@
+#pragma once
+
+#include <vector>
+#include <string>
+#include <cstdint>
+
+namespace SentinelFS {
+
+    struct BlockSignature {
+        uint32_t index;
+        uint32_t adler32;
+        std::string sha256;
+    };
+
+    struct DeltaInstruction {
+        bool isLiteral;
+        std::vector<uint8_t> literalData; // If isLiteral is true
+        uint32_t blockIndex;              // If isLiteral is false
+    };
+
+    class DeltaEngine {
+    public:
+        static const size_t BLOCK_SIZE = 4096;
+
+        /**
+         * @brief Calculate Adler-32 rolling checksum.
+         * @param data Pointer to data buffer.
+         * @param len Length of data.
+         * @return 32-bit Adler checksum.
+         */
+        static uint32_t calculateAdler32(const uint8_t* data, size_t len);
+
+        /**
+         * @brief Calculate SHA-256 checksum.
+         * @param data Pointer to data buffer.
+         * @param len Length of data.
+         * @return Hex string of SHA-256 hash.
+         */
+        static std::string calculateSHA256(const uint8_t* data, size_t len);
+        
+        /**
+         * @brief Generates the signature (list of checksums) for a file.
+         * @param filePath Path to the file.
+         * @return Vector of BlockSignatures.
+         */
+        static std::vector<BlockSignature> calculateSignature(const std::string& filePath);
+
+        /**
+         * @brief Calculates the delta between a new file and an old signature.
+         * @param newFilePath Path to the new version of the file.
+         * @param oldSignature Signature of the old version of the file.
+         * @return Vector of DeltaInstructions.
+         */
+        static std::vector<DeltaInstruction> calculateDelta(const std::string& newFilePath, const std::vector<BlockSignature>& oldSignature);
+    };
+}

@@ -23,11 +23,14 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 - [x] **Task:** Capture file changes and publish via `EventBus` (RQ-F.F-010).
 - [x] **Task:** Implement file hashing (SHA-256) (RQ-F.F-009).
 
-### Sprint 4 (Weeks 7-8): Delta Engine [Next Focus]
-- [ ] **Task:** Implement block splitting and Rolling Checksum (Adler32) (RQ-F.F-004, RQ-F.F-012).
-- [ ] **Task:** Implement delta calculation algorithm.
+### Sprint 4 (Weeks 7-8): Delta Engine [Completed]
+- [x] **Task:** Implement block splitting and Rolling Checksum (Adler32) (RQ-F.F-004, RQ-F.F-012).
+- [x] **Task:** Implement delta calculation algorithm.
 
 ## Phase 2: Network & P2P Communication (Months 3-4)
+*Goal: Devices can discover each other and transfer data.*
+
+### Sprint 5 (Weeks 9-10): Peer Discovery [Next Focus]
 *Goal: Devices can discover each other and transfer data.*
 
 ### Sprint 5 (Weeks 9-10): Peer Discovery

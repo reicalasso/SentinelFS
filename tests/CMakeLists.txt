@@ -12,3 +12,7 @@ add_executable(filesystem_test filesystem_test.cpp)
 target_link_libraries(filesystem_test sentinel_core)
 target_include_directories(filesystem_test PRIVATE ../core/include)
 
+add_executable(delta_test delta_test.cpp)
+target_link_libraries(delta_test sentinel_core)
+target_include_directories(delta_test PRIVATE ../core/include)
+
