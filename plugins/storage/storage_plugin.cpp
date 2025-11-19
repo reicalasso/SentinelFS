@@ -31,27 +31,42 @@ namespace SentinelFS {
             return "1.0.0";
         }
 
+        public:
+        // CRUD Operations for Files
         bool addFile(const std::string& path, const std::string& hash, long long timestamp, long long size) override {
-            std::string sql = "INSERT OR REPLACE INTO files (path, hash, timestamp, size) VALUES ('" + 
-                              path + "', '" + hash + "', " + std::to_string(timestamp) + ", " + std::to_string(size) + ");";
-            
-            char* errMsg = nullptr;
-            if (sqlite3_exec(db_, sql.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-                std::cerr << "Error adding file: " << errMsg << std::endl;
-                sqlite3_free(errMsg);
+            const char* sql = "INSERT OR REPLACE INTO files (path, hash, timestamp, size) VALUES (?, ?, ?, ?);";
+            sqlite3_stmt* stmt;
+
+            if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db_) << std::endl;
                 return false;
             }
+
+            sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, hash.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 3, timestamp);
+            sqlite3_bind_int64(stmt, 4, size);
+
+            if (sqlite3_step(stmt) != SQLITE_DONE) {
+                std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db_) << std::endl;
+                sqlite3_finalize(stmt);
+                return false;
+            }
+
+            sqlite3_finalize(stmt);
             return true;
         }
 
         std::optional<FileMetadata> getFile(const std::string& path) override {
-            std::string sql = "SELECT path, hash, timestamp, size FROM files WHERE path = '" + path + "';";
+            const char* sql = "SELECT path, hash, timestamp, size FROM files WHERE path = ?;";
             sqlite3_stmt* stmt;
             
-            if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+            if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
                 std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db_) << std::endl;
                 return std::nullopt;
             }
+
+            sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 
             std::optional<FileMetadata> result = std::nullopt;
             if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -68,15 +83,27 @@ namespace SentinelFS {
         }
 
         bool removeFile(const std::string& path) override {
-            std::string sql = "DELETE FROM files WHERE path = '" + path + "';";
-            char* errMsg = nullptr;
-            if (sqlite3_exec(db_, sql.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-                std::cerr << "Error deleting file: " << errMsg << std::endl;
-                sqlite3_free(errMsg);
+            const char* sql = "DELETE FROM files WHERE path = ?;";
+            sqlite3_stmt* stmt;
+
+            if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db_) << std::endl;
                 return false;
             }
+
+            sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+
+            if (sqlite3_step(stmt) != SQLITE_DONE) {
+                std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db_) << std::endl;
+                sqlite3_finalize(stmt);
+                return false;
+            }
+
+            sqlite3_finalize(stmt);
             return true;
         }
+
+
 
     private:
         sqlite3* db_ = nullptr;

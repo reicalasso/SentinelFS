@@ -9,15 +9,16 @@ This document outlines the 6-month development plan for SentinelFS-Neo, structur
 - [x] Create project directory structure.
 - [x] Define `IPlugin`, `IFileAPI`, `INetworkAPI` interfaces.
 - [x] Implement `PluginLoader` and `EventBus`.
-- [ ] Add `Logger` module (RQ-UI.F-001).
-- [ ] Add `Config` manager (JSON/YAML).
+- [x] Add `Logger` module (RQ-UI.F-001).
+- [x] Add `Config` manager (JSON/YAML).
 
-### Sprint 2 (Weeks 3-4): Storage Layer [Current Focus]
-- [ ] **Task:** Integrate SQLite into `StoragePlugin` (RQ-DB.F-002).
-- [ ] **Task:** Design database schema for files, peers, and config (RQ-DB.F-003, RQ-DB.F-005).
-- [ ] **Task:** Implement basic CRUD operations (Create/Read/Update/Delete).
+### Sprint 2 (Weeks 3-4): Storage Layer [Completed - Product Level]
+- [x] **Task:** Integrate SQLite into `StoragePlugin` (RQ-DB.F-002).
+- [x] **Task:** Design database schema for files, peers, and config (RQ-DB.F-003, RQ-DB.F-005).
+- [x] **Task:** Implement basic CRUD operations (Create/Read/Update/Delete).
+- [x] **Optimization:** Refactor to use Prepared Statements (`sqlite3_prepare_v2`) for security (SQL Injection prevention).
 
-### Sprint 3 (Weeks 5-6): File System Monitoring
+### Sprint 3 (Weeks 5-6): File System Monitoring [Next Focus]
 - [ ] **Task:** Integrate `inotify` (Linux) into `FilesystemPlugin` (RQ-UI.F-002).
 - [ ] **Task:** Capture file changes and publish via `EventBus` (RQ-F.F-010).
 - [ ] **Task:** Implement file hashing (SHA-256) (RQ-F.F-009).
