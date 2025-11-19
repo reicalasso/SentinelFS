@@ -52,5 +52,13 @@ namespace SentinelFS {
          * @return Vector of DeltaInstructions.
          */
         static std::vector<DeltaInstruction> calculateDelta(const std::string& newFilePath, const std::vector<BlockSignature>& oldSignature);
+
+        /**
+         * @brief Applies a delta to an old file to reconstruct the new file.
+         * @param oldFilePath Path to the old version of the file.
+         * @param deltas Vector of DeltaInstructions.
+         * @return Reconstructed file data.
+         */
+        static std::vector<uint8_t> applyDelta(const std::string& oldFilePath, const std::vector<DeltaInstruction>& deltas);
     };
 }

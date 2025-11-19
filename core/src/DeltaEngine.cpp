@@ -133,4 +133,36 @@ namespace SentinelFS {
         return deltas;
     }
 
+    std::vector<uint8_t> DeltaEngine::applyDelta(const std::string& oldFilePath, const std::vector<DeltaInstruction>& deltas) {
+        std::ifstream oldFile(oldFilePath, std::ios::binary);
+        if (!oldFile) {
+            std::cerr << "Failed to open old file for patching: " << oldFilePath << std::endl;
+            return {};
+        }
+
+        // Read old file
+        std::vector<uint8_t> oldData((std::istreambuf_iterator<char>(oldFile)), std::istreambuf_iterator<char>());
+        std::vector<uint8_t> newData;
+
+        for (const auto& delta : deltas) {
+            if (delta.isLiteral) {
+                newData.insert(newData.end(), delta.literalData.begin(), delta.literalData.end());
+            } else {
+                // Copy block from old file
+                size_t offset = delta.blockIndex * BLOCK_SIZE;
+                if (offset >= oldData.size()) {
+                    std::cerr << "Block index out of bounds: " << delta.blockIndex << std::endl;
+                    continue;
+                }
+                size_t len = BLOCK_SIZE;
+                if (offset + len > oldData.size()) {
+                    len = oldData.size() - offset;
+                }
+                newData.insert(newData.end(), oldData.begin() + offset, oldData.begin() + offset + len);
+            }
+        }
+
+        return newData;
+    }
+
 }

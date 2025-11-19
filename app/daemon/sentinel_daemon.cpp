@@ -6,6 +6,9 @@
 #include <csignal>
 #include <atomic>
 #include <filesystem>
+#include <mutex>
+#include <map>
+#include <fstream>
 
 #include "PluginLoader.h"
 #include "EventBus.h"
@@ -13,10 +16,130 @@
 #include "INetworkAPI.h"
 #include "IFileAPI.h"
 #include "DeltaEngine.h"
+#include <cstring>
+#include <arpa/inet.h>
 
 using namespace SentinelFS;
 
 std::atomic<bool> running{true};
+
+// --- Serialization Helpers ---
+
+std::vector<uint8_t> serializeSignature(const std::vector<BlockSignature>& sigs) {
+    std::vector<uint8_t> buffer;
+    uint32_t count = htonl(sigs.size());
+    buffer.insert(buffer.end(), (uint8_t*)&count, (uint8_t*)&count + sizeof(count));
+
+    for (const auto& sig : sigs) {
+        uint32_t index = htonl(sig.index);
+        uint32_t adler = htonl(sig.adler32);
+        uint32_t shaLen = htonl(sig.sha256.length());
+        
+        buffer.insert(buffer.end(), (uint8_t*)&index, (uint8_t*)&index + sizeof(index));
+        buffer.insert(buffer.end(), (uint8_t*)&adler, (uint8_t*)&adler + sizeof(adler));
+        buffer.insert(buffer.end(), (uint8_t*)&shaLen, (uint8_t*)&shaLen + sizeof(shaLen));
+        buffer.insert(buffer.end(), sig.sha256.begin(), sig.sha256.end());
+    }
+    return buffer;
+}
+
+std::vector<BlockSignature> deserializeSignature(const std::vector<uint8_t>& data) {
+    std::vector<BlockSignature> sigs;
+    size_t offset = 0;
+    
+    if (data.size() < 4) return sigs;
+    
+    uint32_t count;
+    memcpy(&count, data.data() + offset, 4);
+    count = ntohl(count);
+    offset += 4;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        if (offset + 12 > data.size()) break;
+        
+        BlockSignature sig;
+        uint32_t val;
+        
+        memcpy(&val, data.data() + offset, 4);
+        sig.index = ntohl(val);
+        offset += 4;
+        
+        memcpy(&val, data.data() + offset, 4);
+        sig.adler32 = ntohl(val);
+        offset += 4;
+        
+        memcpy(&val, data.data() + offset, 4);
+        uint32_t shaLen = ntohl(val);
+        offset += 4;
+        
+        if (offset + shaLen > data.size()) break;
+        sig.sha256 = std::string((char*)data.data() + offset, shaLen);
+        offset += shaLen;
+        
+        sigs.push_back(sig);
+    }
+    return sigs;
+}
+
+std::vector<uint8_t> serializeDelta(const std::vector<DeltaInstruction>& deltas) {
+    std::vector<uint8_t> buffer;
+    uint32_t count = htonl(deltas.size());
+    buffer.insert(buffer.end(), (uint8_t*)&count, (uint8_t*)&count + sizeof(count));
+
+    for (const auto& delta : deltas) {
+        uint8_t isLiteral = delta.isLiteral ? 1 : 0;
+        buffer.push_back(isLiteral);
+        
+        if (delta.isLiteral) {
+            uint32_t len = htonl(delta.literalData.size());
+            buffer.insert(buffer.end(), (uint8_t*)&len, (uint8_t*)&len + sizeof(len));
+            buffer.insert(buffer.end(), delta.literalData.begin(), delta.literalData.end());
+        } else {
+            uint32_t index = htonl(delta.blockIndex);
+            buffer.insert(buffer.end(), (uint8_t*)&index, (uint8_t*)&index + sizeof(index));
+        }
+    }
+    return buffer;
+}
+
+std::vector<DeltaInstruction> deserializeDelta(const std::vector<uint8_t>& data) {
+    std::vector<DeltaInstruction> deltas;
+    size_t offset = 0;
+    
+    if (data.size() < 4) return deltas;
+    
+    uint32_t count;
+    memcpy(&count, data.data() + offset, 4);
+    count = ntohl(count);
+    offset += 4;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        if (offset + 1 > data.size()) break;
+        
+        DeltaInstruction delta;
+        delta.isLiteral = (data[offset++] == 1);
+        
+        if (delta.isLiteral) {
+            if (offset + 4 > data.size()) break;
+            uint32_t len;
+            memcpy(&len, data.data() + offset, 4);
+            len = ntohl(len);
+            offset += 4;
+            
+            if (offset + len > data.size()) break;
+            delta.literalData.assign(data.begin() + offset, data.begin() + offset + len);
+            offset += len;
+        } else {
+            if (offset + 4 > data.size()) break;
+            uint32_t index;
+            memcpy(&index, data.data() + offset, 4);
+            delta.blockIndex = ntohl(index);
+            offset += 4;
+        }
+        deltas.push_back(delta);
+    }
+    return deltas;
+}
 
 void signalHandler(int signum) {
     std::cout << "\nInterrupt signal (" << signum << ") received. Shutting down...\n";
@@ -64,6 +187,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // --- State ---
+    std::mutex ignoreMutex;
+    std::map<std::string, std::chrono::steady_clock::time_point> ignoreList;
+
     // --- Event Handlers ---
 
     // 1. Peer Discovery -> Storage & Connect
@@ -104,26 +231,26 @@ int main(int argc, char* argv[]) {
     // 2. File Modified -> Calculate Delta -> Send
     eventBus.subscribe("FILE_MODIFIED", [&](const std::any& data) {
         try {
-            std::string path = std::any_cast<std::string>(data);
-            std::cout << "Daemon: File modified: " << path << std::endl;
+            std::string fullPath = std::any_cast<std::string>(data);
+            std::string filename = std::filesystem::path(fullPath).filename().string();
+            std::cout << "Daemon: File modified: " << filename << std::endl;
 
-            // 1. Get previous metadata
-            auto meta = storage->getFile(path);
-            if (!meta) {
-                // New file, just add metadata and maybe send full file (not implemented yet)
-                // For now, just update storage
-                // In real sync, we would generate signature
-                return;
+            {
+                std::lock_guard<std::mutex> lock(ignoreMutex);
+                if (ignoreList.count(filename)) {
+                    auto now = std::chrono::steady_clock::now();
+                    if (now - ignoreList[filename] < std::chrono::seconds(2)) {
+                        std::cout << "Ignoring update for " << filename << " (recently patched)" << std::endl;
+                        return;
+                    }
+                    ignoreList.erase(filename);
+                }
             }
 
-            // 2. Calculate Delta (Simplified for demo)
-            // In a real scenario, we need the 'old' version or its signature.
-            // Here we assume we are sending to a peer who has an older version.
-            // This logic is complex; for now, let's just broadcast "I have an update"
-            
+            // Broadcast UPDATE_AVAILABLE
             auto peers = storage->getAllPeers();
             for (const auto& peer : peers) {
-                std::string updateMsg = "UPDATE_AVAILABLE|" + path;
+                std::string updateMsg = "UPDATE_AVAILABLE|" + filename;
                 std::vector<uint8_t> payload(updateMsg.begin(), updateMsg.end());
                 network->sendData(peer.id, payload);
             }
@@ -136,14 +263,99 @@ int main(int argc, char* argv[]) {
     // 3. Data Received -> Process
     eventBus.subscribe("DATA_RECEIVED", [&](const std::any& data) {
         try {
-            std::string msg = std::any_cast<std::string>(data);
-            std::cout << "Daemon: Received data: " << msg << std::endl;
+            // Expect pair<string, vector<uint8_t>>
+            auto pair = std::any_cast<std::pair<std::string, std::vector<uint8_t>>>(data);
+            std::string peerId = pair.first;
+            std::vector<uint8_t> rawData = pair.second;
             
-            if (msg.find("UPDATE_AVAILABLE|") == 0) {
-                std::string path = msg.substr(17);
-                std::cout << "Peer has update for: " << path << std::endl;
-                // Trigger request for delta
+            std::string msg;
+            if (rawData.size() > 256) {
+                msg = std::string(rawData.begin(), rawData.begin() + 256);
+            } else {
+                msg = std::string(rawData.begin(), rawData.end());
             }
+
+            if (msg.find("UPDATE_AVAILABLE|") == 0) {
+                std::string fullMsg(rawData.begin(), rawData.end());
+                std::string filename = fullMsg.substr(17);
+                
+                std::cout << "Peer " << peerId << " has update for: " << filename << std::endl;
+                
+                std::string localPath = "./watched_folder/" + filename;
+                
+                std::vector<BlockSignature> sigs;
+                if (std::filesystem::exists(localPath)) {
+                    sigs = DeltaEngine::calculateSignature(localPath);
+                }
+                
+                auto serializedSig = serializeSignature(sigs);
+                
+                std::string header = "REQUEST_DELTA|" + filename + "|";
+                std::vector<uint8_t> payload(header.begin(), header.end());
+                payload.insert(payload.end(), serializedSig.begin(), serializedSig.end());
+                
+                network->sendData(peerId, payload);
+            }
+            else if (msg.find("REQUEST_DELTA|") == 0) {
+                size_t firstPipe = msg.find('|');
+                size_t secondPipe = msg.find('|', firstPipe + 1);
+                if (secondPipe != std::string::npos) {
+                    std::string filename = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+                    
+                    if (rawData.size() > secondPipe + 1) {
+                        std::vector<uint8_t> sigData(rawData.begin() + secondPipe + 1, rawData.end());
+                        auto sigs = deserializeSignature(sigData);
+                        
+                        std::cout << "Received delta request for: " << filename << " from " << peerId << std::endl;
+                        
+                        std::string localPath = "./watched_folder/" + filename;
+                        if (std::filesystem::exists(localPath)) {
+                            auto deltas = DeltaEngine::calculateDelta(localPath, sigs);
+                            auto serializedDelta = serializeDelta(deltas);
+                            
+                            std::string header = "DELTA_DATA|" + filename + "|";
+                            std::vector<uint8_t> payload(header.begin(), header.end());
+                            payload.insert(payload.end(), serializedDelta.begin(), serializedDelta.end());
+                            
+                            network->sendData(peerId, payload);
+                            std::cout << "Sent delta with " << deltas.size() << " instructions" << std::endl;
+                        }
+                    }
+                }
+            }
+            else if (msg.find("DELTA_DATA|") == 0) {
+                size_t firstPipe = msg.find('|');
+                size_t secondPipe = msg.find('|', firstPipe + 1);
+                if (secondPipe != std::string::npos) {
+                    std::string filename = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+                    
+                    if (rawData.size() > secondPipe + 1) {
+                        std::vector<uint8_t> deltaData(rawData.begin() + secondPipe + 1, rawData.end());
+                        auto deltas = deserializeDelta(deltaData);
+                        
+                        std::cout << "Received delta data for: " << filename << " from " << peerId << std::endl;
+                        
+                        std::string localPath = "./watched_folder/" + filename;
+                        
+                        if (!std::filesystem::exists(localPath)) {
+                            std::ofstream outfile(localPath);
+                            outfile.close();
+                        }
+                        
+                        auto newData = DeltaEngine::applyDelta(localPath, deltas);
+                        
+                        // Write new data
+                        {
+                            std::lock_guard<std::mutex> lock(ignoreMutex);
+                            ignoreList[filename] = std::chrono::steady_clock::now();
+                        }
+                        fs->writeFile(localPath, newData);
+                        std::cout << "Patched file: " << localPath << std::endl;
+                    }
+                }
+            }
+        } catch (const std::bad_any_cast& e) {
+             // Ignore bad cast
         } catch (...) {
             std::cerr << "Error handling DATA_RECEIVED" << std::endl;
         }

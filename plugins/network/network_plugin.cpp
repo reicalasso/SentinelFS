@@ -124,6 +124,9 @@ namespace SentinelFS {
                 eventBus_->publish("PEER_CONNECTED", remotePeerId);
             }
             
+            // Start reading from this peer
+            std::thread(&NetworkPlugin::readLoop, this, sock, remotePeerId).detach();
+            
             return true;
         }
 
@@ -135,6 +138,15 @@ namespace SentinelFS {
             }
             
             int sock = connections_[peerId];
+            
+            // Send Length Prefix
+            uint32_t len = htonl(data.size());
+            if (send(sock, &len, sizeof(len), 0) < 0) {
+                std::cerr << "Failed to send length prefix to " << peerId << std::endl;
+                return false;
+            }
+
+            // Send Data
             ssize_t sent = send(sock, data.data(), data.size(), 0);
             if (sent < 0) {
                 std::cerr << "Failed to send data to " << peerId << std::endl;
@@ -267,6 +279,31 @@ namespace SentinelFS {
         std::thread discoveryThread_;
         int discoverySocket_ = -1;
 
+        void readLoop(int sock, std::string remotePeerId) {
+            while (true) {
+                uint32_t netLen;
+                ssize_t received = recv(sock, &netLen, sizeof(netLen), MSG_WAITALL);
+                if (received <= 0) break;
+
+                uint32_t len = ntohl(netLen);
+                std::vector<uint8_t> data(len);
+                
+                received = recv(sock, data.data(), len, MSG_WAITALL);
+                if (received <= 0) break;
+
+                if (eventBus_) {
+                    eventBus_->publish("DATA_RECEIVED", std::make_pair(remotePeerId, data));
+                }
+            }
+            
+            {
+                std::lock_guard<std::mutex> lock(connectionMutex_);
+                connections_.erase(remotePeerId);
+            }
+            close(sock);
+            std::cout << "Connection closed from " << remotePeerId << std::endl;
+        }
+
         void handleClient(int sock, std::string ip) {
             char buffer[4096];
             
@@ -309,27 +346,7 @@ namespace SentinelFS {
                 eventBus_->publish("PEER_CONNECTED", remotePeerId);
             }
 
-            while (true) {
-                len = recv(sock, buffer, sizeof(buffer), 0);
-                if (len <= 0) {
-                    break;
-                }
-                // Process received data
-                std::vector<uint8_t> data(buffer, buffer + len);
-                std::string dataStr(buffer, len);
-                std::cout << "Received " << len << " bytes from " << remotePeerId << std::endl;
-                
-                if (eventBus_) {
-                    eventBus_->publish("DATA_RECEIVED", dataStr);
-                }
-            }
-            
-            {
-                std::lock_guard<std::mutex> lock(connectionMutex_);
-                connections_.erase(remotePeerId);
-            }
-            close(sock);
-            std::cout << "Connection closed from " << remotePeerId << std::endl;
+            readLoop(sock, remotePeerId);
         }
 
         void discoveryLoop() {
