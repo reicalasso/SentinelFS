@@ -5,6 +5,9 @@ project(NetworkPlugin)
 
 add_library(network_plugin SHARED
     network_plugin.cpp
+    HandshakeProtocol.cpp
+    TCPHandler.cpp
+    UDPDiscovery.cpp
 )
 
 target_include_directories(network_plugin PUBLIC
