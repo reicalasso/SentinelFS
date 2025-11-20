@@ -1,5 +1,7 @@
 #include "TCPHandler.h"
 #include "Crypto.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <cstring>
 #include <sys/socket.h>
@@ -21,18 +23,20 @@ TCPHandler::~TCPHandler() {
 }
 
 bool TCPHandler::startListening(int port) {
-    std::cout << "Starting TCP listener on port " << port << std::endl;
+    logger_.log(LogLevel::INFO, "Starting TCP listener on port " + std::to_string(port), "TCPHandler");
     
     serverSocket_ = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket_ < 0) {
-        std::cerr << "Failed to create TCP server socket" << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to create TCP server socket: " + std::string(strerror(errno)), "TCPHandler");
+        metrics_.incrementSyncErrors();
         return false;
     }
 
     int opt = 1;
     if (setsockopt(serverSocket_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        std::cerr << "Failed to set socket options" << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to set socket options: " + std::string(strerror(errno)), "TCPHandler");
         close(serverSocket_);
+        metrics_.incrementSyncErrors();
         return false;
     }
 
@@ -43,27 +47,30 @@ bool TCPHandler::startListening(int port) {
     addr.sin_port = htons(port);
 
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Failed to bind TCP server socket" << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to bind TCP server socket to port " + std::to_string(port) + ": " + std::string(strerror(errno)), "TCPHandler");
         close(serverSocket_);
+        metrics_.incrementSyncErrors();
         return false;
     }
 
     if (listen(serverSocket_, 10) < 0) {
-        std::cerr << "Failed to listen on TCP server socket" << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to listen on TCP server socket: " + std::string(strerror(errno)), "TCPHandler");
         close(serverSocket_);
+        metrics_.incrementSyncErrors();
         return false;
     }
 
     listening_ = true;
     listenThread_ = std::thread(&TCPHandler::listenLoop, this);
     
-    std::cout << "TCP server listening on port " << port << std::endl;
+    logger_.log(LogLevel::INFO, "TCP server listening on port " + std::to_string(port), "TCPHandler");
     return true;
 }
 
 void TCPHandler::stopListening() {
     if (!listening_) return;
     
+    logger_.log(LogLevel::INFO, "Stopping TCP server", "TCPHandler");
     listening_ = false;
     
     if (serverSocket_ >= 0) {
@@ -78,10 +85,13 @@ void TCPHandler::stopListening() {
     
     // Close all connections
     std::lock_guard<std::mutex> lock(connectionMutex_);
+    size_t count = connections_.size();
     for (auto& pair : connections_) {
         close(pair.second);
     }
     connections_.clear();
+    
+    logger_.log(LogLevel::INFO, "TCP server stopped, closed " + std::to_string(count) + " connections", "TCPHandler");
 }
 
 void TCPHandler::listenLoop() {
@@ -103,7 +113,8 @@ void TCPHandler::listenLoop() {
         
         if (clientSocket >= 0) {
             std::string clientIp = inet_ntoa(clientAddr.sin_addr);
-            std::cout << "New connection from " << clientIp << std::endl;
+            logger_.log(LogLevel::INFO, "New connection from " + clientIp, "TCPHandler");
+            metrics_.incrementConnections();
             
             std::thread(&TCPHandler::handleClient, this, clientSocket).detach();
         }
@@ -111,14 +122,19 @@ void TCPHandler::listenLoop() {
 }
 
 void TCPHandler::handleClient(int clientSocket) {
+    logger_.log(LogLevel::DEBUG, "Handling new client connection", "TCPHandler");
+    
     // Perform server-side handshake
     auto result = handshake_->performServerHandshake(clientSocket);
     
     if (!result.success) {
-        std::cerr << "Handshake failed: " << result.errorMessage << std::endl;
+        logger_.log(LogLevel::WARN, "Handshake failed: " + result.errorMessage, "TCPHandler");
+        metrics_.incrementSyncErrors();
         close(clientSocket);
         return;
     }
+    
+    logger_.log(LogLevel::INFO, "Handshake successful with peer: " + result.peerId, "TCPHandler");
     
     // Store connection
     {
@@ -136,11 +152,12 @@ void TCPHandler::handleClient(int clientSocket) {
 }
 
 bool TCPHandler::connectToPeer(const std::string& address, int port) {
-    std::cout << "Connecting to peer " << address << ":" << port << std::endl;
+    logger_.log(LogLevel::INFO, "Connecting to peer " + address + ":" + std::to_string(port), "TCPHandler");
     
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-        std::cerr << "Failed to create socket" << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to create socket: " + std::string(strerror(errno)), "TCPHandler");
+        metrics_.incrementSyncErrors();
         return false;
     }
 
@@ -150,25 +167,33 @@ bool TCPHandler::connectToPeer(const std::string& address, int port) {
     addr.sin_port = htons(port);
     
     if (inet_pton(AF_INET, address.c_str(), &addr.sin_addr) <= 0) {
-        std::cerr << "Invalid address: " << address << std::endl;
+        logger_.log(LogLevel::ERROR, "Invalid address: " + address, "TCPHandler");
         close(sock);
+        metrics_.incrementSyncErrors();
         return false;
     }
 
     if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Failed to connect to " << address << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to connect to " + address + ": " + std::string(strerror(errno)), "TCPHandler");
         close(sock);
+        metrics_.incrementSyncErrors();
         return false;
     }
 
+    logger_.log(LogLevel::DEBUG, "TCP connection established to " + address, "TCPHandler");
+    
     // Perform client-side handshake
     auto result = handshake_->performClientHandshake(sock);
     
     if (!result.success) {
-        std::cerr << "Handshake failed: " << result.errorMessage << std::endl;
+        logger_.log(LogLevel::WARN, "Handshake failed: " + result.errorMessage, "TCPHandler");
         close(sock);
+        metrics_.incrementSyncErrors();
         return false;
     }
+    
+    logger_.log(LogLevel::INFO, "Successfully connected to peer: " + result.peerId, "TCPHandler");
+    metrics_.incrementConnections();
     
     // Store connection
     {
@@ -192,27 +217,32 @@ bool TCPHandler::sendData(const std::string& peerId, const std::vector<uint8_t>&
     
     auto it = connections_.find(peerId);
     if (it == connections_.end()) {
-        std::cerr << "Peer " << peerId << " not found" << std::endl;
+        logger_.log(LogLevel::WARN, "Cannot send data, peer not connected: " + peerId, "TCPHandler");
+        metrics_.incrementSyncErrors();
         return false;
     }
     
     int sock = it->second;
+    logger_.log(LogLevel::DEBUG, "Sending " + std::to_string(data.size()) + " bytes to peer " + peerId, "TCPHandler");
     
     // Send length prefix (network byte order)
     uint32_t len = htonl(data.size());
     if (send(sock, &len, sizeof(len), 0) < 0) {
-        std::cerr << "Failed to send length prefix to " << peerId << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to send length prefix to " + peerId + ": " + std::string(strerror(errno)), "TCPHandler");
+        metrics_.incrementSyncErrors();
         return false;
     }
 
     // Send data
     ssize_t sent = send(sock, data.data(), data.size(), 0);
     if (sent < 0) {
-        std::cerr << "Failed to send data to " << peerId << std::endl;
+        logger_.log(LogLevel::ERROR, "Failed to send data to " + peerId + ": " + std::string(strerror(errno)), "TCPHandler");
+        metrics_.incrementSyncErrors();
         return false;
     }
     
-    std::cout << "Sent " << sent << " bytes to peer " << peerId << std::endl;
+    logger_.log(LogLevel::DEBUG, "Successfully sent " + std::to_string(sent) + " bytes to peer " + peerId, "TCPHandler");
+    metrics_.incrementBytesSent(sent);
     return true;
 }
 
@@ -221,9 +251,12 @@ void TCPHandler::disconnectPeer(const std::string& peerId) {
     
     auto it = connections_.find(peerId);
     if (it != connections_.end()) {
+        logger_.log(LogLevel::INFO, "Disconnecting from peer: " + peerId, "TCPHandler");
         close(it->second);
         connections_.erase(it);
-        std::cout << "Disconnected from peer " << peerId << std::endl;
+        metrics_.incrementDisconnections();
+    } else {
+        logger_.log(LogLevel::DEBUG, "Peer already disconnected: " + peerId, "TCPHandler");
     }
 }
 
@@ -250,16 +283,19 @@ int TCPHandler::measureRTT(const std::string& peerId) {
     
     auto it = connections_.find(peerId);
     if (it == connections_.end()) {
+        logger_.log(LogLevel::DEBUG, "Cannot measure RTT, peer not connected: " + peerId, "TCPHandler");
         return -1; // Not connected
     }
 
     int sock = it->second;
+    logger_.log(LogLevel::DEBUG, "Measuring RTT to peer: " + peerId, "TCPHandler");
     
     // Send PING message
     std::string ping = "PING";
     auto start = std::chrono::high_resolution_clock::now();
     
     if (send(sock, ping.c_str(), ping.length(), 0) < 0) {
+        logger_.log(LogLevel::WARN, "Failed to send PING to " + peerId + ": " + std::string(strerror(errno)), "TCPHandler");
         return -1;
     }
 
@@ -272,30 +308,50 @@ int TCPHandler::measureRTT(const std::string& peerId) {
     
     ssize_t len = recv(sock, buffer, sizeof(buffer) - 1, MSG_PEEK);
     if (len <= 0) {
+        logger_.log(LogLevel::WARN, "RTT measurement timed out for peer: " + peerId, "TCPHandler");
         return -1;
     }
     
     auto end = std::chrono::high_resolution_clock::now();
     int rtt = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     
-    std::cout << "RTT to " << peerId << ": " << rtt << "ms" << std::endl;
+    logger_.log(LogLevel::INFO, "RTT to " + peerId + ": " + std::to_string(rtt) + "ms", "TCPHandler");
+    // Note: RTT could be added to metrics if needed
     return rtt;
 }
 
 void TCPHandler::readLoop(int sock, const std::string& remotePeerId) {
+    logger_.log(LogLevel::DEBUG, "Starting read loop for peer: " + remotePeerId, "TCPHandler");
+    
     while (true) {
         // Read length prefix
         uint32_t netLen;
         ssize_t received = recv(sock, &netLen, sizeof(netLen), MSG_WAITALL);
-        if (received <= 0) break;
+        if (received <= 0) {
+            if (received < 0) {
+                logger_.log(LogLevel::WARN, "Error reading from " + remotePeerId + ": " + std::string(strerror(errno)), "TCPHandler");
+                metrics_.incrementSyncErrors();
+            }
+            break;
+        }
 
         uint32_t len = ntohl(netLen);
+        logger_.log(LogLevel::DEBUG, "Receiving " + std::to_string(len) + " bytes from " + remotePeerId, "TCPHandler");
         
         // Read data
         std::vector<uint8_t> data(len);
         received = recv(sock, data.data(), len, MSG_WAITALL);
-        if (received <= 0) break;
+        if (received <= 0) {
+            if (received < 0) {
+                logger_.log(LogLevel::ERROR, "Error reading data from " + remotePeerId + ": " + std::string(strerror(errno)), "TCPHandler");
+                metrics_.incrementSyncErrors();
+            }
+            break;
+        }
 
+        logger_.log(LogLevel::DEBUG, "Successfully received " + std::to_string(received) + " bytes from " + remotePeerId, "TCPHandler");
+        metrics_.incrementBytesReceived(received);
+        
         // Notify via callback
         if (dataCallback_) {
             dataCallback_(remotePeerId, data);
@@ -314,7 +370,8 @@ void TCPHandler::readLoop(int sock, const std::string& remotePeerId) {
     }
     
     close(sock);
-    std::cout << "Connection closed from " << remotePeerId << std::endl;
+    logger_.log(LogLevel::INFO, "Connection closed from peer: " + remotePeerId, "TCPHandler");
+    metrics_.incrementDisconnections();
 }
 
 } // namespace SentinelFS

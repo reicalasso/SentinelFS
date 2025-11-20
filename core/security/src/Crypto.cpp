@@ -1,4 +1,6 @@
 #include "Crypto.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/hmac.h>
@@ -11,8 +13,15 @@
 namespace sentinel {
 
 std::vector<uint8_t> Crypto::generateKey() {
+    auto& logger = SentinelFS::Logger::instance();
+    auto& metrics = SentinelFS::MetricsCollector::instance();
+    
+    logger.log(SentinelFS::LogLevel::DEBUG, "Generating encryption key", "Crypto");
+    
     std::vector<uint8_t> key(KEY_SIZE);
     if (RAND_bytes(key.data(), KEY_SIZE) != 1) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Failed to generate random key", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Failed to generate random key");
     }
     return key;
@@ -58,10 +67,17 @@ std::vector<uint8_t> Crypto::encrypt(
     const std::vector<uint8_t>& key,
     const std::vector<uint8_t>& iv
 ) {
+    auto& logger = SentinelFS::Logger::instance();
+    auto& metrics = SentinelFS::MetricsCollector::instance();
+    
     if (key.size() != KEY_SIZE) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Invalid key size for encryption", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Invalid key size");
     }
     if (iv.size() != IV_SIZE) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Invalid IV size for encryption", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Invalid IV size");
     }
     
@@ -113,13 +129,22 @@ std::vector<uint8_t> Crypto::decrypt(
     const std::vector<uint8_t>& key,
     const std::vector<uint8_t>& iv
 ) {
+    auto& logger = SentinelFS::Logger::instance();
+    auto& metrics = SentinelFS::MetricsCollector::instance();
+    
     if (key.size() != KEY_SIZE) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Invalid key size for decryption", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Invalid key size");
     }
     if (iv.size() != IV_SIZE) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Invalid IV size for decryption", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Invalid IV size");
     }
     if (ciphertext.size() % BLOCK_SIZE != 0) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Invalid ciphertext size for decryption", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Invalid ciphertext size");
     }
     
@@ -170,6 +195,11 @@ std::vector<uint8_t> Crypto::deriveKeyFromSessionCode(
     const std::vector<uint8_t>& salt,
     int iterations
 ) {
+    auto& logger = SentinelFS::Logger::instance();
+    auto& metrics = SentinelFS::MetricsCollector::instance();
+    
+    logger.log(SentinelFS::LogLevel::DEBUG, "Deriving key from session code", "Crypto");
+    
     std::vector<uint8_t> key(KEY_SIZE);
     
     // Use PBKDF2-HMAC-SHA256 for key derivation
@@ -183,6 +213,8 @@ std::vector<uint8_t> Crypto::deriveKeyFromSessionCode(
         KEY_SIZE,
         key.data()
     ) != 1) {
+        logger.log(SentinelFS::LogLevel::ERROR, "Key derivation from session code failed", "Crypto");
+        metrics.incrementEncryptionErrors();
         throw std::runtime_error("Key derivation failed");
     }
     

@@ -47,15 +47,17 @@ void printUsage(const char* progName) {
     std::cout << "Commands:\n";
     std::cout << "  status              Show daemon status and sync information\n";
     std::cout << "  peers               List all discovered peers\n";
+    std::cout << "  stats               Show transfer statistics\n";
+    std::cout << "  metrics             Show detailed performance metrics\n";
     std::cout << "  logs [n]            Show last n log entries (default: 20)\n";
     std::cout << "  config              Display current configuration\n";
     std::cout << "  pause               Pause file synchronization\n";
     std::cout << "  resume              Resume file synchronization\n";
-    std::cout << "  stats               Show transfer statistics\n";
     std::cout << "  help                Show this help message\n";
     std::cout << "\nExamples:\n";
     std::cout << "  " << progName << " status\n";
     std::cout << "  " << progName << " peers\n";
+    std::cout << "  " << progName << " metrics\n";
     std::cout << "  " << progName << " logs 50\n";
 }
 
@@ -89,6 +91,8 @@ int main(int argc, char* argv[]) {
         fullCommand = "RESUME";
     } else if (command == "stats") {
         fullCommand = "STATS";
+    } else if (command == "metrics") {
+        fullCommand = "METRICS";
     } else {
         std::cerr << "Error: Unknown command '" << command << "'\n";
         std::cerr << "Run '" << argv[0] << " help' for usage information.\n";

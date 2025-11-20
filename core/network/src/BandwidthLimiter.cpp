@@ -1,4 +1,6 @@
 #include "BandwidthLimiter.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <algorithm>
 #include <iostream>
 
@@ -151,35 +153,41 @@ bool BandwidthManager::requestDownload(const std::string& peerId, size_t bytes) 
 }
 
 void BandwidthManager::setGlobalUploadLimit(size_t bytesPerSecond) {
+    auto& logger = Logger::instance();
+    
     globalUpload_.setRateLimit(bytesPerSecond);
-    std::cout << "Global upload limit set to " << bytesPerSecond << " B/s";
     if (bytesPerSecond > 0) {
-        std::cout << " (" << (bytesPerSecond / 1024) << " KB/s)" << std::endl;
+        logger.log(LogLevel::INFO, "Global upload limit set to " + std::to_string(bytesPerSecond / 1024) + " KB/s", "BandwidthManager");
     } else {
-        std::cout << " (unlimited)" << std::endl;
+        logger.log(LogLevel::INFO, "Global upload limit set to unlimited", "BandwidthManager");
     }
 }
 
 void BandwidthManager::setGlobalDownloadLimit(size_t bytesPerSecond) {
+    auto& logger = Logger::instance();
+    
     globalDownload_.setRateLimit(bytesPerSecond);
-    std::cout << "Global download limit set to " << bytesPerSecond << " B/s";
     if (bytesPerSecond > 0) {
-        std::cout << " (" << (bytesPerSecond / 1024) << " KB/s)" << std::endl;
+        logger.log(LogLevel::INFO, "Global download limit set to " + std::to_string(bytesPerSecond / 1024) + " KB/s", "BandwidthManager");
     } else {
-        std::cout << " (unlimited)" << std::endl;
+        logger.log(LogLevel::INFO, "Global download limit set to unlimited", "BandwidthManager");
     }
 }
 
 void BandwidthManager::setPeerUploadLimit(const std::string& peerId, size_t bytesPerSecond) {
+    auto& logger = Logger::instance();
+    
     std::lock_guard<std::mutex> lock(peerMutex_);
     peerUploadLimiters_[peerId] = std::make_unique<BandwidthLimiter>(bytesPerSecond);
-    std::cout << "Peer " << peerId << " upload limit: " << (bytesPerSecond / 1024) << " KB/s" << std::endl;
+    logger.log(LogLevel::INFO, "Peer " + peerId + " upload limit: " + std::to_string(bytesPerSecond / 1024) + " KB/s", "BandwidthManager");
 }
 
 void BandwidthManager::setPeerDownloadLimit(const std::string& peerId, size_t bytesPerSecond) {
+    auto& logger = Logger::instance();
+    
     std::lock_guard<std::mutex> lock(peerMutex_);
     peerDownloadLimiters_[peerId] = std::make_unique<BandwidthLimiter>(bytesPerSecond);
-    std::cout << "Peer " << peerId << " download limit: " << (bytesPerSecond / 1024) << " KB/s" << std::endl;
+    logger.log(LogLevel::INFO, "Peer " + peerId + " download limit: " + std::to_string(bytesPerSecond / 1024) + " KB/s", "BandwidthManager");
 }
 
 void BandwidthManager::removePeer(const std::string& peerId) {

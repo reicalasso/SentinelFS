@@ -1,16 +1,24 @@
 #include "FileMetadataManager.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 
 namespace SentinelFS {
 
 bool FileMetadataManager::addFile(const std::string& path, const std::string& hash, 
                                    long long timestamp, long long size) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Adding file metadata: " + path, "FileMetadataManager");
+    
     const char* sql = "INSERT OR REPLACE INTO files (path, hash, timestamp, size) VALUES (?, ?, ?, ?);";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -20,22 +28,28 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
     sqlite3_bind_int64(stmt, 4, size);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_finalize(stmt);
+    metrics.incrementFilesWatched();
     return true;
 }
 
 std::optional<FileMetadata> FileMetadataManager::getFile(const std::string& path) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     const char* sql = "SELECT path, hash, timestamp, size FROM files WHERE path = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        metrics.incrementSyncErrors();
         return std::nullopt;
     }
 
@@ -49,6 +63,7 @@ std::optional<FileMetadata> FileMetadataManager::getFile(const std::string& path
         meta.timestamp = sqlite3_column_int64(stmt, 2);
         meta.size = sqlite3_column_int64(stmt, 3);
         result = meta;
+        logger.log(LogLevel::DEBUG, "Retrieved file metadata: " + path, "FileMetadataManager");
     }
 
     sqlite3_finalize(stmt);
@@ -56,24 +71,33 @@ std::optional<FileMetadata> FileMetadataManager::getFile(const std::string& path
 }
 
 bool FileMetadataManager::removeFile(const std::string& path) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Removing file metadata: " + path, "FileMetadataManager");
+    
     const char* sql = "DELETE FROM files WHERE path = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_finalize(stmt);
+    metrics.incrementFilesDeleted();
+    logger.log(LogLevel::INFO, "File metadata removed: " + path, "FileMetadataManager");
     return true;
 }
 

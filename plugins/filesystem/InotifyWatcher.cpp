@@ -1,4 +1,6 @@
 #include "InotifyWatcher.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -13,20 +15,29 @@ InotifyWatcher::~InotifyWatcher() {
 }
 
 bool InotifyWatcher::initialize(ChangeCallback callback) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::INFO, "Initializing inotify watcher", "InotifyWatcher");
     callback_ = callback;
     
     inotifyFd_ = inotify_init();
     if (inotifyFd_ < 0) {
-        std::cerr << "Failed to initialize inotify" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to initialize inotify: " + std::string(strerror(errno)), "InotifyWatcher");
+        metrics.incrementSyncErrors();
         return false;
     }
 
     running_ = true;
     watcherThread_ = std::thread(&InotifyWatcher::monitorLoop, this);
+    logger.log(LogLevel::INFO, "Inotify watcher initialized successfully", "InotifyWatcher");
     return true;
 }
 
 void InotifyWatcher::shutdown() {
+    auto& logger = Logger::instance();
+    
+    logger.log(LogLevel::INFO, "Shutting down inotify watcher", "InotifyWatcher");
     running_ = false;
     if (inotifyFd_ >= 0) {
         close(inotifyFd_);
@@ -35,33 +46,55 @@ void InotifyWatcher::shutdown() {
     if (watcherThread_.joinable()) {
         watcherThread_.join();
     }
+    logger.log(LogLevel::INFO, "Inotify watcher shut down", "InotifyWatcher");
 }
 
 bool InotifyWatcher::addWatch(const std::string& path) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Adding watch for: " + path, "InotifyWatcher");
+    
     int wd = inotify_add_watch(inotifyFd_, path.c_str(), 
                                 IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM);
     if (wd < 0) {
-        std::cerr << "Failed to add watch for " << path << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to add watch for " + path + ": " + std::string(strerror(errno)), "InotifyWatcher");
+        metrics.incrementSyncErrors();
         return false;
     }
     
     watchDescriptors_[wd] = path;
-    std::cout << "Watching directory: " << path << std::endl;
+    logger.log(LogLevel::INFO, "Now watching directory: " + path, "InotifyWatcher");
+    metrics.incrementFilesWatched();
     return true;
 }
 
 bool InotifyWatcher::removeWatch(const std::string& path) {
+    auto& logger = Logger::instance();
+    
+    logger.log(LogLevel::DEBUG, "Removing watch for: " + path, "InotifyWatcher");
+    
     for (auto it = watchDescriptors_.begin(); it != watchDescriptors_.end(); ++it) {
         if (it->second == path) {
-            inotify_rm_watch(inotifyFd_, it->first);
+            if (inotify_rm_watch(inotifyFd_, it->first) < 0) {
+                logger.log(LogLevel::WARN, "Failed to remove watch for " + path + ": " + std::string(strerror(errno)), "InotifyWatcher");
+            } else {
+                logger.log(LogLevel::INFO, "Removed watch for: " + path, "InotifyWatcher");
+            }
             watchDescriptors_.erase(it);
             return true;
         }
     }
+    logger.log(LogLevel::WARN, "Watch not found for path: " + path, "InotifyWatcher");
     return false;
 }
 
 void InotifyWatcher::monitorLoop() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Monitor loop started", "InotifyWatcher");
+    
     const int EVENT_SIZE = sizeof(struct inotify_event);
     const int BUF_LEN = 1024 * (EVENT_SIZE + 16);
     char buffer[BUF_LEN];
@@ -70,7 +103,8 @@ void InotifyWatcher::monitorLoop() {
         int length = read(inotifyFd_, buffer, BUF_LEN);
         if (length < 0) {
             if (running_) {
-                std::cerr << "inotify read error" << std::endl;
+                logger.log(LogLevel::ERROR, "Inotify read error: " + std::string(strerror(errno)), "InotifyWatcher");
+                metrics.incrementSyncErrors();
             }
             break;
         }
@@ -90,12 +124,14 @@ void InotifyWatcher::monitorLoop() {
                         eventType = "FILE_CREATED";
                     } else if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM) {
                         eventType = "FILE_DELETED";
+                        metrics.incrementFilesDeleted();
                     } else if (event->mask & IN_MODIFY) {
                         eventType = "FILE_MODIFIED";
+                        metrics.incrementFilesModified();
                     }
 
                     if (!eventType.empty() && callback_) {
-                        std::cout << "Detected " << eventType << ": " << fullPath << std::endl;
+                        logger.log(LogLevel::INFO, "Detected " + eventType + ": " + fullPath, "InotifyWatcher");
                         callback_(eventType, fullPath);
                     }
                 }
@@ -103,6 +139,8 @@ void InotifyWatcher::monitorLoop() {
             i += EVENT_SIZE + event->len;
         }
     }
+    
+    logger.log(LogLevel::DEBUG, "Monitor loop ended", "InotifyWatcher");
 }
 
 } // namespace SentinelFS

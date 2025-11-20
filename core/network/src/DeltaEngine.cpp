@@ -1,4 +1,6 @@
 #include "DeltaEngine.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -35,11 +37,17 @@ namespace SentinelFS {
     }
 
     std::vector<BlockSignature> DeltaEngine::calculateSignature(const std::string& filePath) {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        logger.log(LogLevel::DEBUG, "Calculating signature for: " + filePath, "DeltaEngine");
+        
         std::vector<BlockSignature> signatures;
         std::ifstream file(filePath, std::ios::binary);
         
         if (!file) {
-            std::cerr << "Failed to open file for signature calculation: " << filePath << std::endl;
+            logger.log(LogLevel::ERROR, "Failed to open file for signature calculation: " + filePath, "DeltaEngine");
+            metrics.incrementSyncErrors();
             return signatures;
         }
 
@@ -64,11 +72,17 @@ namespace SentinelFS {
     }
 
     std::vector<DeltaInstruction> DeltaEngine::calculateDelta(const std::string& newFilePath, const std::vector<BlockSignature>& oldSignature) {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        logger.log(LogLevel::DEBUG, "Calculating delta for: " + newFilePath, "DeltaEngine");
+        
         std::vector<DeltaInstruction> deltas;
         std::ifstream file(newFilePath, std::ios::binary);
         
         if (!file) {
-            std::cerr << "Failed to open file for delta calculation: " << newFilePath << std::endl;
+            logger.log(LogLevel::ERROR, "Failed to open file for delta calculation: " + newFilePath, "DeltaEngine");
+            metrics.incrementSyncErrors();
             return deltas;
         }
 
@@ -134,9 +148,15 @@ namespace SentinelFS {
     }
 
     std::vector<uint8_t> DeltaEngine::applyDelta(const std::string& oldFilePath, const std::vector<DeltaInstruction>& deltas) {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        logger.log(LogLevel::DEBUG, "Applying delta to: " + oldFilePath, "DeltaEngine");
+        
         std::ifstream oldFile(oldFilePath, std::ios::binary);
         if (!oldFile) {
-            std::cerr << "Failed to open old file for patching: " << oldFilePath << std::endl;
+            logger.log(LogLevel::ERROR, "Failed to open old file for patching: " + oldFilePath, "DeltaEngine");
+            metrics.incrementSyncErrors();
             return {};
         }
 
@@ -151,7 +171,8 @@ namespace SentinelFS {
                 // Copy block from old file
                 size_t offset = delta.blockIndex * BLOCK_SIZE;
                 if (offset >= oldData.size()) {
-                    std::cerr << "Block index out of bounds: " << delta.blockIndex << std::endl;
+                    auto& logger = Logger::instance();
+                    logger.log(LogLevel::ERROR, "Block index out of bounds: " + std::to_string(delta.blockIndex), "DeltaEngine");
                     continue;
                 }
                 size_t len = BLOCK_SIZE;

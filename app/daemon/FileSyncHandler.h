@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <atomic>
 
 namespace SentinelFS {
 
@@ -11,6 +12,9 @@ class IStorageAPI;
 
 /**
  * @brief Handles file synchronization events
+ * 
+ * Responsible for broadcasting file changes to peers.
+ * Works with EventHandlers to prevent sync loops.
  */
 class FileSyncHandler {
 public:
@@ -18,29 +22,29 @@ public:
 
     /**
      * @brief Handle file modification event
+     * @param fullPath Absolute path to modified file
+     * 
+     * Broadcasts UPDATE_AVAILABLE to all connected peers.
+     * Respects syncEnabled flag.
      */
     void handleFileModified(const std::string& fullPath);
 
     /**
-     * @brief Enable/disable sync
+     * @brief Enable/disable sync operations
+     * @param enabled true to enable, false to disable
      */
     void setSyncEnabled(bool enabled) { syncEnabled_ = enabled; }
-
+    
     /**
-     * @brief Check if path should be ignored (recently patched)
+     * @brief Check if sync is currently enabled
      */
-    bool shouldIgnore(const std::string& filename);
-
-    /**
-     * @brief Mark file as recently patched
-     */
-    void markAsPatched(const std::string& filename);
+    bool isSyncEnabled() const { return syncEnabled_; }
 
 private:
     INetworkAPI* network_;
     IStorageAPI* storage_;
     std::string watchDirectory_;
-    bool syncEnabled_ = true;
+    std::atomic<bool> syncEnabled_{true};
 };
 
 } // namespace SentinelFS

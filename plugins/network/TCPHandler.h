@@ -2,6 +2,8 @@
 
 #include "HandshakeProtocol.h"
 #include "EventBus.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -105,6 +107,9 @@ private:
     EventBus* eventBus_;
     HandshakeProtocol* handshake_;
     DataCallback dataCallback_;
+    
+    Logger& logger_{Logger::instance()};
+    MetricsCollector& metrics_{MetricsCollector::instance()};
     
     int serverSocket_{-1};
     std::atomic<bool> listening_{false};

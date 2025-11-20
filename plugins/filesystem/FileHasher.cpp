@@ -1,5 +1,7 @@
 #include "FileHasher.h"
 #include "DeltaEngine.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <fstream>
 #include <vector>
 #include <iostream>
@@ -7,16 +9,24 @@
 namespace SentinelFS {
 
 std::string FileHasher::calculateSHA256(const std::string& filePath) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Calculating SHA256 for: " + filePath, "FileHasher");
+    
     std::ifstream file(filePath, std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to open file for hashing: " << filePath << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to open file for hashing: " + filePath, "FileHasher");
+        metrics.incrementSyncErrors();
         return "";
     }
 
     std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), 
                                  std::istreambuf_iterator<char>());
     
-    return DeltaEngine::calculateSHA256(buffer.data(), buffer.size());
+    std::string hash = DeltaEngine::calculateSHA256(buffer.data(), buffer.size());
+    logger.log(LogLevel::DEBUG, "SHA256 calculated: " + hash.substr(0, 16) + "... for " + filePath, "FileHasher");
+    return hash;
 }
 
 std::string FileHasher::calculateSHA256(const uint8_t* data, size_t length) {

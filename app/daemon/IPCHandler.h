@@ -71,6 +71,8 @@ private:
     std::string handleConnectCommand(const std::string& args);
     std::string handleUploadLimitCommand(const std::string& args);
     std::string handleDownloadLimitCommand(const std::string& args);
+    std::string handleMetricsCommand();
+    std::string handleStatsCommand();
     
     std::string socketPath_;
     int serverSocket_{-1};

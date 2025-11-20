@@ -1,15 +1,23 @@
 #include "PeerManager.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 
 namespace SentinelFS {
 
 bool PeerManager::addPeer(const PeerInfo& peer) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Adding peer: " + peer.id + " at " + peer.ip + ":" + std::to_string(peer.port), "PeerManager");
+    
     const char* sql = "INSERT OR REPLACE INTO peers (id, address, port, last_seen, status, latency) VALUES (?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -21,22 +29,28 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
     sqlite3_bind_int(stmt, 6, peer.latency);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_finalize(stmt);
+    logger.log(LogLevel::INFO, "Peer added successfully: " + peer.id, "PeerManager");
     return true;
 }
 
 std::optional<PeerInfo> PeerManager::getPeer(const std::string& peerId) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers WHERE id = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
+        metrics.incrementSyncErrors();
         return std::nullopt;
     }
 
@@ -60,13 +74,17 @@ std::optional<PeerInfo> PeerManager::getPeer(const std::string& peerId) {
 }
 
 std::vector<PeerInfo> PeerManager::getAllPeers() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     std::vector<PeerInfo> peers;
     const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
+        metrics.incrementSyncErrors();
         return peers;
     }
 
@@ -87,12 +105,18 @@ std::vector<PeerInfo> PeerManager::getAllPeers() {
 }
 
 bool PeerManager::updatePeerLatency(const std::string& peerId, int latency) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Updating latency for peer " + peerId + ": " + std::to_string(latency) + "ms", "PeerManager");
+    
     const char* sql = "UPDATE peers SET latency = ? WHERE id = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -100,8 +124,9 @@ bool PeerManager::updatePeerLatency(const std::string& peerId, int latency) {
     sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_STATIC);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -110,6 +135,9 @@ bool PeerManager::updatePeerLatency(const std::string& peerId, int latency) {
 }
 
 std::vector<PeerInfo> PeerManager::getPeersByLatency() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     std::vector<PeerInfo> peers;
     const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers "
                      "ORDER BY CASE WHEN latency = -1 THEN 999999 ELSE latency END ASC;";
@@ -117,7 +145,8 @@ std::vector<PeerInfo> PeerManager::getPeersByLatency() {
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
+        metrics.incrementSyncErrors();
         return peers;
     }
 

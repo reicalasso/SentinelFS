@@ -1,21 +1,38 @@
 #include <iostream>
 #include <csignal>
 #include <string>
+#include <filesystem>
 #include "DaemonCore.h"
 #include "IPCHandler.h"
 #include "EventHandlers.h"
 #include "SessionCode.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 
 using namespace SentinelFS;
 
 std::atomic<bool> running{true};
 
 void signalHandler(int signum) {
-    std::cout << "\nInterrupt signal (" << signum << ") received. Shutting down...\n";
+    auto& logger = Logger::instance();
+    logger.info("Interrupt signal (" + std::to_string(signum) + ") received. Shutting down...", "Daemon");
     running = false;
 }
 
 int main(int argc, char* argv[]) {
+    // Initialize logging
+    auto& logger = Logger::instance();
+    
+    // Create logs directory if it doesn't exist
+    std::filesystem::create_directories("./logs");
+    
+    logger.setLogFile("./logs/sentinel_daemon.log");
+    logger.setLevel(LogLevel::DEBUG);
+    logger.setMaxFileSize(100); // 100MB max log file size
+    logger.setComponent("Daemon");
+    
+    logger.info("=== SentinelFS Daemon Starting ===", "Daemon");
+    
     // Register signal handlers
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);

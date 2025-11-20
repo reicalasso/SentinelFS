@@ -13,6 +13,13 @@ class IFileAPI;
 
 /**
  * @brief Handles delta sync protocol messages
+ * 
+ * Implements the 3-way delta sync protocol:
+ * 1. UPDATE_AVAILABLE: Peer notifies us of file change
+ * 2. REQUEST_DELTA: We send our file signature
+ * 3. DELTA_DATA: Peer sends delta instructions
+ * 
+ * Uses DeltaEngine for efficient bandwidth usage.
  */
 class DeltaSyncProtocolHandler {
 public:
@@ -20,17 +27,29 @@ public:
                             IFileAPI* filesystem, const std::string& watchDir);
 
     /**
-     * @brief Handle UPDATE_AVAILABLE message
+     * @brief Handle UPDATE_AVAILABLE message from peer
+     * @param peerId Peer that sent the message
+     * @param data Raw message data
+     * 
+     * Calculates local file signature and requests delta.
      */
     void handleUpdateAvailable(const std::string& peerId, const std::vector<uint8_t>& data);
 
     /**
-     * @brief Handle REQUEST_DELTA message
+     * @brief Handle REQUEST_DELTA message from peer
+     * @param peerId Peer that sent the message
+     * @param data Raw message data containing peer's signature
+     * 
+     * Calculates delta and sends DELTA_DATA response.
      */
     void handleDeltaRequest(const std::string& peerId, const std::vector<uint8_t>& data);
 
     /**
-     * @brief Handle DELTA_DATA message
+     * @brief Handle DELTA_DATA message from peer
+     * @param peerId Peer that sent the message
+     * @param data Raw message data containing delta instructions
+     * 
+     * Applies delta to local file and notifies ignore list.
      */
     void handleDeltaData(const std::string& peerId, const std::vector<uint8_t>& data);
 

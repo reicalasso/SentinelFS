@@ -1,5 +1,6 @@
 #include "IPCHandler.h"
 #include "SessionCode.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -141,6 +142,10 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleUploadLimitCommand(args);
     } else if (cmd == "DOWNLOAD-LIMIT") {
         return handleDownloadLimitCommand(args);
+    } else if (cmd == "METRICS") {
+        return handleMetricsCommand();
+    } else if (cmd == "STATS") {
+        return handleStatsCommand();
     } else if (cmd == "CONFLICTS") {
         // List conflicts
         auto conflicts = storage_->getUnresolvedConflicts();
@@ -275,6 +280,33 @@ std::string IPCHandler::handleUploadLimitCommand(const std::string& args) {
 std::string IPCHandler::handleDownloadLimitCommand(const std::string& args) {
     // TODO: Implement bandwidth limiting via network plugin interface
     return "Bandwidth limiting requires daemon restart with --download-limit flag\n";
+}
+
+std::string IPCHandler::handleMetricsCommand() {
+    auto& metrics = MetricsCollector::instance();
+    return metrics.getMetricsSummary();
+}
+
+std::string IPCHandler::handleStatsCommand() {
+    auto& metrics = MetricsCollector::instance();
+    auto networkMetrics = metrics.getNetworkMetrics();
+    auto syncMetrics = metrics.getSyncMetrics();
+    
+    std::stringstream ss;
+    ss << "=== Transfer Statistics ===\n";
+    
+    double uploadMB = networkMetrics.bytesUploaded / (1024.0 * 1024.0);
+    double downloadMB = networkMetrics.bytesDownloaded / (1024.0 * 1024.0);
+    
+    ss << "Uploaded: " << std::fixed << std::setprecision(2) << uploadMB << " MB\n";
+    ss << "Downloaded: " << downloadMB << " MB\n";
+    ss << "Files Synced: " << syncMetrics.filesSynced << "\n";
+    ss << "Deltas Sent: " << networkMetrics.deltasSent << "\n";
+    ss << "Deltas Received: " << networkMetrics.deltasReceived << "\n";
+    ss << "Transfers Completed: " << networkMetrics.transfersCompleted << "\n";
+    ss << "Transfers Failed: " << networkMetrics.transfersFailed << "\n";
+    
+    return ss.str();
 }
 
 } // namespace SentinelFS

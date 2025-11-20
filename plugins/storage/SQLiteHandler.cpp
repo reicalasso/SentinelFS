@@ -1,4 +1,6 @@
 #include "SQLiteHandler.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 
 namespace SentinelFS {
@@ -8,21 +10,36 @@ SQLiteHandler::~SQLiteHandler() {
 }
 
 bool SQLiteHandler::initialize(const std::string& dbPath) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::INFO, "Initializing SQLite database: " + dbPath, "SQLiteHandler");
+    
     if (sqlite3_open(dbPath.c_str(), &db_) != SQLITE_OK) {
-        std::cerr << "Cannot open database: " << sqlite3_errmsg(db_) << std::endl;
+        logger.log(LogLevel::ERROR, "Cannot open database: " + std::string(sqlite3_errmsg(db_)), "SQLiteHandler");
+        metrics.incrementSyncErrors();
         return false;
     }
+    
+    logger.log(LogLevel::INFO, "Database opened successfully", "SQLiteHandler");
     return createTables();
 }
 
 void SQLiteHandler::shutdown() {
     if (db_) {
+        auto& logger = Logger::instance();
+        logger.log(LogLevel::INFO, "Closing SQLite database", "SQLiteHandler");
         sqlite3_close(db_);
         db_ = nullptr;
     }
 }
 
 bool SQLiteHandler::createTables() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Creating database tables", "SQLiteHandler");
+    
     const char* sql = 
         "CREATE TABLE IF NOT EXISTS files ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -61,10 +78,13 @@ bool SQLiteHandler::createTables() {
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {
-        std::cerr << "SQL error: " << errMsg << std::endl;
+        logger.log(LogLevel::ERROR, "SQL error: " + std::string(errMsg), "SQLiteHandler");
         sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
         return false;
     }
+    
+    logger.log(LogLevel::INFO, "Database tables created successfully", "SQLiteHandler");
     return true;
 }
 

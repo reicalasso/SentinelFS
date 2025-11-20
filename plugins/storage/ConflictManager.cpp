@@ -1,10 +1,17 @@
 #include "ConflictManager.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <chrono>
 
 namespace SentinelFS {
 
 bool ConflictManager::addConflict(const ConflictInfo& conflict) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::WARN, "Conflict detected for file: " + conflict.path + " with peer " + conflict.remotePeerId, "ConflictManager");
+    
     const char* sql = "INSERT INTO conflicts (path, local_hash, remote_hash, remote_peer_id, "
                      "local_timestamp, remote_timestamp, local_size, remote_size, strategy, "
                      "resolved, detected_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
@@ -12,7 +19,8 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -29,12 +37,15 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
     sqlite3_bind_int64(stmt, 11, conflict.detectedAt);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_finalize(stmt);
+    metrics.incrementConflicts();
+    logger.log(LogLevel::INFO, "Conflict recorded for: " + conflict.path, "ConflictManager");
     return true;
 }
 
@@ -47,6 +58,9 @@ std::vector<ConflictInfo> ConflictManager::getUnresolvedConflicts() {
 }
 
 std::vector<ConflictInfo> ConflictManager::getConflictsForFile(const std::string& path) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     const char* sql = "SELECT id, path, local_hash, remote_hash, remote_peer_id, "
                      "local_timestamp, remote_timestamp, local_size, remote_size, "
                      "strategy, resolved, detected_at, resolved_at "
@@ -55,7 +69,8 @@ std::vector<ConflictInfo> ConflictManager::getConflictsForFile(const std::string
     sqlite3* db = handler_->getDB();
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
+        metrics.incrementSyncErrors();
         return {};
     }
 
@@ -71,12 +86,18 @@ std::vector<ConflictInfo> ConflictManager::getConflictsForFile(const std::string
 }
 
 bool ConflictManager::markConflictResolved(int conflictId) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::INFO, "Marking conflict resolved: ID " + std::to_string(conflictId), "ConflictManager");
+    
     const char* sql = "UPDATE conflicts SET resolved = 1, resolved_at = ? WHERE id = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -89,16 +110,21 @@ bool ConflictManager::markConflictResolved(int conflictId) {
     sqlite3_bind_int(stmt, 2, conflictId);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     sqlite3_finalize(stmt);
+    logger.log(LogLevel::INFO, "Conflict resolved successfully: ID " + std::to_string(conflictId), "ConflictManager");
     return true;
 }
 
 std::pair<int, int> ConflictManager::getConflictStats() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     const char* sql = "SELECT COUNT(*) as total, "
                      "SUM(CASE WHEN resolved = 0 THEN 1 ELSE 0 END) as unresolved "
                      "FROM conflicts;";
@@ -106,7 +132,8 @@ std::pair<int, int> ConflictManager::getConflictStats() {
     sqlite3* db = handler_->getDB();
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
+        metrics.incrementSyncErrors();
         return {0, 0};
     }
 
@@ -121,11 +148,15 @@ std::pair<int, int> ConflictManager::getConflictStats() {
 }
 
 std::vector<ConflictInfo> ConflictManager::queryConflicts(const char* sql, sqlite3_stmt* preStmt) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
     sqlite3_stmt* stmt = preStmt;
     sqlite3* db = handler_->getDB();
     
     if (!stmt && sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
+        metrics.incrementSyncErrors();
         return {};
     }
 

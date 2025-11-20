@@ -2,6 +2,8 @@
 #include "DeltaSyncProtocolHandler.h"
 #include "FileSyncHandler.h"
 #include "DeltaSerialization.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <ctime>
 
@@ -53,15 +55,19 @@ void EventHandlers::setSyncEnabled(bool enabled) {
     syncEnabled_ = enabled;
     fileSyncHandler_->setSyncEnabled(enabled);
     
+    auto& logger = Logger::instance();
     if (enabled) {
-        std::cout << "Synchronization ENABLED" << std::endl;
+        logger.info("Synchronization ENABLED", "EventHandlers");
     } else {
-        std::cout << "Synchronization DISABLED" << std::endl;
+        logger.warn("Synchronization DISABLED", "EventHandlers");
     }
 }
 
 void EventHandlers::handlePeerDiscovered(const std::any& data) {
     try {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
         std::string msg = std::any_cast<std::string>(data);
         
         size_t firstPipe = msg.find('|');
@@ -85,15 +91,20 @@ void EventHandlers::handlePeerDiscovered(const std::any& data) {
             storage_->addPeer(peer);
             network_->connectToPeer(ip, port);
             
-            std::cout << "Discovered peer: " << id << " at " << ip << ":" << port << std::endl;
+            metrics.incrementPeersDiscovered();
+            metrics.incrementPeersConnected();
+            logger.info("Discovered peer: " + id + " at " + ip + ":" + std::to_string(port), "EventHandlers");
         }
-    } catch (...) {
-        std::cerr << "Error handling PEER_DISCOVERED" << std::endl;
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling PEER_DISCOVERED: ") + e.what(), "EventHandlers");
     }
 }
 
 void EventHandlers::handleFileModified(const std::any& data) {
     try {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
         std::string fullPath = std::any_cast<std::string>(data);
         
         // Check ignore list
@@ -103,21 +114,23 @@ void EventHandlers::handleFileModified(const std::any& data) {
             if (ignoreList_.count(filename)) {
                 auto now = std::chrono::steady_clock::now();
                 if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
-                    std::cout << "Ignoring update for " << filename << " (recently patched)" << std::endl;
+                    logger.debug("Ignoring update for " + filename + " (recently patched)", "EventHandlers");
                     return;
                 }
                 ignoreList_.erase(filename);
             }
         }
         
+        metrics.incrementFilesModified();
         fileSyncHandler_->handleFileModified(fullPath);
-    } catch (...) {
-        std::cerr << "Error handling FILE_MODIFIED" << std::endl;
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling FILE_MODIFIED: ") + e.what(), "EventHandlers");
     }
 }
 
 void EventHandlers::handleDataReceived(const std::any& data) {
     try {
+        auto& logger = Logger::instance();
         auto pair = std::any_cast<std::pair<std::string, std::vector<uint8_t>>>(data);
         std::string peerId = pair.first;
         std::vector<uint8_t> rawData = pair.second;
@@ -128,6 +141,8 @@ void EventHandlers::handleDataReceived(const std::any& data) {
         } else {
             msg = std::string(rawData.begin(), rawData.end());
         }
+
+        logger.debug("Received " + std::to_string(rawData.size()) + " bytes from peer " + peerId, "EventHandlers");
 
         // Route to appropriate handler
         if (msg.find("UPDATE_AVAILABLE|") == 0) {
@@ -141,21 +156,28 @@ void EventHandlers::handleDataReceived(const std::any& data) {
         }
     } catch (const std::bad_any_cast&) {
         // Ignore
-    } catch (...) {
-        std::cerr << "Error handling DATA_RECEIVED" << std::endl;
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling DATA_RECEIVED: ") + e.what(), "EventHandlers");
     }
 }
 
 void EventHandlers::handleAnomalyDetected(const std::any& data) {
     try {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
         std::string anomalyType = std::any_cast<std::string>(data);
-        std::cerr << "\n🚨 CRITICAL ALERT: Anomaly detected - " << anomalyType << std::endl;
-        std::cerr << "🛑 Sync operations PAUSED for safety!" << std::endl;
-        std::cerr << "   Manual intervention required to resume." << std::endl;
+        
+        logger.critical("🚨 ANOMALY DETECTED: " + anomalyType, "EventHandlers");
+        logger.critical("🛑 Sync operations PAUSED for safety!", "EventHandlers");
+        logger.warn("Manual intervention required to resume sync.", "EventHandlers");
+        
+        metrics.incrementAnomalies();
+        metrics.incrementSyncPaused();
         
         setSyncEnabled(false);
-    } catch (...) {
-        std::cerr << "Error handling ANOMALY_DETECTED" << std::endl;
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling ANOMALY_DETECTED: ") + e.what(), "EventHandlers");
     }
 }
 

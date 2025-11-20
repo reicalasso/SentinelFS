@@ -1,4 +1,6 @@
 #include "UDPDiscovery.h"
+#include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <cstring>
 #include <sys/socket.h>
@@ -19,11 +21,15 @@ UDPDiscovery::~UDPDiscovery() {
 }
 
 bool UDPDiscovery::startDiscovery(int port) {
-    std::cout << "Starting UDP discovery on port " << port << std::endl;
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::INFO, "Starting UDP discovery on port " + std::to_string(port), "UDPDiscovery");
     
     discoverySocket_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (discoverySocket_ < 0) {
-        std::cerr << "Failed to create discovery socket" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to create discovery socket: " + std::string(strerror(errno)), "UDPDiscovery");
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -31,8 +37,9 @@ bool UDPDiscovery::startDiscovery(int port) {
     int broadcast = 1;
     if (setsockopt(discoverySocket_, SOL_SOCKET, SO_BROADCAST, 
                    &broadcast, sizeof(broadcast)) < 0) {
-        std::cerr << "Failed to set broadcast option" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to set broadcast option: " + std::string(strerror(errno)), "UDPDiscovery");
         close(discoverySocket_);
+        metrics.incrementSyncErrors();
         return false;
     }
 
@@ -40,7 +47,7 @@ bool UDPDiscovery::startDiscovery(int port) {
     int reuse = 1;
     if (setsockopt(discoverySocket_, SOL_SOCKET, SO_REUSEADDR, 
                    &reuse, sizeof(reuse)) < 0) {
-        std::cerr << "Failed to set reuse addr option" << std::endl;
+        logger.log(LogLevel::WARN, "Failed to set reuse addr option: " + std::string(strerror(errno)), "UDPDiscovery");
     }
 
     // Bind to port
@@ -51,20 +58,24 @@ bool UDPDiscovery::startDiscovery(int port) {
     addr.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(discoverySocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Failed to bind discovery socket" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to bind discovery socket to port " + std::to_string(port) + ": " + std::string(strerror(errno)), "UDPDiscovery");
         close(discoverySocket_);
+        metrics.incrementSyncErrors();
         return false;
     }
 
     running_ = true;
     discoveryThread_ = std::thread(&UDPDiscovery::discoveryLoop, this);
     
-    std::cout << "UDP discovery listening on port " << port << std::endl;
+    logger.log(LogLevel::INFO, "UDP discovery listening on port " + std::to_string(port), "UDPDiscovery");
     return true;
 }
 
 void UDPDiscovery::stopDiscovery() {
     if (!running_) return;
+    
+    auto& logger = Logger::instance();
+    logger.log(LogLevel::INFO, "Stopping UDP discovery", "UDPDiscovery");
     
     running_ = false;
     
@@ -77,18 +88,28 @@ void UDPDiscovery::stopDiscovery() {
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();
     }
+    
+    logger.log(LogLevel::INFO, "UDP discovery stopped", "UDPDiscovery");
 }
 
 void UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "Broadcasting presence on port " + std::to_string(discoveryPort), "UDPDiscovery");
+    
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        std::cerr << "Failed to create broadcast socket" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to create broadcast socket: " + std::string(strerror(errno)), "UDPDiscovery");
+        metrics.incrementSyncErrors();
         return;
     }
 
     // Enable broadcast
     int broadcast = 1;
-    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
+        logger.log(LogLevel::WARN, "Failed to set broadcast option: " + std::string(strerror(errno)), "UDPDiscovery");
+    }
 
     // Setup broadcast address
     struct sockaddr_in addr;
@@ -104,15 +125,22 @@ void UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
                           (struct sockaddr*)&addr, sizeof(addr));
     
     if (sent < 0) {
-        std::cerr << "Failed to broadcast presence" << std::endl;
+        logger.log(LogLevel::ERROR, "Failed to broadcast presence: " + std::string(strerror(errno)), "UDPDiscovery");
+        metrics.incrementSyncErrors();
     } else {
-        std::cout << "Broadcast sent: " << msg << " to port " << discoveryPort << std::endl;
+        logger.log(LogLevel::INFO, "Broadcast sent: " + msg + " to port " + std::to_string(discoveryPort), "UDPDiscovery");
+        metrics.incrementBytesSent(sent);
     }
     
     close(sock);
 }
 
 void UDPDiscovery::discoveryLoop() {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    logger.log(LogLevel::DEBUG, "UDP discovery loop started", "UDPDiscovery");
+    
     char buffer[1024];
     struct sockaddr_in senderAddr;
     socklen_t senderLen = sizeof(senderAddr);
@@ -126,19 +154,27 @@ void UDPDiscovery::discoveryLoop() {
             std::string msg(buffer);
             std::string senderIp = inet_ntoa(senderAddr.sin_addr);
             
-            std::cout << "Received broadcast: " << msg << " from " << senderIp << std::endl;
+            logger.log(LogLevel::DEBUG, "Received broadcast: " + msg + " from " + senderIp, "UDPDiscovery");
+            metrics.incrementBytesReceived(len);
             
             handleDiscoveryMessage(msg, senderIp);
+        } else if (len < 0 && running_) {
+            logger.log(LogLevel::WARN, "Error receiving broadcast: " + std::string(strerror(errno)), "UDPDiscovery");
+            metrics.incrementSyncErrors();
         }
     }
+    
+    logger.log(LogLevel::DEBUG, "UDP discovery loop ended", "UDPDiscovery");
 }
 
 void UDPDiscovery::handleDiscoveryMessage(const std::string& message, 
                                          const std::string& senderIp) {
+    auto& logger = Logger::instance();
+    
     // Expected format: SENTINEL_DISCOVERY|PEER_ID|TCP_PORT
     
     if (message.find("SENTINEL_DISCOVERY|") != 0) {
-        std::cout << "Ignoring non-discovery message" << std::endl;
+        logger.log(LogLevel::DEBUG, "Ignoring non-discovery message from " + senderIp, "UDPDiscovery");
         return;
     }
     
@@ -147,16 +183,20 @@ void UDPDiscovery::handleDiscoveryMessage(const std::string& message,
     size_t secondPipe = message.find('|', firstPipe + 1);
     
     if (secondPipe == std::string::npos) {
-        std::cerr << "Invalid discovery message format" << std::endl;
+        logger.log(LogLevel::WARN, "Invalid discovery message format from " + senderIp + ": " + message, "UDPDiscovery");
         return;
     }
     
     std::string peerId = message.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+    std::string tcpPort = message.substr(secondPipe + 1);
     
     // Don't discover ourselves
     if (peerId == localPeerId_) {
+        logger.log(LogLevel::DEBUG, "Ignoring self-discovery message", "UDPDiscovery");
         return;
     }
+    
+    logger.log(LogLevel::INFO, "Discovered peer " + peerId + " at " + senderIp + ":" + tcpPort, "UDPDiscovery");
     
     // Publish discovery event
     if (eventBus_) {
