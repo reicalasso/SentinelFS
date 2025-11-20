@@ -1,5 +1,6 @@
 #include "DaemonCore.h"
 #include "Logger.h"
+#include "Config.h"
 #include <iostream>
 #include <csignal>
 #include <filesystem>
@@ -167,6 +168,47 @@ bool DaemonCore::loadPlugins() {
         std::cerr << "Tip: Set SENTINELFS_PLUGIN_DIR environment variable or run from build directory" << std::endl;
         return false;
     }
+
+    // Optional plugin manifest
+    Config manifestConfig;
+    bool manifestLoaded = false;
+    std::string manifestPath;
+
+    if (const char* envManifest = std::getenv("SENTINELFS_PLUGIN_MANIFEST")) {
+        manifestPath = envManifest;
+        manifestLoaded = manifestConfig.loadFromFile(manifestPath);
+    } else {
+        manifestPath = pluginDir + "/plugins.conf";
+        manifestLoaded = manifestConfig.loadFromFile(manifestPath);
+    }
+
+    if (manifestLoaded) {
+        logger.info("Loaded plugin manifest from: " + manifestPath, "DaemonCore");
+    } else {
+        logger.info("No plugin manifest found at: " + manifestPath + " (using built-in defaults)", "DaemonCore");
+    }
+
+    auto parseDependencies = [](const std::string& depsStr) {
+        std::vector<std::string> deps;
+        size_t start = 0;
+        while (start < depsStr.size()) {
+            size_t end = depsStr.find(',', start);
+            if (end == std::string::npos) {
+                end = depsStr.size();
+            }
+            std::string token = depsStr.substr(start, end - start);
+            auto first = token.find_first_not_of(" \t\r\n");
+            auto last = token.find_last_not_of(" \t\r\n");
+            if (first != std::string::npos && last != std::string::npos) {
+                token = token.substr(first, last - first + 1);
+                if (!token.empty()) {
+                    deps.push_back(token);
+                }
+            }
+            start = end + 1;
+        }
+        return deps;
+    };
     
     pluginManager_.unloadAll();
     auto registerPlugin = [&](const std::string& key,
@@ -174,9 +216,40 @@ bool DaemonCore::loadPlugins() {
                               std::vector<std::string> deps = {},
                               const std::string& minVersion = "1.0.0") {
         PluginManager::Descriptor desc;
-        desc.path = pluginDir + "/" + relativePath;
-        desc.dependencies = std::move(deps);
-        desc.minVersion = minVersion;
+
+        std::string baseDir = pluginDir;
+        if (manifestLoaded) {
+            std::string configuredDir = manifestConfig.get("plugins.dir", pluginDir);
+            if (!configuredDir.empty()) {
+                baseDir = configuredDir;
+            }
+        }
+
+        std::string pathKey = "plugin." + key + ".path";
+        std::string depsKey = "plugin." + key + ".deps";
+        std::string verKey  = "plugin." + key + ".min_version";
+
+        std::string relPath = manifestLoaded
+            ? manifestConfig.get(pathKey, relativePath)
+            : relativePath;
+
+        std::string depsStr = manifestLoaded
+            ? manifestConfig.get(depsKey, "")
+            : "";
+
+        std::string minVer = manifestLoaded
+            ? manifestConfig.get(verKey, minVersion)
+            : minVersion;
+
+        desc.path = baseDir + "/" + relPath;
+
+        if (!depsStr.empty()) {
+            desc.dependencies = parseDependencies(depsStr);
+        } else {
+            desc.dependencies = std::move(deps);
+        }
+
+        desc.minVersion = minVer;
         pluginManager_.registerPlugin(key, std::move(desc));
     };
 

@@ -11,14 +11,6 @@
 
 using namespace SentinelFS;
 
-std::atomic<bool> running{true};
-
-void signalHandler(int signum) {
-    auto& logger = Logger::instance();
-    logger.info("Interrupt signal (" + std::to_string(signum) + ") received. Shutting down...", "Daemon");
-    running = false;
-}
-
 int main(int argc, char* argv[]) {
     // Initialize logging
     auto& logger = Logger::instance();
@@ -33,10 +25,6 @@ int main(int argc, char* argv[]) {
     
     logger.info("=== SentinelFS Daemon Starting ===", "Daemon");
     
-    // Register signal handlers
-    signal(SIGINT, signalHandler);
-    signal(SIGTERM, signalHandler);
-
     // --- Parse Command Line Arguments ---
     DaemonConfig config;
     config.tcpPort = 8080;
@@ -142,7 +130,7 @@ int main(int argc, char* argv[]) {
 
     // --- RTT Measurement Thread ---
     std::thread rttThread([&]() {
-        while (running && daemon.isRunning()) {
+        while (daemon.isRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(15));
             
             auto storage = daemon.getStoragePlugin();
@@ -172,7 +160,7 @@ int main(int argc, char* argv[]) {
     std::thread statusThread([&]() {
         int loopCount = 0;
         
-        while (running && daemon.isRunning()) {
+        while (daemon.isRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(5));
             
             auto storage = daemon.getStoragePlugin();
@@ -207,8 +195,6 @@ int main(int argc, char* argv[]) {
     daemon.run();
 
     // --- Cleanup ---
-    running = false;
-    
     if (statusThread.joinable()) statusThread.join();
     if (rttThread.joinable()) rttThread.join();
     
