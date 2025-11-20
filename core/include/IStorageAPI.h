@@ -118,6 +118,30 @@ namespace SentinelFS {
          * @return Pair of (total_conflicts, unresolved_conflicts)
          */
         virtual std::pair<int, int> getConflictStats() = 0;
+
+        // --- Sync Queue / Access Log (minimal API) ---
+
+        /**
+         * @brief Enqueue a file operation into the sync queue.
+         * @param filePath Path of the file.
+         * @param opType Operation type (e.g. "create", "update", "delete").
+         * @param status Initial status (e.g. "pending").
+         */
+        virtual bool enqueueSyncOperation(const std::string& filePath,
+                                          const std::string& opType,
+                                          const std::string& status) = 0;
+
+        /**
+         * @brief Append a record to the file access log.
+         * @param filePath Path of the file.
+         * @param opType Operation type (e.g. "read", "write").
+         * @param deviceId Optional device identifier (may be empty).
+         * @param timestamp Event time in milliseconds since epoch.
+         */
+        virtual bool logFileAccess(const std::string& filePath,
+                                   const std::string& opType,
+                                   const std::string& deviceId,
+                                   long long timestamp) = 0;
     };
 }
 

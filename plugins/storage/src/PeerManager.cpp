@@ -15,9 +15,23 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "PeerManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -32,10 +46,22 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "PeerManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     logger.log(LogLevel::INFO, "Peer added successfully: " + peer.id, "PeerManager");
     return true;
 }
@@ -114,9 +140,23 @@ bool PeerManager::updatePeerLatency(const std::string& peerId, int latency) {
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "PeerManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -127,10 +167,22 @@ bool PeerManager::updatePeerLatency(const std::string& peerId, int latency) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "PeerManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "PeerManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     return true;
 }
 

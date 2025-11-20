@@ -20,9 +20,46 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
         metrics.incrementSyncErrors();
         return false;
     }
-    
+
     logger.log(LogLevel::INFO, "Database opened successfully", "SQLiteHandler");
-    return createTables();
+
+    // Simple schema versioning using PRAGMA user_version
+    int userVersion = 0;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, "PRAGMA user_version;", -1, &stmt, nullptr) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            userVersion = sqlite3_column_int(stmt, 0);
+        }
+    }
+    if (stmt) {
+        sqlite3_finalize(stmt);
+    }
+
+    // Current schema version for this binary
+    const int targetVersion = 1;
+
+    if (userVersion < targetVersion) {
+        // For now we only support migrating from 0 -> 1 by creating all tables.
+        if (!createTables()) {
+            return false;
+        }
+
+        const char* pragma = "PRAGMA user_version = 1;";
+        char* errMsg = nullptr;
+        if (sqlite3_exec(db_, pragma, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            logger.log(LogLevel::ERROR, "Failed to set user_version: " + std::string(errMsg), "SQLiteHandler");
+            sqlite3_free(errMsg);
+            metrics.incrementSyncErrors();
+            return false;
+        }
+    } else {
+        // Ensure tables exist for current version (idempotent)
+        if (!createTables()) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void SQLiteHandler::shutdown() {
@@ -74,7 +111,49 @@ bool SQLiteHandler::createTables() {
         "strategy INTEGER,"
         "resolved INTEGER DEFAULT 0,"
         "detected_at INTEGER,"
-        "resolved_at INTEGER);";
+        "resolved_at INTEGER);"
+
+        "CREATE TABLE IF NOT EXISTS device ("
+        "device_id TEXT PRIMARY KEY,"
+        "name TEXT,"
+        "last_seen INTEGER,"
+        "platform TEXT,"
+        "version TEXT);"
+
+        "CREATE TABLE IF NOT EXISTS session ("
+        "session_id TEXT PRIMARY KEY,"
+        "device_id TEXT NOT NULL,"
+        "created_at INTEGER,"
+        "last_active INTEGER,"
+        "session_code_hash TEXT,"
+        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+
+        "CREATE TABLE IF NOT EXISTS file_version ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "file_path TEXT NOT NULL,"
+        "version INTEGER,"
+        "hash TEXT,"
+        "timestamp INTEGER,"
+        "size INTEGER,"
+        "device_id TEXT,"
+        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+
+        "CREATE TABLE IF NOT EXISTS sync_queue ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "file_path TEXT NOT NULL,"
+        "op_type TEXT NOT NULL,"
+        "status TEXT NOT NULL,"
+        "created_at INTEGER,"
+        "last_retry INTEGER,"
+        "retry_count INTEGER DEFAULT 0);"
+
+        "CREATE TABLE IF NOT EXISTS file_access_log ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "file_path TEXT NOT NULL,"
+        "op_type TEXT NOT NULL,"
+        "device_id TEXT,"
+        "timestamp INTEGER,"
+        "FOREIGN KEY(device_id) REFERENCES device(device_id));";
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {

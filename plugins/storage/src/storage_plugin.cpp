@@ -3,6 +3,10 @@
 #include "FileMetadataManager.h"
 #include "PeerManager.h"
 #include "ConflictManager.h"
+#include "DeviceManager.h"
+#include "SessionManager.h"
+#include "SyncQueueManager.h"
+#include "FileAccessLogManager.h"
 #include <iostream>
 #include <memory>
 
@@ -23,7 +27,11 @@ public:
         : sqliteHandler_(std::make_unique<SQLiteHandler>()),
           fileManager_(nullptr),
           peerManager_(nullptr),
-          conflictManager_(nullptr) {}
+          conflictManager_(nullptr),
+          deviceManager_(nullptr),
+          sessionManager_(nullptr),
+          syncQueueManager_(nullptr),
+          fileAccessLogManager_(nullptr) {}
 
     bool initialize(EventBus* eventBus) override {
         std::cout << "StoragePlugin initialized" << std::endl;
@@ -36,6 +44,10 @@ public:
         fileManager_ = std::make_unique<FileMetadataManager>(sqliteHandler_.get());
         peerManager_ = std::make_unique<PeerManager>(sqliteHandler_.get());
         conflictManager_ = std::make_unique<ConflictManager>(sqliteHandler_.get());
+        deviceManager_ = std::make_unique<DeviceManager>(sqliteHandler_.get());
+        sessionManager_ = std::make_unique<SessionManager>(sqliteHandler_.get());
+        syncQueueManager_ = std::make_unique<SyncQueueManager>(sqliteHandler_.get());
+        fileAccessLogManager_ = std::make_unique<FileAccessLogManager>(sqliteHandler_.get());
         
         return true;
     }
@@ -112,11 +124,30 @@ public:
         return conflictManager_->getConflictStats();
     }
 
+    // --- Sync Queue / Access Log helpers ---
+
+    bool enqueueSyncOperation(const std::string& filePath,
+                              const std::string& opType,
+                              const std::string& status) override {
+        return syncQueueManager_ ? syncQueueManager_->enqueue(filePath, opType, status) : false;
+    }
+
+    bool logFileAccess(const std::string& filePath,
+                       const std::string& opType,
+                       const std::string& deviceId,
+                       long long timestamp) override {
+        return fileAccessLogManager_ ? fileAccessLogManager_->logAccess(filePath, opType, deviceId, timestamp) : false;
+    }
+
 private:
     std::unique_ptr<SQLiteHandler> sqliteHandler_;
     std::unique_ptr<FileMetadataManager> fileManager_;
     std::unique_ptr<PeerManager> peerManager_;
     std::unique_ptr<ConflictManager> conflictManager_;
+    std::unique_ptr<DeviceManager> deviceManager_;
+    std::unique_ptr<SessionManager> sessionManager_;
+    std::unique_ptr<SyncQueueManager> syncQueueManager_;
+    std::unique_ptr<FileAccessLogManager> fileAccessLogManager_;
 };
 
 extern "C" {

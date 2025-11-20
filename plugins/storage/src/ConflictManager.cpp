@@ -18,9 +18,23 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "ConflictManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -40,10 +54,22 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "ConflictManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     metrics.incrementConflicts();
     logger.log(LogLevel::INFO, "Conflict recorded for: " + conflict.path, "ConflictManager");
     return true;
@@ -95,9 +121,23 @@ bool ConflictManager::markConflictResolved(int conflictId) {
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "ConflictManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -113,10 +153,22 @@ bool ConflictManager::markConflictResolved(int conflictId) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "ConflictManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     logger.log(LogLevel::INFO, "Conflict resolved successfully: ID " + std::to_string(conflictId), "ConflictManager");
     return true;
 }

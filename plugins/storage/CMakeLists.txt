@@ -11,6 +11,10 @@ add_library(storage_plugin SHARED
     src/FileMetadataManager.cpp
     src/PeerManager.cpp
     src/ConflictManager.cpp
+    src/DeviceManager.cpp
+    src/SessionManager.cpp
+    src/SyncQueueManager.cpp
+    src/FileAccessLogManager.cpp
 )
 
 target_include_directories(storage_plugin PUBLIC

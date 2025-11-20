@@ -16,9 +16,23 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "FileMetadataManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -31,10 +45,22 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "FileMetadataManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     metrics.incrementFilesWatched();
     return true;
 }
@@ -80,9 +106,23 @@ bool FileMetadataManager::removeFile(const std::string& path) {
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
+    bool inTransaction = false;
+    char* errMsg = nullptr;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "FileMetadataManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        return false;
+    }
+    inTransaction = true;
+
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
@@ -92,10 +132,22 @@ bool FileMetadataManager::removeFile(const std::string& path) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
         return false;
     }
 
     sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "FileMetadataManager");
+        sqlite3_free(errMsg);
+        metrics.incrementSyncErrors();
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+
     metrics.incrementFilesDeleted();
     logger.log(LogLevel::INFO, "File metadata removed: " + path, "FileMetadataManager");
     return true;

@@ -105,6 +105,23 @@ int main() {
             return 1;
         }
 
+        // Test sync queue enqueue
+        if (storagePlugin->enqueueSyncOperation(path, "update", "pending")) {
+            std::cout << "Successfully enqueued sync operation" << std::endl;
+        } else {
+            std::cerr << "Failed to enqueue sync operation" << std::endl;
+            return 1;
+        }
+
+        // Test file access log
+        long long accessTs = 1234567891;
+        if (storagePlugin->logFileAccess(path, "read", peer.id, accessTs)) {
+            std::cout << "Successfully logged file access" << std::endl;
+        } else {
+            std::cerr << "Failed to log file access" << std::endl;
+            return 1;
+        }
+
     } else {
         std::cerr << "Plugin does not implement IStorageAPI" << std::endl;
         return 1;
