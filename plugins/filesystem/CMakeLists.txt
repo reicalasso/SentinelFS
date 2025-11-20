@@ -8,6 +8,8 @@ find_package(OpenSSL REQUIRED)
 add_library(filesystem_plugin SHARED
     src/filesystem_plugin.cpp
     src/InotifyWatcher.cpp
+    src/Win32Watcher.cpp
+    src/FSEventsWatcher.cpp
     src/FileHasher.cpp
 )
 

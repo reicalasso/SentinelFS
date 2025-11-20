@@ -1,11 +1,15 @@
 #include "IFileAPI.h"
 #include "EventBus.h"
 #include "InotifyWatcher.h"
+#include "Win32Watcher.h"
+#include "FSEventsWatcher.h"
+#include "IFileWatcher.h"
 #include "FileHasher.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <filesystem>
 
 namespace SentinelFS {
 
@@ -18,7 +22,15 @@ namespace SentinelFS {
  */
 class FilesystemPlugin : public IFileAPI {
 public:
-    FilesystemPlugin() : watcher_(std::make_unique<InotifyWatcher>()) {}
+    FilesystemPlugin() {
+#if defined(_WIN32)
+        watcher_ = std::make_unique<Win32Watcher>();
+#elif defined(__APPLE__)
+        watcher_ = std::make_unique<FSEventsWatcher>();
+#else
+        watcher_ = std::make_unique<InotifyWatcher>();
+#endif
+    }
     
     ~FilesystemPlugin() {
         shutdown();
@@ -29,8 +41,8 @@ public:
         eventBus_ = eventBus;
         
         // Set up callback for filesystem changes
-        auto callback = [this](const std::string& eventType, const std::string& path) {
-            handleFileChange(eventType, path);
+        auto callback = [this](const WatchEvent& ev) {
+            handleFileChange(ev);
         };
         
         return watcher_->initialize(callback);
@@ -70,7 +82,7 @@ public:
     }
 
     void startWatching(const std::string& path) override {
-        watcher_->addWatch(path);
+        addRecursiveWatch(path);
     }
 
     void stopWatching(const std::string& path) override {
@@ -79,21 +91,98 @@ public:
 
 private:
     EventBus* eventBus_ = nullptr;
-    std::unique_ptr<InotifyWatcher> watcher_;
+    std::unique_ptr<IFileWatcher> watcher_;
+
+    /**
+     * @brief Simple ignore filter for paths (e.g. .git, temporary files).
+     */
+    bool isIgnoredPath(const std::string& path) const {
+        // Ignore .git directories and their contents
+        if (path.find("/.git/") != std::string::npos || path.rfind("/.git", 0) == 0) {
+            return true;
+        }
+        // Ignore common temp/editor swap files
+        if (path.size() >= 1 && path.back() == '~') {
+            return true;
+        }
+        if (path.size() >= 4 && path.substr(path.size() - 4) == ".swp") {
+            return true;
+        }
+        return false;
+    }
+
+    void addRecursiveWatch(const std::string& root) {
+        namespace fs = std::filesystem;
+        std::error_code ec;
+
+        fs::path rootPath(root);
+        if (!fs::exists(rootPath, ec)) {
+            return;
+        }
+
+        if (fs::is_directory(rootPath, ec)) {
+            if (!isIgnoredPath(root)) {
+                watcher_->addWatch(root);
+            }
+            for (auto it = fs::recursive_directory_iterator(rootPath, ec);
+                 it != fs::recursive_directory_iterator(); ++it) {
+                if (ec) {
+                    break;
+                }
+                if (it->is_directory(ec)) {
+                    std::string dir = it->path().string();
+                    if (!isIgnoredPath(dir)) {
+                        watcher_->addWatch(dir);
+                    }
+                }
+            }
+        } else {
+            // If a file path is given, watch its parent directory
+            auto parent = rootPath.parent_path();
+            if (!parent.empty()) {
+                std::string dir = parent.string();
+                if (!isIgnoredPath(dir)) {
+                    watcher_->addWatch(dir);
+                }
+            }
+        }
+    }
 
     /**
      * @brief Handle filesystem change events
      */
-    void handleFileChange(const std::string& eventType, const std::string& path) {
-        if (eventType != "FILE_DELETED") {
-            std::string hash = FileHasher::calculateSHA256(path);
+    void handleFileChange(const WatchEvent& ev) {
+        if (isIgnoredPath(ev.path)) {
+            return;
+        }
+
+        if (ev.type != WatchEventType::Delete) {
+            std::string hash = FileHasher::calculateSHA256(ev.path);
             if (!hash.empty()) {
                 std::cout << "Hash: " << hash << std::endl;
             }
         }
         
         if (eventBus_) {
-            eventBus_->publish(eventType, path);
+            std::string eventType;
+            switch (ev.type) {
+                case WatchEventType::Create:
+                    eventType = "FILE_CREATED";
+                    break;
+                case WatchEventType::Modify:
+                    eventType = "FILE_MODIFIED";
+                    break;
+                case WatchEventType::Delete:
+                    eventType = "FILE_DELETED";
+                    break;
+                case WatchEventType::Rename:
+                    eventType = "FILE_RENAMED";
+                    break;
+            }
+
+            if (!eventType.empty()) {
+                eventBus_->publish(eventType, ev.path);
+            }
         }
     }
 };

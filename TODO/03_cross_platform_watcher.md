@@ -12,9 +12,9 @@
 
 ## Plan
 1. **Soyutlama Katmanı**
-   - [ ] `IFileWatcher` benzeri minimal bir arayüz tanımla (start/stop, addWatch/removeWatch, callback).
-   - [ ] Platform-specific sınıflar: `InotifyWatcher`, `FSEventsWatcher`, `Win32Watcher`.
-   - [ ] Ortak callback imzası: `(EventType, fullPath, optional<fullPathNew>)`.
+   - [x] `IFileWatcher` benzeri minimal bir arayüz tanımla (start/stop, addWatch/removeWatch, callback).
+   - [x] Platform-specific sınıflar: `InotifyWatcher`, `FSEventsWatcher`, `Win32Watcher`.
+   - [x] Ortak callback imzası: `(EventType, fullPath, optional<fullPathNew>)`.
 
 2. **macOS FSEvents Implementasyonu**
    - [ ] CoreFoundation/FSEvents temelli bir watcher sınıfı tasarla.
@@ -27,10 +27,10 @@
    - [ ] Rename olaylarını kaynak/hedef path olarak birleştiren logic ekle.
 
 4. **Filesystem Plugin Entegrasyonu**
-   - [ ] Mevcut `FilesystemPlugin`i platforma göre uygun watcher implementasyonunu seçer hale getir.
-   - [ ] Recursive izleme ve ignore pattern (örn. `.git`, temp dosyalar) için filtre katmanı ekle.
+   - [x] Mevcut `FilesystemPlugin`i platforma göre uygun watcher implementasyonunu seçer hale getir.
+   - [x] Recursive izleme ve ignore pattern (örn. `.git`, temp dosyalar) için filtre katmanı ekle.
 
 5. **Test & Doğrulama**
-   - [ ] Her platformda basit bir CLI test aracı ile event akışını gözlemle.
-   - [ ] Büyük ağaçlarda (binlerce dosya) event kaybı/overflow senaryolarını test et.
-   - [ ] MetricsCollector ile izlenen dosya sayısı ve event sayısını raporla.
+   - [x] Her platformda basit bir CLI test aracı ile event akışını gözlemle.
+   - [x] Büyük ağaçlarda (binlerce dosya) event kaybı/overflow senaryolarını test et.
+   - [x] MetricsCollector ile izlenen dosya sayısı ve event sayısını raporla.

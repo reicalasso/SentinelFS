@@ -5,15 +5,17 @@
 #include <atomic>
 #include <map>
 #include <functional>
+#include "IFileWatcher.h"
 
 namespace SentinelFS {
 
 /**
- * @brief Monitors filesystem changes using inotify
+ * @brief Monitors filesystem changes using inotify.
+ *        Linux implementation of IFileWatcher.
  */
-class InotifyWatcher {
+class InotifyWatcher : public IFileWatcher {
 public:
-    using ChangeCallback = std::function<void(const std::string& eventType, const std::string& path)>;
+    using ChangeCallback = std::function<void(const WatchEvent&)>;
 
     InotifyWatcher();
     ~InotifyWatcher();

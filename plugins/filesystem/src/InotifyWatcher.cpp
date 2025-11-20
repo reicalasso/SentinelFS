@@ -119,20 +119,26 @@ void InotifyWatcher::monitorLoop() {
                     std::string filename = event->name;
                     std::string fullPath = dirPath + "/" + filename;
                     
-                    std::string eventType;
-                    if (event->mask & IN_CREATE || event->mask & IN_MOVED_TO) {
-                        eventType = "FILE_CREATED";
-                    } else if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM) {
-                        eventType = "FILE_DELETED";
+                    WatchEventType type;
+                    bool hasType = false;
+
+                    if ((event->mask & IN_CREATE) || (event->mask & IN_MOVED_TO)) {
+                        type = WatchEventType::Create;
+                        hasType = true;
+                    } else if ((event->mask & IN_DELETE) || (event->mask & IN_MOVED_FROM)) {
+                        type = WatchEventType::Delete;
+                        hasType = true;
                         metrics.incrementFilesDeleted();
                     } else if (event->mask & IN_MODIFY) {
-                        eventType = "FILE_MODIFIED";
+                        type = WatchEventType::Modify;
+                        hasType = true;
                         metrics.incrementFilesModified();
                     }
 
-                    if (!eventType.empty() && callback_) {
-                        logger.log(LogLevel::INFO, "Detected " + eventType + ": " + fullPath, "InotifyWatcher");
-                        callback_(eventType, fullPath);
+                    if (hasType && callback_) {
+                        WatchEvent ev{type, fullPath, std::nullopt};
+                        logger.log(LogLevel::INFO, "Detected filesystem change: " + fullPath, "InotifyWatcher");
+                        callback_(ev);
                     }
                 }
             }
