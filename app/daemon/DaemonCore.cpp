@@ -158,11 +158,27 @@ bool DaemonCore::loadPlugins() {
         return false;
     }
     
-    // Load plugins
-    auto storagePlugin = loader_.loadPlugin(pluginDir + "/storage/libstorage_plugin.so", &eventBus_);
-    auto networkPlugin = loader_.loadPlugin(pluginDir + "/network/libnetwork_plugin.so", &eventBus_);
-    auto filesystemPlugin = loader_.loadPlugin(pluginDir + "/filesystem/libfilesystem_plugin.so", &eventBus_);
-    mlPlugin_ = loader_.loadPlugin(pluginDir + "/ml/libml_plugin.so", &eventBus_);
+    pluginManager_.unloadAll();
+    auto registerPlugin = [&](const std::string& key,
+                              const std::string& relativePath,
+                              std::vector<std::string> deps = {},
+                              const std::string& minVersion = "1.0.0") {
+        PluginManager::Descriptor desc;
+        desc.path = pluginDir + "/" + relativePath;
+        desc.dependencies = std::move(deps);
+        desc.minVersion = minVersion;
+        pluginManager_.registerPlugin(key, std::move(desc));
+    };
+
+    registerPlugin("storage", "storage/libstorage_plugin.so");
+    registerPlugin("network", "network/libnetwork_plugin.so", {"storage"});
+    registerPlugin("filesystem", "filesystem/libfilesystem_plugin.so");
+    registerPlugin("ml", "ml/libml_plugin.so", {"storage"});
+
+    auto storagePlugin = pluginManager_.load("storage", &eventBus_);
+    auto networkPlugin = pluginManager_.load("network", &eventBus_);
+    auto filesystemPlugin = pluginManager_.load("filesystem", &eventBus_);
+    mlPlugin_ = pluginManager_.load("ml", &eventBus_);
     
     // Cast to specific interfaces using dynamic_pointer_cast
     storage_ = std::dynamic_pointer_cast<IStorageAPI>(storagePlugin);

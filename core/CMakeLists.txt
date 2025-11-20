@@ -22,6 +22,7 @@ set(CORE_SOURCES
     network/src/DeltaEngine.cpp
     network/src/BandwidthLimiter.cpp
     network/src/DeltaSync.cpp
+    network/src/NetworkManager.cpp
     
     # Security sources
     security/src/Crypto.cpp
@@ -34,6 +35,7 @@ set(CORE_SOURCES
     utils/src/Config.cpp
     utils/src/EventBus.cpp
     utils/src/PluginLoader.cpp
+    utils/src/PluginManager.cpp
     utils/src/MetricsCollector.cpp
 )
 

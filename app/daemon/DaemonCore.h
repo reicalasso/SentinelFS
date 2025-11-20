@@ -5,7 +5,7 @@
 #include "INetworkAPI.h"
 #include "IFileAPI.h"
 #include "EventBus.h"
-#include "PluginLoader.h"
+#include "PluginManager.h"
 #include <memory>
 #include <atomic>
 #include <string>
@@ -88,7 +88,7 @@ public:
 private:
     DaemonConfig config_;
     EventBus eventBus_;
-    PluginLoader loader_;
+    PluginManager pluginManager_;
     
     std::shared_ptr<IStorageAPI> storage_;
     std::shared_ptr<INetworkAPI> network_;
