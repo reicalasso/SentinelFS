@@ -8,6 +8,7 @@
 #include "SessionCode.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "AutoRemeshManager.h"
 
 using namespace SentinelFS;
 
@@ -100,6 +101,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Auto-remesh engine for peer selection
+    AutoRemeshManager autoRemesh;
+
     // --- Setup Event Handlers ---
     EventHandlers eventHandlers(
         *daemon.getEventBus(),  // Dereference pointer to get reference
@@ -128,7 +132,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Warning: Failed to start IPC server. CLI commands will not work." << std::endl;
     }
 
-    // --- RTT Measurement Thread ---
+    // --- RTT Measurement + Auto-Remesh Thread ---
     std::thread rttThread([&]() {
         while (daemon.isRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(15));
@@ -136,22 +140,79 @@ int main(int argc, char* argv[]) {
             auto storage = daemon.getStoragePlugin();
             auto network = daemon.getNetworkPlugin();
             
-            // Measure RTT to all connected peers
+            // Measure RTT to all peers and update health metrics
             auto peers = storage->getAllPeers();
             for (const auto& peer : peers) {
                 if (network->isPeerConnected(peer.id)) {
                     int rtt = network->measureRTT(peer.id);
                     if (rtt >= 0) {
                         storage->updatePeerLatency(peer.id, rtt);
+                        autoRemesh.updateMeasurement(peer.id, rtt, true);
                         std::cout << "Updated latency for " << peer.id << ": " << rtt << "ms" << std::endl;
                     } else {
+                        autoRemesh.updateMeasurement(peer.id, -1, false);
                         std::cout << "Failed to measure RTT for " << peer.id << std::endl;
                         network->disconnectPeer(peer.id);
                     }
                 } else {
+                    // Peer currently disconnected; count as failed probe for health
+                    autoRemesh.updateMeasurement(peer.id, -1, false);
                     std::cout << "Peer " << peer.id << " not connected, attempting reconnect..." << std::endl;
                     network->connectToPeer(peer.ip, peer.port);
                 }
+            }
+
+            // Compute auto-remesh decision based on current metrics
+            std::vector<AutoRemeshManager::PeerInfoSnapshot> snapshots;
+            snapshots.reserve(peers.size());
+            for (const auto& peer : peers) {
+                AutoRemeshManager::PeerInfoSnapshot s;
+                s.peerId = peer.id;
+                s.isConnected = network->isPeerConnected(peer.id);
+                snapshots.push_back(std::move(s));
+            }
+
+            auto decision = autoRemesh.computeRemesh(snapshots);
+
+            std::size_t disconnectCount = 0;
+            std::size_t connectCount = 0;
+
+            // Apply disconnect decisions
+            for (const auto& id : decision.disconnectPeers) {
+                if (network->isPeerConnected(id)) {
+                    network->disconnectPeer(id);
+                    ++disconnectCount;
+                    std::cout << "[AutoRemesh] Disconnected suboptimal peer: " << id << std::endl;
+                }
+            }
+
+            // Helper to find PeerInfo by id
+            auto findPeer = [&peers](const std::string& id) -> const PeerInfo* {
+                for (const auto& p : peers) {
+                    if (p.id == id) return &p;
+                }
+                return nullptr;
+            };
+
+            // Apply connect decisions
+            for (const auto& id : decision.connectPeers) {
+                const PeerInfo* p = findPeer(id);
+                if (!p) {
+                    continue;
+                }
+                if (!network->isPeerConnected(id)) {
+                    if (network->connectToPeer(p->ip, p->port)) {
+                        ++connectCount;
+                        std::cout << "[AutoRemesh] Connected preferred peer: " << id
+                                  << " (" << p->ip << ":" << p->port << ")" << std::endl;
+                    }
+                }
+            }
+
+            if (connectCount > 0 || disconnectCount > 0) {
+                std::cout << "[AutoRemesh] Remesh cycle: "
+                          << "connected=" << connectCount
+                          << ", disconnected=" << disconnectCount << std::endl;
             }
         }
     });

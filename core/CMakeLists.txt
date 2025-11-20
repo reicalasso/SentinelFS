@@ -23,6 +23,7 @@ set(CORE_SOURCES
     network/src/BandwidthLimiter.cpp
     network/src/DeltaSync.cpp
     network/src/NetworkManager.cpp
+    network/src/AutoRemeshManager.cpp
 
     # Security sources
     security/src/Crypto.cpp
