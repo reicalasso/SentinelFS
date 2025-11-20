@@ -7,11 +7,6 @@
 
 namespace SentinelFS {
 
-    Config& Config::instance() {
-        static Config instance;
-        return instance;
-    }
-
     bool Config::loadFromFile(const std::string& path, bool overrideExisting) {
         std::ifstream file(path);
         if (!file.is_open()) {
@@ -148,6 +143,11 @@ namespace SentinelFS {
             }
         }
         return true;
+    }
+
+    std::unordered_map<std::string, std::string> Config::snapshot() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return settings_;
     }
 
     std::string Config::trim(const std::string& value) {

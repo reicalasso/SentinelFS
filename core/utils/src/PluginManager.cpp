@@ -109,10 +109,22 @@ namespace SentinelFS {
     }
 
     void PluginManager::unloadAll() {
-        for (auto it = instances_.begin(); it != instances_.end(); ++it) {
-            loader_.unloadPlugin(it->second->getName());
+        // Collect plugin names first, then drop manager-held instances
+        std::vector<std::string> pluginNames;
+        pluginNames.reserve(instances_.size());
+
+        for (const auto& entry : instances_) {
+            if (entry.second) {
+                pluginNames.push_back(entry.second->getName());
+            }
         }
+
+        // Release our shared_ptrs before asking loader_ to unload
         instances_.clear();
+
+        for (const auto& name : pluginNames) {
+            loader_.unloadPlugin(name);
+        }
     }
 
     bool PluginManager::isVersionCompatible(const std::string& current,

@@ -70,6 +70,11 @@ bool DaemonCore::initialize() {
     
     // Start filesystem monitoring
     try {
+        if (!std::filesystem::exists(config_.watchDirectory)) {
+            std::filesystem::create_directories(config_.watchDirectory);
+            logger.info("Created watch directory: " + config_.watchDirectory, "DaemonCore");
+        }
+
         filesystem_->startWatching(config_.watchDirectory);
         logger.info("Filesystem watcher started for: " + config_.watchDirectory, "DaemonCore");
     } catch (const std::exception& e) {
@@ -144,6 +149,11 @@ void DaemonCore::shutdown() {
 bool DaemonCore::loadPlugins() {
     auto& logger = Logger::instance();
     
+    storage_.reset();
+    network_.reset();
+    filesystem_.reset();
+    mlPlugin_.reset();
+
     // Get plugin directory from environment or use default
     const char* envPluginDir = std::getenv("SENTINELFS_PLUGIN_DIR");
     std::string pluginDir = envPluginDir ? envPluginDir : "./plugins";

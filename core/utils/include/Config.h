@@ -8,11 +8,18 @@
 
 namespace SentinelFS {
 
+    /**
+     * @brief Thread-safe key/value configuration store.
+     */
     class Config {
     public:
         using Validator = std::function<bool(const std::string& key, const std::string& value)>;
 
-        static Config& instance();
+        Config() = default;
+        Config(const Config&) = delete;
+        Config& operator=(const Config&) = delete;
+        Config(Config&&) = default;
+        Config& operator=(Config&&) = default;
 
         bool loadFromFile(const std::string& path, bool overrideExisting = true);
         bool loadLayered(const std::vector<std::string>& paths, bool overrideExisting = true);
@@ -37,8 +44,9 @@ namespace SentinelFS {
 
         bool validate(const std::unordered_map<std::string, Validator>& schema) const;
 
+        std::unordered_map<std::string, std::string> snapshot() const;
+
     private:
-        Config() = default;
         std::unordered_map<std::string, std::string> settings_;
         mutable std::mutex mutex_;
 
