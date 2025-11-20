@@ -11,26 +11,26 @@
 
 ## Plan
 1. **Metrik Toplama Katmanı**
-   - [ ] TCPHandler içinde ping/pong tabanlı RTT ölçümü için mevcut API’yi gözden geçir.
-   - [ ] Aynı ping akışından jitter ve packet-loss oranını tahmin edecek basit hesaplayıcı ekle.
-   - [ ] PeerMetrics yapısı tasarla (RTT avg, RTT stddev, packet-loss %, lastSeen vs.).
+   - [x] TCPHandler içinde ping/pong tabanlı RTT ölçümü için mevcut API’yi gözden geçir.
+   - [x] Aynı ping akışından jitter ve packet-loss oranını tahmin edecek basit hesaplayıcı ekle.
+   - [x] PeerMetrics yapısı tasarla (RTT avg, RTT stddev, packet-loss %, lastSeen vs.).
 
 2. **Metriklerin Saklanması**
-   - [ ] `PeerInfo`yu bozmadan, gerekirse ayrı bir in-memory map ile runtime health bilgilerini tut.
-   - [ ] Periyodik ölçümleri MetricsCollector’a ve sqlite’taki peers tablosuna yansıt.
+   - [x] `PeerInfo`yu bozmadan, gerekirse ayrı bir in-memory map ile runtime health bilgilerini tut.
+   - [x] Periyodik ölçümleri MetricsCollector’a ve sqlite’taki peers tablosuna yansıt.
 
 3. **AutoRemeshManager Tasarımı**
-   - [ ] `sfs::net` içinde `AutoRemeshManager` benzeri küçük bir sınıf tasarla.
-   - [ ] Girdi: mevcut peer listesi, metrikler, hedef `max_active_peers` gibi bir konfig.
-   - [ ] Çıktı: bağlanılacak ve koparılacak peer listeleri.
-   - [ ] Basit politika: RTT + packet-loss’e göre skorla, en iyi N peer’i aktif tut.
+   - [x] `sfs::net` içinde `AutoRemeshManager` benzeri küçük bir sınıf tasarla.
+   - [x] Girdi: mevcut peer listesi, metrikler, hedef `max_active_peers` gibi bir konfig.
+   - [x] Çıktı: bağlanılacak ve koparılacak peer listeleri.
+   - [x] Basit politika: RTT + packet-loss’e göre skorla, en iyi N peer’i aktif tut.
 
 4. **Daemon Entegrasyonu**
-   - [ ] Daemon içinde ayrı bir thread/timer ile AutoRemeshManager’ı periyodik çalıştır.
-   - [ ] Kararlara göre `INetworkAPI` üzerinden connect/disconnect çağrılarını yap.
-   - [ ] Loglama: her remesh turunda kısa bir özet yaz (kaç peer eklendi/silindi).
+   - [x] Daemon içinde ayrı bir thread/timer ile AutoRemeshManager’ı periyodik çalıştır.
+   - [x] Kararlara göre `INetworkAPI` üzerinden connect/disconnect çağrılarını yap.
+   - [x] Loglama: her remesh turunda kısa bir özet yaz (kaç peer eklendi/silindi).
 
 5. **Test & Gözlemlenebilirlik**
-   - [ ] UNIT: AutoRemeshManager için saf C++ unit test’leri (farklı metrik setleri için doğru kararlar?).
-   - [ ] İNTEG: 3–4 sahte peer ile RTT’leri değiştirerek remesh davranışını gözlemle.
-   - [ ] Metrics: remesh sayısı, remesh sonucu ortalama RTT iyileşmesi gibi metrikler ekle.
+   - [x] UNIT: AutoRemeshManager için saf C++ unit test’leri (farklı metrik setleri için doğru kararlar?).
+   - [x] İNTEG: 3–4 sahte peer ile RTT’leri değiştirerek remesh davranışını gözlemle.
+   - [x] Metrics: remesh sayısı, remesh sonucu ortalama RTT iyileşmesi gibi metrikler ekle.

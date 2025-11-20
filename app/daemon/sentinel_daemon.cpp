@@ -2,6 +2,10 @@
 #include <csignal>
 #include <string>
 #include <filesystem>
+#include <ctime>
+#include <unordered_map>
+#include <limits>
+#include <cmath>
 #include "DaemonCore.h"
 #include "IPCHandler.h"
 #include "EventHandlers.h"
@@ -139,6 +143,7 @@ int main(int argc, char* argv[]) {
             
             auto storage = daemon.getStoragePlugin();
             auto network = daemon.getNetworkPlugin();
+            auto& metrics = MetricsCollector::instance();
             
             // Measure RTT to all peers and update health metrics
             auto peers = storage->getAllPeers();
@@ -148,15 +153,30 @@ int main(int argc, char* argv[]) {
                     if (rtt >= 0) {
                         storage->updatePeerLatency(peer.id, rtt);
                         autoRemesh.updateMeasurement(peer.id, rtt, true);
+                        metrics.recordSyncLatency(static_cast<uint64_t>(rtt));
+
+                        PeerInfo updatedPeer = peer;
+                        updatedPeer.lastSeen = static_cast<long long>(std::time(nullptr));
+                        updatedPeer.status = "active";
+                        updatedPeer.latency = rtt;
+                        storage->addPeer(updatedPeer);
                         std::cout << "Updated latency for " << peer.id << ": " << rtt << "ms" << std::endl;
                     } else {
                         autoRemesh.updateMeasurement(peer.id, -1, false);
                         std::cout << "Failed to measure RTT for " << peer.id << std::endl;
+                        PeerInfo updatedPeer = peer;
+                        updatedPeer.status = "offline";
+                        updatedPeer.latency = -1;
+                        storage->addPeer(updatedPeer);
                         network->disconnectPeer(peer.id);
                     }
                 } else {
                     // Peer currently disconnected; count as failed probe for health
                     autoRemesh.updateMeasurement(peer.id, -1, false);
+                    PeerInfo updatedPeer = peer;
+                    updatedPeer.status = "offline";
+                    updatedPeer.latency = -1;
+                    storage->addPeer(updatedPeer);
                     std::cout << "Peer " << peer.id << " not connected, attempting reconnect..." << std::endl;
                     network->connectToPeer(peer.ip, peer.port);
                 }
@@ -173,6 +193,61 @@ int main(int argc, char* argv[]) {
             }
 
             auto decision = autoRemesh.computeRemesh(snapshots);
+
+            // Estimate RTT improvement from this remesh cycle using AutoRemeshManager metrics
+            auto health = autoRemesh.snapshotMetrics();
+            std::unordered_map<std::string, double> avgByPeer;
+            avgByPeer.reserve(health.size());
+            for (const auto& h : health) {
+                if (h.avgRttMs >= 0.0 && std::isfinite(h.avgRttMs)) {
+                    avgByPeer[h.peerId] = h.avgRttMs;
+                }
+            }
+
+            std::unordered_map<std::string, bool> wasConnected;
+            wasConnected.reserve(peers.size());
+            for (const auto& peer : peers) {
+                wasConnected[peer.id] = network->isPeerConnected(peer.id);
+            }
+
+            std::unordered_map<std::string, bool> finalConnected = wasConnected;
+            for (const auto& id : decision.disconnectPeers) {
+                finalConnected[id] = false;
+            }
+            for (const auto& id : decision.connectPeers) {
+                finalConnected[id] = true;
+            }
+
+            auto computeAvgRtt = [&avgByPeer](const std::unordered_map<std::string, bool>& state) {
+                double sum = 0.0;
+                std::size_t count = 0;
+                for (const auto& entry : state) {
+                    if (!entry.second) {
+                        continue;
+                    }
+                    auto it = avgByPeer.find(entry.first);
+                    if (it == avgByPeer.end()) {
+                        continue;
+                    }
+                    double v = it->second;
+                    if (!std::isfinite(v) || v < 0.0) {
+                        continue;
+                    }
+                    sum += v;
+                    ++count;
+                }
+                if (count == 0) {
+                    return std::numeric_limits<double>::quiet_NaN();
+                }
+                return sum / static_cast<double>(count);
+            };
+
+            double preAvg = computeAvgRtt(wasConnected);
+            double postAvg = computeAvgRtt(finalConnected);
+            if (std::isfinite(preAvg) && std::isfinite(postAvg) && preAvg > postAvg) {
+                uint64_t improvement = static_cast<uint64_t>(preAvg - postAvg);
+                metrics.recordRemeshRttImprovement(improvement);
+            }
 
             std::size_t disconnectCount = 0;
             std::size_t connectCount = 0;
@@ -210,6 +285,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (connectCount > 0 || disconnectCount > 0) {
+                metrics.incrementRemeshCycles();
                 std::cout << "[AutoRemesh] Remesh cycle: "
                           << "connected=" << connectCount
                           << ", disconnected=" << disconnectCount << std::endl;

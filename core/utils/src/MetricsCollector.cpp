@@ -37,6 +37,7 @@ namespace SentinelFS {
     void MetricsCollector::incrementTransfersFailed() { networkMetrics_.transfersFailed++; }
     void MetricsCollector::incrementDeltasSent() { networkMetrics_.deltasSent++; }
     void MetricsCollector::incrementDeltasReceived() { networkMetrics_.deltasReceived++; }
+    void MetricsCollector::incrementRemeshCycles() { networkMetrics_.remeshCycles++; }
 
     // Security metrics
     void MetricsCollector::incrementAnomalies() { securityMetrics_.anomaliesDetected++; }
@@ -56,6 +57,10 @@ namespace SentinelFS {
 
     void MetricsCollector::recordTransferSpeed(uint64_t speedKBps) {
         updateMovingAverage(perfMetrics_.avgTransferSpeedKBps, speedKBps);
+    }
+
+    void MetricsCollector::recordRemeshRttImprovement(uint64_t improvementMs) {
+        updateMovingAverage(perfMetrics_.avgRemeshRttImprovementMs, improvementMs);
     }
 
     void MetricsCollector::updateMemoryUsage(uint64_t usageMB) {
@@ -92,6 +97,7 @@ namespace SentinelFS {
         snapshot.transfersFailed = networkMetrics_.transfersFailed.load();
         snapshot.deltasSent = networkMetrics_.deltasSent.load();
         snapshot.deltasReceived = networkMetrics_.deltasReceived.load();
+        snapshot.remeshCycles = networkMetrics_.remeshCycles.load();
         return snapshot;
     }
 
@@ -112,6 +118,7 @@ namespace SentinelFS {
         snapshot.avgTransferSpeedKBps = perfMetrics_.avgTransferSpeedKBps.load();
         snapshot.peakMemoryUsageMB = perfMetrics_.peakMemoryUsageMB.load();
         snapshot.cpuUsagePercent = perfMetrics_.cpuUsagePercent.load();
+        snapshot.avgRemeshRttImprovementMs = perfMetrics_.avgRemeshRttImprovementMs.load();
         return snapshot;
     }
 
@@ -234,6 +241,7 @@ namespace SentinelFS {
         networkMetrics_.transfersFailed = 0;
         networkMetrics_.deltasSent = 0;
         networkMetrics_.deltasReceived = 0;
+        networkMetrics_.remeshCycles = 0;
         
         // Reset security metrics
         securityMetrics_.anomaliesDetected = 0;
@@ -248,6 +256,7 @@ namespace SentinelFS {
         perfMetrics_.avgTransferSpeedKBps = 0;
         perfMetrics_.peakMemoryUsageMB = 0;
         perfMetrics_.cpuUsagePercent = 0;
+        perfMetrics_.avgRemeshRttImprovementMs = 0;
         
         startTime_ = std::chrono::system_clock::now();
     }

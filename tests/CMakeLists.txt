@@ -20,4 +20,6 @@ add_sentinel_test(filesystem_test filesystem_test.cpp)
 add_sentinel_test(delta_test delta_test.cpp)
 add_sentinel_test(discovery_test discovery_test.cpp dl)
 add_sentinel_test(transfer_test transfer_test.cpp dl)
+add_sentinel_test(autoremsh_test autoremsh_test.cpp)
+add_sentinel_test(autoremsh_integ_test autoremsh_integ_test.cpp)
 

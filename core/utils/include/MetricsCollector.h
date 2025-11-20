@@ -28,6 +28,7 @@ namespace SentinelFS {
         uint64_t transfersFailed{0};
         uint64_t deltasSent{0};
         uint64_t deltasReceived{0};
+        uint64_t remeshCycles{0};
     };
 
     struct SecurityMetricsSnapshot {
@@ -44,6 +45,7 @@ namespace SentinelFS {
         uint64_t avgTransferSpeedKBps{0};
         uint64_t peakMemoryUsageMB{0};
         uint64_t cpuUsagePercent{0};
+        uint64_t avgRemeshRttImprovementMs{0};
     };
 
     // Internal structs with atomics
@@ -66,6 +68,7 @@ namespace SentinelFS {
         std::atomic<uint64_t> transfersFailed{0};
         std::atomic<uint64_t> deltasSent{0};
         std::atomic<uint64_t> deltasReceived{0};
+        std::atomic<uint64_t> remeshCycles{0};
     };
 
     struct SecurityMetrics {
@@ -82,6 +85,7 @@ namespace SentinelFS {
         std::atomic<uint64_t> avgTransferSpeedKBps{0};
         std::atomic<uint64_t> peakMemoryUsageMB{0};
         std::atomic<uint64_t> cpuUsagePercent{0};
+        std::atomic<uint64_t> avgRemeshRttImprovementMs{0};
     };
 
     // Time-series data point for tracking metrics over time
@@ -116,6 +120,7 @@ namespace SentinelFS {
         void incrementTransfersFailed();
         void incrementDeltasSent();
         void incrementDeltasReceived();
+        void incrementRemeshCycles();
 
         // Security metrics
         void incrementAnomalies();
@@ -128,6 +133,7 @@ namespace SentinelFS {
         void recordSyncLatency(uint64_t latencyMs);
         void recordDeltaComputeTime(uint64_t timeMs);
         void recordTransferSpeed(uint64_t speedKBps);
+        void recordRemeshRttImprovement(uint64_t improvementMs);
         void updateMemoryUsage(uint64_t usageMB);
         void updateCpuUsage(uint64_t percent);
 
