@@ -42,6 +42,7 @@ set(CORE_SOURCES
     utils/src/PluginLoader.cpp
     utils/src/PluginManager.cpp
     utils/src/MetricsCollector.cpp
+    utils/src/ThreadPool.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

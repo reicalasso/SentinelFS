@@ -1,12 +1,16 @@
 #include "DeltaEngine.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "ThreadPool.h"
 #include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <openssl/sha.h>
 #include <unordered_map>
+#include <mutex>
+#include <algorithm>
+#include <cstring>
 
 namespace SentinelFS {
 
@@ -39,34 +43,54 @@ namespace SentinelFS {
     std::vector<BlockSignature> DeltaEngine::calculateSignature(const std::string& filePath) {
         auto& logger = Logger::instance();
         auto& metrics = MetricsCollector::instance();
-        
+
         logger.log(LogLevel::DEBUG, "Calculating signature for: " + filePath, "DeltaEngine");
-        
+
         std::vector<BlockSignature> signatures;
         std::ifstream file(filePath, std::ios::binary);
-        
+
         if (!file) {
             logger.log(LogLevel::ERROR, "Failed to open file for signature calculation: " + filePath, "DeltaEngine");
             metrics.incrementSyncErrors();
             return signatures;
         }
 
+        ThreadPool pool(0); // Use hardware concurrency by default
+        std::vector<std::future<void>> futures;
+        std::mutex sigMutex;
+
         std::vector<uint8_t> buffer(BLOCK_SIZE);
         uint32_t index = 0;
 
         while (file) {
             file.read(reinterpret_cast<char*>(buffer.data()), BLOCK_SIZE);
-            size_t bytesRead = file.gcount();
-            
+            size_t bytesRead = static_cast<size_t>(file.gcount());
+
             if (bytesRead == 0) break;
 
-            BlockSignature sig;
-            sig.index = index++;
-            sig.adler32 = calculateAdler32(buffer.data(), bytesRead);
-            sig.sha256 = calculateSHA256(buffer.data(), bytesRead);
-            
-            signatures.push_back(sig);
+            std::vector<uint8_t> block(bytesRead);
+            std::copy(buffer.begin(), buffer.begin() + bytesRead, block.begin());
+
+            uint32_t currentIndex = index++;
+
+            futures.push_back(pool.enqueue([block = std::move(block), currentIndex, &signatures, &sigMutex]() {
+                BlockSignature sig;
+                sig.index = currentIndex;
+                sig.adler32 = DeltaEngine::calculateAdler32(block.data(), block.size());
+                sig.sha256 = DeltaEngine::calculateSHA256(block.data(), block.size());
+
+                std::lock_guard<std::mutex> lock(sigMutex);
+                signatures.push_back(std::move(sig));
+            }));
         }
+
+        for (auto& fut : futures) {
+            fut.wait();
+        }
+
+        std::sort(signatures.begin(), signatures.end(), [](const BlockSignature& a, const BlockSignature& b) {
+            return a.index < b.index;
+        });
 
         return signatures;
     }
@@ -92,28 +116,66 @@ namespace SentinelFS {
             signatureMap[sig.adler32].push_back(sig);
         }
 
-        // Read entire file into memory for simplicity (optimization: use sliding window buffer)
-        // For large files, this should be optimized to use a circular buffer.
-        file.seekg(0, std::ios::end);
-        size_t fileSize = file.tellg();
-        file.seekg(0, std::ios::beg);
-        
-        std::vector<uint8_t> fileData(fileSize);
-        file.read(reinterpret_cast<char*>(fileData.data()), fileSize);
+        // Sliding window over the new file using a bounded buffer.
+        constexpr size_t MAX_BUFFER = BLOCK_SIZE * 4;
+        std::vector<uint8_t> buffer(MAX_BUFFER);
+        size_t bufStart = 0;  // index of first valid byte
+        size_t bufSize = 0;   // number of valid bytes
+        bool eof = false;
 
-        size_t offset = 0;
         std::vector<uint8_t> literalBuffer;
 
-        while (offset < fileSize) {
-            size_t remaining = fileSize - offset;
-            size_t windowSize = (remaining < BLOCK_SIZE) ? remaining : BLOCK_SIZE;
-            
-            uint32_t currentAdler = calculateAdler32(fileData.data() + offset, windowSize);
+        auto fillBuffer = [&]() {
+            // Compact if there is not enough space at the end for a full block
+            if (bufStart > 0 && (bufStart + bufSize + BLOCK_SIZE) > MAX_BUFFER) {
+                std::memmove(buffer.data(), buffer.data() + bufStart, bufSize);
+                bufStart = 0;
+            }
+
+            while (!eof && bufSize < MAX_BUFFER) {
+                file.read(reinterpret_cast<char*>(buffer.data() + bufStart + bufSize), MAX_BUFFER - (bufStart + bufSize));
+                std::streamsize read = file.gcount();
+                if (read <= 0) {
+                    eof = true;
+                    break;
+                }
+                bufSize += static_cast<size_t>(read);
+
+                // Stop early once we have at least one full block
+                if (bufSize >= BLOCK_SIZE) {
+                    break;
+                }
+            }
+        };
+
+        fillBuffer();
+
+        while (bufSize > 0 || !eof) {
+            if (bufSize == 0 && eof) {
+                break;
+            }
+
+            if (bufSize < BLOCK_SIZE && !eof) {
+                fillBuffer();
+                if (bufSize == 0 && eof) {
+                    break;
+                }
+            }
+
+            if (bufSize == 0) {
+                break;
+            }
+
+            size_t windowSize = (bufSize < BLOCK_SIZE) ? bufSize : BLOCK_SIZE;
+            const uint8_t* base = buffer.data() + bufStart;
+
+            uint32_t currentAdler = calculateAdler32(base, windowSize);
             
             bool matchFound = false;
-            if (signatureMap.count(currentAdler)) {
-                std::string currentSHA = calculateSHA256(fileData.data() + offset, windowSize);
-                for (const auto& sig : signatureMap[currentAdler]) {
+            auto it = signatureMap.find(currentAdler);
+            if (it != signatureMap.end()) {
+                std::string currentSHA = calculateSHA256(base, windowSize);
+                for (const auto& sig : it->second) {
                     if (sig.sha256 == currentSHA) {
                         // Match found!
                         
@@ -126,7 +188,8 @@ namespace SentinelFS {
                         // Add block reference
                         deltas.push_back({false, {}, sig.index});
                         
-                        offset += windowSize;
+                        bufStart += windowSize;
+                        bufSize  -= windowSize;
                         matchFound = true;
                         break;
                     }
@@ -134,8 +197,10 @@ namespace SentinelFS {
             }
 
             if (!matchFound) {
-                literalBuffer.push_back(fileData[offset]);
-                offset++;
+                // No matching block: emit one literal byte and advance by 1
+                literalBuffer.push_back(*base);
+                bufStart += 1;
+                bufSize  -= 1;
             }
         }
 

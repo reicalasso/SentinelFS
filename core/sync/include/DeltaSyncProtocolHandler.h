@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <unordered_map>
 
 namespace SentinelFS {
 
@@ -66,6 +67,14 @@ private:
     IFileAPI* filesystem_;
     std::string watchDirectory_;
     std::function<void(const std::string&)> markAsPatchedCallback_;
+
+    struct PendingDeltaChunks {
+        std::uint32_t totalChunks{0};
+        std::uint32_t receivedChunks{0};
+        std::vector<std::vector<uint8_t>> chunks;
+    };
+
+    std::unordered_map<std::string, PendingDeltaChunks> pendingDeltas_;
 };
 
 } // namespace SentinelFS
