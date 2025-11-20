@@ -82,11 +82,11 @@ public:
         // Encrypt if enabled
         if (encryptionEnabled_ && !encryptionKey_.empty()) {
             try {
-                auto iv = sentinel::Crypto::generateIV();
-                auto ciphertext = sentinel::Crypto::encrypt(data, encryptionKey_, iv);
-                auto hmac = sentinel::Crypto::hmacSHA256(ciphertext, encryptionKey_);
+                auto iv = SentinelFS::Crypto::generateIV();
+                auto ciphertext = SentinelFS::Crypto::encrypt(data, encryptionKey_, iv);
+                auto hmac = SentinelFS::Crypto::hmacSHA256(ciphertext, encryptionKey_);
                 
-                sentinel::EncryptedMessage msg;
+                SentinelFS::EncryptedMessage msg;
                 msg.iv = iv;
                 msg.ciphertext = ciphertext;
                 msg.hmac = hmac;
@@ -170,7 +170,7 @@ public:
                     0x53, 0x65, 0x6E, 0x74, 0x69, 0x6E, 0x65, 0x6C, 
                     0x46, 0x53, 0x5F, 0x32, 0x30, 0x32, 0x35
                 };
-                encryptionKey_ = sentinel::Crypto::deriveKeyFromSessionCode(sessionCode_, salt);
+                encryptionKey_ = SentinelFS::Crypto::deriveKeyFromSessionCode(sessionCode_, salt);
                 std::cout << "Encryption key derived from session code" << std::endl;
             } catch (const std::exception& e) {
                 std::cerr << "Failed to derive encryption key: " << e.what() << std::endl;
@@ -192,17 +192,17 @@ private:
         // Decrypt if encryption is enabled
         if (encryptionEnabled_ && !encryptionKey_.empty()) {
             try {
-                auto msg = sentinel::EncryptedMessage::deserialize(data);
+                auto msg = SentinelFS::EncryptedMessage::deserialize(data);
                 
                 // Verify HMAC
-                auto expectedHmac = sentinel::Crypto::hmacSHA256(msg.ciphertext, encryptionKey_);
+                auto expectedHmac = SentinelFS::Crypto::hmacSHA256(msg.ciphertext, encryptionKey_);
                 if (msg.hmac != expectedHmac) {
                     std::cerr << "HMAC verification failed from " << peerId << std::endl;
                     return;
                 }
                 
                 // Decrypt
-                decryptedData = sentinel::Crypto::decrypt(msg.ciphertext, encryptionKey_, msg.iv);
+                decryptedData = SentinelFS::Crypto::decrypt(msg.ciphertext, encryptionKey_, msg.iv);
                 std::cout << "Data decrypted (" << data.size() << " -> " 
                           << decryptedData.size() << " bytes)" << std::endl;
             } catch (const std::exception& e) {

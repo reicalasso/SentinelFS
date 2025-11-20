@@ -1,5 +1,4 @@
-#ifndef SENTINEL_BANDWIDTH_LIMITER_H
-#define SENTINEL_BANDWIDTH_LIMITER_H
+#pragma once
 
 #include <chrono>
 #include <mutex>
@@ -190,5 +189,3 @@ struct TransferTask {
 };
 
 } // namespace SentinelFS
-
-#endif // SENTINEL_BANDWIDTH_LIMITER_H

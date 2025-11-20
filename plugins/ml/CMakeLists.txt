@@ -4,11 +4,12 @@ cmake_minimum_required(VERSION 3.10)
 project(MLPlugin)
 
 add_library(ml_plugin SHARED
-    ml_plugin.cpp
-    AnomalyDetector.cpp
+    src/ml_plugin.cpp
+    src/AnomalyDetector.cpp
 )
 
 target_include_directories(ml_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ../../core/include
     ../../core/network/include
     ../../core/security/include

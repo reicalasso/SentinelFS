@@ -1,5 +1,4 @@
-#ifndef SENTINEL_DAEMON_CORE_H
-#define SENTINEL_DAEMON_CORE_H
+#pragma once
 
 #include "IPlugin.h"
 #include "IStorageAPI.h"
@@ -105,5 +104,3 @@ private:
 };
 
 } // namespace SentinelFS
-
-#endif // SENTINEL_DAEMON_CORE_H

@@ -1,5 +1,4 @@
-#ifndef SENTINEL_CRYPTO_H
-#define SENTINEL_CRYPTO_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -7,7 +6,7 @@
 #include <memory>
 #include <array>
 
-namespace sentinel {
+namespace SentinelFS {
 
 /**
  * @brief Cryptographic utilities for secure data transfer
@@ -122,6 +121,4 @@ struct EncryptedMessage {
     static EncryptedMessage deserialize(const std::vector<uint8_t>& data);
 };
 
-} // namespace sentinel
-
-#endif // SENTINEL_CRYPTO_H
+} // namespace SentinelFS

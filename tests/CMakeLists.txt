@@ -1,62 +1,23 @@
 project(SentinelTests)
 
-add_executable(sentinel_tests placeholder_test.cpp)
-target_link_libraries(sentinel_tests sentinel_core)
-target_include_directories(sentinel_tests PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
+# Function to create test executable with standard includes
+function(add_sentinel_test TEST_NAME SOURCE_FILE)
+    add_executable(${TEST_NAME} ${SOURCE_FILE})
+    target_link_libraries(${TEST_NAME} sentinel_core ${ARGN})
+    target_include_directories(${TEST_NAME} PRIVATE 
+        ../core/include
+        ../core/network/include
+        ../core/security/include
+        ../core/sync/include
+        ../core/utils/include
+    )
+endfunction()
 
-add_executable(storage_test storage_test.cpp)
-target_link_libraries(storage_test sentinel_core)
-target_include_directories(storage_test PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
-
-add_executable(filesystem_test filesystem_test.cpp)
-target_link_libraries(filesystem_test sentinel_core)
-target_include_directories(filesystem_test PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
-
-add_executable(delta_test delta_test.cpp)
-target_link_libraries(delta_test sentinel_core)
-target_include_directories(delta_test PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
-
-add_executable(discovery_test discovery_test.cpp)
-target_link_libraries(discovery_test sentinel_core dl)
-target_include_directories(discovery_test PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
-
-add_executable(transfer_test transfer_test.cpp)
-target_link_libraries(transfer_test sentinel_core dl)
-target_include_directories(transfer_test PRIVATE 
-    ../core/include
-    ../core/network/include
-    ../core/security/include
-    ../core/sync/include
-    ../core/utils/include
-)
+# Add all test executables
+add_sentinel_test(sentinel_tests placeholder_test.cpp)
+add_sentinel_test(storage_test storage_test.cpp)
+add_sentinel_test(filesystem_test filesystem_test.cpp)
+add_sentinel_test(delta_test delta_test.cpp)
+add_sentinel_test(discovery_test discovery_test.cpp dl)
+add_sentinel_test(transfer_test transfer_test.cpp dl)
 

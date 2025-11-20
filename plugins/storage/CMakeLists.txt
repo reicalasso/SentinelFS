@@ -6,14 +6,15 @@ project(StoragePlugin)
 find_package(SQLite3 REQUIRED)
 
 add_library(storage_plugin SHARED
-    storage_plugin.cpp
-    SQLiteHandler.cpp
-    FileMetadataManager.cpp
-    PeerManager.cpp
-    ConflictManager.cpp
+    src/storage_plugin.cpp
+    src/SQLiteHandler.cpp
+    src/FileMetadataManager.cpp
+    src/PeerManager.cpp
+    src/ConflictManager.cpp
 )
 
 target_include_directories(storage_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ../../core/include
     ../../core/network/include
     ../../core/security/include

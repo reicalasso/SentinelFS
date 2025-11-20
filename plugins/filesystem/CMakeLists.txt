@@ -6,12 +6,13 @@ project(FilesystemPlugin)
 find_package(OpenSSL REQUIRED)
 
 add_library(filesystem_plugin SHARED
-    filesystem_plugin.cpp
-    InotifyWatcher.cpp
-    FileHasher.cpp
+    src/filesystem_plugin.cpp
+    src/InotifyWatcher.cpp
+    src/FileHasher.cpp
 )
 
 target_include_directories(filesystem_plugin PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ../../core/include
     ../../core/network/include
     ../../core/security/include

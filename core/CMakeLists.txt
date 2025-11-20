@@ -16,17 +16,28 @@ include_directories(
 
 find_package(OpenSSL REQUIRED)
 
-# Collect sources from all subdirectories
-file(GLOB_RECURSE SOURCES 
-    "src/*.cpp"
-    "network/src/*.cpp"
-    "security/src/*.cpp"
-    "sync/src/*.cpp"
-    "storage/src/*.cpp"
-    "utils/src/*.cpp"
+# Explicitly list all source files (better than GLOB for CMake)
+set(CORE_SOURCES
+    # Network sources
+    network/src/DeltaEngine.cpp
+    network/src/BandwidthLimiter.cpp
+    network/src/DeltaSync.cpp
+    
+    # Security sources
+    security/src/Crypto.cpp
+    
+    # Sync sources
+    sync/src/ConflictResolver.cpp
+    
+    # Utils sources
+    utils/src/Logger.cpp
+    utils/src/Config.cpp
+    utils/src/EventBus.cpp
+    utils/src/PluginLoader.cpp
+    utils/src/MetricsCollector.cpp
 )
 
-add_library(sentinel_core SHARED ${SOURCES})
+add_library(sentinel_core SHARED ${CORE_SOURCES})
 
 target_include_directories(sentinel_core PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/include

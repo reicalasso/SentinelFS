@@ -10,7 +10,7 @@
 #include <iomanip>
 #include <cstring>
 
-namespace sentinel {
+namespace SentinelFS {
 
 std::vector<uint8_t> Crypto::generateKey() {
     auto& logger = SentinelFS::Logger::instance();
@@ -307,4 +307,4 @@ EncryptedMessage EncryptedMessage::deserialize(const std::vector<uint8_t>& data)
     return msg;
 }
 
-} // namespace sentinel
+} // namespace SentinelFS

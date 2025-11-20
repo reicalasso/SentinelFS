@@ -1,5 +1,4 @@
-#ifndef SENTINEL_CONFLICT_RESOLVER_H
-#define SENTINEL_CONFLICT_RESOLVER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -198,5 +197,3 @@ public:
 };
 
 } // namespace SentinelFS
-
-#endif // SENTINEL_CONFLICT_RESOLVER_H
