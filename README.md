@@ -47,18 +47,41 @@ Sistem, ağ koşullarına göre kendini **yeniden şekillendiren auto-remesh mot
 
 SentinelFS-Neo, aynı session code'a sahip cihazlar arasında mikro-mesh ağı kurar:
 
--   En düşük gecikmeli peers → otomatik seçilir
+-   En düşük gecikmeli peers → otomatik seçilir (tasarım hedefi)
     
--   Ağ bozulduğunda → auto-remesh devreye girer
+-   Ağ bozulduğunda → auto-remesh devreye girer (kısmen/taslak düzeyde)
     
--   Her dosya değişikliği → delta algoritmasıyla optimize edilir
+-   Her dosya değişikliği → delta algoritmasıyla optimize edilir (mevcut DeltaEngine ile)
     
--   Veritabanı → metadata bütünlüğü sağlar
+-   Veritabanı → metadata bütünlüğü sağlar (SQLite tabanlı temel şema mevcut)
     
--   ML katmanı → anormal dosya erişimlerini tespit eder
+-   ML katmanı → anormal dosya erişimlerini tespit eder (şu an heuristik tabanlı, ONNX planlı)
     
 
 Tamamen modüler yapısı sayesinde hem akademik projeler hem de gerçek dünya uygulamaları için uygundur.
+
+## 🧭 Hızlı Bakış (Durum & Proje Yapısı)
+
+**Durum (kaba özet)**
+
+- **Uygulamada var**: P2P discovery, TCP transfer, delta-sync hattı, Linux watcher (inotify), SQLite metadata, temel ML anomaly detector.
+- **Planlı / geliştirme altında**: Auto-remesh optimizasyonu, cross-platform watcher (FSEvents/ReadDirectoryChangesW), zengin DB şeması (Device/Session/FileVersion/SyncQueue/FileAccessLog), ONNX tabanlı ML, QoS / bandwidth limiting.
+- Detaylı roadmap için: `TODO/01_network_auto_remesh.md` … `TODO/07_daemon_state_and_plugin_mgmt.md`.
+
+**Proje klasör yapısı (2 dk tur)**
+
+- `core/` – Ortak C++ kütüphanesi
+  - `include/` – Public arayüzler (`IPlugin`, `INetworkAPI`, `IStorageAPI`, `IFileAPI`)
+  - `network/` – Ağ, discovery, delta engine, bandwidth limiter
+  - `security/` – Kripto ve `SessionCode`
+  - `sync/` – EventHandlers, FileSyncHandler, DeltaSyncProtocolHandler, ConflictResolver
+  - `utils/` – Logger, Config, EventBus, PluginLoader, PluginManager, MetricsCollector
+- `plugins/` – Takılabilir runtime modüller (filesystem, network, storage, ml)
+- `app/` – CLI ve daemon giriş noktaları (`sentinel_cli`, `sentinel_daemon`)
+- `tests/` – Birim ve entegrasyon testleri
+- `docs/` – Mimari ve tasarım dokümanları (örn. `ARCHITECTURE.md`)
+- `TODO/` – Modül bazlı plan dosyaları (01–07)
+- `runtime/` – Çalışma zamanı artefaktları için ayrılmış dizin
 
 ---
 
