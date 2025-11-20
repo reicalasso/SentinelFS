@@ -23,13 +23,17 @@ set(CORE_SOURCES
     network/src/BandwidthLimiter.cpp
     network/src/DeltaSync.cpp
     network/src/NetworkManager.cpp
-    
+
     # Security sources
     security/src/Crypto.cpp
-    
+
     # Sync sources
     sync/src/ConflictResolver.cpp
-    
+    sync/src/EventHandlers.cpp
+    sync/src/FileSyncHandler.cpp
+    sync/src/DeltaSyncProtocolHandler.cpp
+    sync/src/DeltaSerialization.cpp
+
     # Utils sources
     utils/src/Logger.cpp
     utils/src/Config.cpp
