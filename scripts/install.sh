@@ -1,41 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+BUILD_DIR=${BUILD_DIR:-build}
+CMAKE_BIN=${CMAKE_BIN:-cmake}
 PREFIX=${PREFIX:-/usr/local}
-CONFIG_DIR=${CONFIG_DIR:-/etc/sentinelfs}
-SYSTEMD_DIR=${SYSTEMD_DIR:-/lib/systemd/system}
+DESTDIR=${DESTDIR:-}
 SERVICE_NAME=sentinel_daemon.service
 CONFIG_NAME=sentinel.conf
-BINARIES=(sentinel_daemon sentinel_cli)
+CACHE_FILE="${BUILD_DIR}/CMakeCache.txt"
 
-if [[ $EUID -ne 0 ]]; then
-  echo "[!] This installer must be run as root (sudo)." >&2
+if ! command -v "${CMAKE_BIN}" >/dev/null 2>&1; then
+  echo "[!] ${CMAKE_BIN} not found in PATH. Please install CMake 3.17+." >&2
   exit 1
 fi
 
-install -d -m 0755 "${PREFIX}/bin"
-install -d -m 0755 "${CONFIG_DIR}"
-install -d -m 0755 "${SYSTEMD_DIR}"
+if [[ ! -f "${CACHE_FILE}" ]]; then
+  cat <<EOF >&2
+[!] ${CACHE_FILE} not found.
+    Please configure the project first, e.g.:
+    cmake -S . -B ${BUILD_DIR} -DCMAKE_BUILD_TYPE=Release
+EOF
+  exit 1
+fi
 
-for bin in "${BINARIES[@]}"; do
-  if [[ -f "build/app/daemon/${bin}" ]]; then
-    install -m 0755 "build/app/daemon/${bin}" "${PREFIX}/bin/${bin}"
-  elif [[ -f "build/app/cli/${bin}" ]]; then
-    install -m 0755 "build/app/cli/${bin}" "${PREFIX}/bin/${bin}"
+get_cache_path() {
+  local key="$1"
+  local fallback="$2"
+  local line
+  line=$(grep -E "^${key}:PATH=" "${CACHE_FILE}" || true)
+  if [[ -n "${line}" ]]; then
+    echo "${line#*=}"
   else
-    echo "[!] Missing ${bin}, please run cmake && make first." >&2
-    exit 1
+    echo "${fallback}"
   fi
+}
+
+CONFIG_DIR=${CONFIG_DIR:-$(get_cache_path SENTINEL_CONFIG_INSTALL_DIR /etc/sentinelfs)}
+SYSTEMD_DIR=${SYSTEMD_DIR:-$(get_cache_path SENTINEL_SYSTEMD_DIR /lib/systemd/system)}
+
+if [[ -z "${DESTDIR}" && $EUID -ne 0 ]]; then
+  echo "[!] Please run as root (or set DESTDIR for staged installs)." >&2
+  exit 1
 fi
 
-install -m 0640 config/${CONFIG_NAME} "${CONFIG_DIR}/${CONFIG_NAME}.example"
-install -m 0644 docs/${SERVICE_NAME} "${SYSTEMD_DIR}/${SERVICE_NAME}"
+echo "[i] Building SentinelFS targets (directory: ${BUILD_DIR})"
+"${CMAKE_BIN}" --build "${BUILD_DIR}"
 
-if command -v systemctl >/dev/null 2>&1; then
-  systemctl daemon-reload
-  echo "[i] Systemd unit installed. Enable with: systemctl enable --now ${SERVICE_NAME%.service}"
+echo "[i] Installing to prefix ${PREFIX}"${DESTDIR:+" with DESTDIR=${DESTDIR}"}
+if [[ -n "${DESTDIR}" ]]; then
+  DESTDIR="${DESTDIR}" "${CMAKE_BIN}" --install "${BUILD_DIR}" --prefix "${PREFIX}"
 else
-  echo "[i] systemctl not found; skipping daemon-reload."
+  "${CMAKE_BIN}" --install "${BUILD_DIR}" --prefix "${PREFIX}"
 fi
 
-echo "[✓] SentinelFS installed under ${PREFIX}. Copy ${CONFIG_DIR}/${CONFIG_NAME}.example to ${CONFIG_DIR}/${CONFIG_NAME} and edit before starting."
+if [[ -z "${DESTDIR}" && -x "$(command -v systemctl 2>/dev/null || true)" ]]; then
+  systemctl daemon-reload
+  echo "[i] Systemd unit installed under ${SYSTEMD_DIR}. Enable with: systemctl enable --now ${SERVICE_NAME%.service}"
+elif [[ -z "${DESTDIR}" ]]; then
+  echo "[i] systemctl not found; skipping daemon-reload."
+else
+  echo "[i] Skipping systemctl daemon-reload (staged DESTDIR install)."
+fi
+
+echo "[✓] SentinelFS installed. Edit ${CONFIG_DIR}/${CONFIG_NAME} as needed before starting the daemon."
