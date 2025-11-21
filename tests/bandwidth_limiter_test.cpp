@@ -16,13 +16,13 @@ int main() {
     limiter.requestTransfer(bytesToSend);
 
     auto stats = limiter.getStats();
-    if (stats.totalWaitTimeMs == 0) {
+    if (stats.second == 0) {
         std::cerr << "BandwidthLimiter did not wait despite throttling" << std::endl;
         return 1;
     }
 
     std::cout << "Configured rate: " << (rateBytesPerSec / 1024) << " KB/s, bytes: "
-              << bytesToSend << ", wait: " << stats.totalWaitTimeMs << " ms" << std::endl;
+              << bytesToSend << ", wait: " << stats.second << " ms" << std::endl;
     std::cout << "BandwidthLimiter stats test PASSED" << std::endl;
     return 0;
 }
