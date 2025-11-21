@@ -29,3 +29,7 @@ install(TARGETS ${SENTINEL_LIBS}
         LIBRARY DESTINATION lib)
 
 install(DIRECTORY core/include/ DESTINATION include)
+
+# Install config template and systemd unit
+install(FILES config/sentinel.conf DESTINATION etc/sentinelfs)
+install(FILES docs/sentinel_daemon.service DESTINATION lib/systemd/system)
