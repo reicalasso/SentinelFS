@@ -1,34 +1,43 @@
-#include <iostream>
 #include <chrono>
+#include <future>
+#include <iostream>
 #include "BandwidthLimiter.h"
 
 using namespace SentinelFS;
 
 int main() {
-    std::cout << "Starting BandwidthLimiter basic rate test..." << std::endl;
+    std::cout << "Starting BandwidthLimiter timing test..." << std::endl;
 
-    const std::size_t rateBytesPerSec = 100 * 1024;   // 100 KB/s
-    const std::size_t bytesToSend     = 300 * 1024;   // 300 KB; > 2x rate => bekleme zorunlu
+    const std::size_t rateBytesPerSec = 64 * 1024;   // 64 KB/s
+    const std::size_t bytesToSend     = rateBytesPerSec; // ~1 second worth of data
 
     BandwidthLimiter limiter(rateBytesPerSec);
 
-    auto start = std::chrono::steady_clock::now();
-    limiter.requestTransfer(bytesToSend);
-    auto end   = std::chrono::steady_clock::now();
+    auto future = std::async(std::launch::async, [&]() {
+        auto start = std::chrono::steady_clock::now();
+        limiter.requestTransfer(bytesToSend);
+        auto end = std::chrono::steady_clock::now();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    });
 
-    auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        std::cerr << "BandwidthLimiter request timed out" << std::endl;
+        return 1;
+    }
+
+    auto elapsedMs = future.get();
 
     std::cout << "Configured rate: " << (rateBytesPerSec / 1024)
               << " KB/s, bytes: " << bytesToSend
               << ", elapsed: " << elapsedMs << " ms" << std::endl;
 
-    // Teorik bekleme ~1s, biraz toleransla en az 800ms beklenmesini bekliyoruz.
-    if (elapsedMs < 800) {
+    const auto expectedMs = static_cast<long>((bytesToSend * 1000) / rateBytesPerSec);
+    if (elapsedMs + 200 < expectedMs) {
         std::cerr << "BandwidthLimiter allowed transfer too fast (" << elapsedMs
-                  << " ms) — expected at least ~800 ms" << std::endl;
+                  << " ms) — expected at least ~" << expectedMs << " ms" << std::endl;
         return 1;
     }
 
-    std::cout << "BandwidthLimiter basic rate test PASSED" << std::endl;
+    std::cout << "BandwidthLimiter timing test PASSED" << std::endl;
     return 0;
 }
