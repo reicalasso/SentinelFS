@@ -170,6 +170,12 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleDownloadLimitCommand(args);
     } else if (cmd == "METRICS") {
         return handleMetricsCommand();
+    } else if (cmd == "STATUS_JSON") {
+        return handleStatusJsonCommand();
+    } else if (cmd == "PEERS_JSON") {
+        return handlePeersJsonCommand();
+    } else if (cmd == "METRICS_JSON") {
+        return handleMetricsJsonCommand();
     } else if (cmd == "STATS") {
         return handleStatsCommand();
     } else if (cmd == "CONFLICTS") {
@@ -406,6 +412,49 @@ std::string IPCHandler::handleStatsCommand() {
     ss << "Transfers Completed: " << networkMetrics.transfersCompleted << "\n";
     ss << "Transfers Failed: " << networkMetrics.transfersFailed << "\n";
     
+    return ss.str();
+}
+
+std::string IPCHandler::handleStatusJsonCommand() {
+    std::stringstream ss;
+    ss << "{";
+    ss << "\"syncStatus\": \"" << (daemonCore_ && daemonCore_->isSyncEnabled() ? "ENABLED" : "PAUSED") << "\",";
+    ss << "\"encryption\": " << (network_->isEncryptionEnabled() ? "true" : "false") << ",";
+    ss << "\"sessionCode\": \"" << network_->getSessionCode() << "\",";
+    ss << "\"peerCount\": " << storage_->getAllPeers().size();
+    ss << "}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handlePeersJsonCommand() {
+    std::stringstream ss;
+    auto sortedPeers = storage_->getPeersByLatency();
+    ss << "[";
+    for (size_t i = 0; i < sortedPeers.size(); ++i) {
+        const auto& p = sortedPeers[i];
+        ss << "{";
+        ss << "\"id\": \"" << p.id << "\",";
+        ss << "\"ip\": \"" << p.ip << "\",";
+        ss << "\"port\": " << p.port << ",";
+        ss << "\"latency\": " << p.latency << ",";
+        ss << "\"status\": \"" << p.status << "\"";
+        ss << "}";
+        if (i < sortedPeers.size() - 1) ss << ",";
+    }
+    ss << "]\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleMetricsJsonCommand() {
+    auto& metrics = MetricsCollector::instance();
+    auto netMetrics = metrics.getNetworkMetrics();
+    
+    std::stringstream ss;
+    ss << "{";
+    ss << "\"totalUploaded\": " << netMetrics.bytesUploaded << ",";
+    ss << "\"totalDownloaded\": " << netMetrics.bytesDownloaded << ",";
+    ss << "\"filesSynced\": " << metrics.getSyncMetrics().filesSynced;
+    ss << "}\n";
     return ss.str();
 }
 

@@ -77,6 +77,11 @@ private:
     std::string handleMetricsCommand();
     std::string handleStatsCommand();
     std::string handlePluginsCommand();
+
+    // JSON Command handlers for GUI
+    std::string handleStatusJsonCommand();
+    std::string handlePeersJsonCommand();
+    std::string handleMetricsJsonCommand();
     
     std::string socketPath_;
     int serverSocket_{-1};

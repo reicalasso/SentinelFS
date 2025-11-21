@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import net from 'node:net'
 import os from 'node:os'
+import { spawn, ChildProcess } from 'node:child_process'
 
 // The built directory structure
 //
@@ -16,6 +17,7 @@ process.env.VITE_PUBLIC = app.isPackaged ? process.env.DIST : path.join(__dirnam
 
 let win: BrowserWindow | null
 let daemonSocket: net.Socket | null = null
+let daemonProcess: ChildProcess | null = null
 const RECONNECT_INTERVAL = 5000
 
 // Dynamic socket path based on XDG or fallback
@@ -27,7 +29,70 @@ function getSocketPath() {
   return path.join(os.tmpdir(), 'sentinelfs.sock')
 }
 
+function getDaemonPath() {
+    if (app.isPackaged) {
+        // In AppImage: resources/bin/sentinel_daemon
+        return path.join(process.resourcesPath, 'bin', 'sentinel_daemon')
+    } else {
+        // Dev: build_release/app/daemon/sentinel_daemon
+        return path.join(__dirname, '../../build_release/app/daemon/sentinel_daemon')
+    }
+}
+
+function startDaemon() {
+    const daemonPath = getDaemonPath()
+    console.log('Looking for daemon at:', daemonPath)
+    
+    // Check if daemon is already running by trying to connect
+    const socket = net.createConnection(getSocketPath())
+    socket.on('connect', () => {
+        console.log('Daemon already running')
+        socket.end()
+        connectToDaemon()
+    })
+    socket.on('error', () => {
+        // Not running, spawn it
+        console.log('Spawning daemon...')
+        
+        // Determine plugin dir
+        let pluginDir = ''
+        if (app.isPackaged) {
+            pluginDir = path.join(process.resourcesPath, 'lib', 'plugins')
+        } else {
+            pluginDir = path.join(__dirname, '../../build_release/plugins')
+        }
+
+        try {
+            // Pass arguments if needed, e.g., config path
+            daemonProcess = spawn(daemonPath, [], {
+                stdio: 'ignore', // Daemon logs to file anyway, or use 'pipe' to capture
+                detached: false,
+                env: { ...process.env, SENTINEL_PLUGIN_DIR: pluginDir }
+            })
+            
+            daemonProcess.on('error', (err) => {
+                console.error('Failed to spawn daemon:', err)
+            })
+            
+            daemonProcess.on('exit', (code) => {
+                console.log('Daemon exited with code:', code)
+                daemonProcess = null
+            })
+            
+            // Wait a bit for daemon to initialize socket
+            setTimeout(connectToDaemon, 1000)
+            
+        } catch (e) {
+            console.error('Error spawning daemon:', e)
+        }
+    })
+}
+
 const SOCKET_PATH = getSocketPath()
+
+const distPath = app.isPackaged
+  ? path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html')
+  : path.join(process.env.DIST as string, 'index.html')
 
 function createWindow() {
   win = new BrowserWindow({
@@ -36,7 +101,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'SentinelFS Dashboard',
-    icon: path.join(process.env.VITE_PUBLIC, 'sentinel-icon.svg'),
+    icon: path.join(process.env.VITE_PUBLIC as string, 'sentinel-icon.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       // Security: Sandbox enabled by default in recent Electron versions
@@ -50,13 +115,14 @@ function createWindow() {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
     // win.webContents.openDevTools()
   } else {
-    win.loadFile(path.join(process.env.DIST, 'index.html'))
+    win.loadFile(distPath)
   }
 
   // Connect to daemon when window is ready
   win.once('ready-to-show', () => {
     win?.show()
-    connectToDaemon()
+    // Instead of direct connect, try to start daemon first
+    startDaemon()
   })
 }
 
@@ -78,20 +144,28 @@ function connectToDaemon() {
 
   daemonSocket.on('data', (data) => {
     const message = data.toString()
-    // Here we would parse the JSON response from daemon
-    // For now, just forward raw message
-    console.log('Received from daemon:', message)
+    
     try {
-        // If it looks like JSON, parse it
-        if (message.trim().startsWith('{')) {
+        // If it looks like JSON, parse it and determine type
+        if (message.trim().startsWith('{') || message.trim().startsWith('[')) {
             const json = JSON.parse(message)
-            win?.webContents.send('daemon-data', json)
+            
+            if (json.syncStatus) {
+                win?.webContents.send('daemon-data', { type: 'STATUS', payload: json })
+            } else if (json.totalUploaded !== undefined) {
+                win?.webContents.send('daemon-data', { type: 'METRICS', payload: json })
+            } else if (Array.isArray(json)) {
+                win?.webContents.send('daemon-data', { type: 'PEERS', payload: json })
+            } else {
+                win?.webContents.send('daemon-data', { type: 'UNKNOWN', payload: json })
+            }
         } else {
-             // Handle raw text responses (legacy)
+             // Handle raw text responses (logs or command results)
              win?.webContents.send('daemon-log', message)
         }
     } catch (e) {
-        console.error('Failed to parse daemon message:', e)
+        // If JSON parse fails, treat as log
+        win?.webContents.send('daemon-log', message)
     }
   })
 
@@ -115,14 +189,17 @@ let monitorInterval: NodeJS.Timeout | null = null
 function startMonitoring() {
     if (monitorInterval) clearInterval(monitorInterval)
     
-    // Poll daemon for status every 2 seconds
+    // Poll daemon for status every 1 second
     monitorInterval = setInterval(() => {
         if (daemonSocket && !daemonSocket.destroyed) {
-            // Send STATUS command
-            // Protocol: "STATUS\n"
-            daemonSocket.write('STATUS\n')
+            // Send multiple commands in sequence
+            // Note: In a real implementation, we might want to queue these
+            // to avoid mixed responses, but for now we rely on the single-threaded nature
+            daemonSocket.write('STATUS_JSON\n')
+            setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 200)
+            setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 400)
         }
-    }, 2000)
+    }, 1000)
 }
 
 // Quit when all windows are closed, except on macOS.

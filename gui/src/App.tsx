@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect , cloneElement} from 'react'
 import { Activity, Radio, Settings, Shield, Terminal, Users, Wifi, Play, Pause, RefreshCw, HardDrive } from 'lucide-react'
 
 // Define the API interface exposed from preload
@@ -24,15 +24,14 @@ export default function App() {
   const [peers, setPeers] = useState<string[]>([])
   const [bandwidthStats, setBandwidthStats] = useState<any>(null)
 
+  const handleLog = (log: string) => {
+    setLogs(prev => [...prev.slice(-99), log]) // Keep last 100 logs
+  }
+
   useEffect(() => {
     // Listen for daemon status
     const handleStatus = (newStatus: any) => setStatus(newStatus)
     
-    // Listen for logs
-    const handleLog = (log: string) => {
-      setLogs(prev => [...prev.slice(-99), log]) // Keep last 100 logs
-    }
-
     // Listen for data (JSON responses)
     const handleData = (data: any) => {
         // Here we would process specific JSON responses
@@ -168,7 +167,7 @@ function SidebarItem({ icon, label, active, onClick }: any) {
           : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
       }`}
     >
-      {React.cloneElement(icon, { size: 18 })}
+      {cloneElement(icon, { size: 18 })}
       {label}
     </button>
   )

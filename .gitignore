@@ -1,1 +1,5 @@
 build/
+gui/node_modules/
+build_release/
+gui/dist/
+gui/dist-electron/
