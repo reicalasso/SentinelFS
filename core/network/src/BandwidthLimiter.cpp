@@ -207,6 +207,8 @@ BandwidthManager::BandwidthStats BandwidthManager::getStats() const {
     
     stats.totalUploaded = uploadBytes;
     stats.totalDownloaded = downloadBytes;
+    stats.uploadWaitMs = uploadWait;
+    stats.downloadWaitMs = downloadWait;
     
     // Calculate current rates (simplified - would need time windowing for accuracy)
     stats.currentUploadRate = stats.globalUploadLimit;

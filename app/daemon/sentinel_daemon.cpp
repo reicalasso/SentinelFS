@@ -124,7 +124,8 @@ int main(int argc, char* argv[]) {
         "/tmp/sentinel_daemon.sock",
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
-        daemon.getFilesystemPlugin()
+        daemon.getFilesystemPlugin(),
+        &daemon
     );
     
     // Connect sync enable/disable to event handlers

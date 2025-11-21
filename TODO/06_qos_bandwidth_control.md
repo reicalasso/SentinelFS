@@ -10,20 +10,20 @@
 
 ## Plan
 1. **Rate Limiter Tasarımı**
-   - [ ] Basit bir token-bucket veya leaky-bucket implementasyonu yaz.
-   - [ ] Ayrı limiter örnekleri: upload ve download için iki farklı kova.
-   - [ ] Zaman bazlı refill mekanizmasını netleştir (örn. 100ms per tick).
+   - [x] Basit bir token-bucket veya leaky-bucket implementasyonu yaz.
+   - [x] Ayrı limiter örnekleri: upload ve download için iki farklı kova.
+   - [x] Zaman bazlı refill mekanizmasını netleştir (örn. 100ms per tick).
 
 2. **Network Katmanı Entegrasyonu**
-   - [ ] TCPHandler’da send path’ine upload limiter’ı entegre et.
-   - [ ] Download için okuma tarafında pacing gerekiyorsa, uygun noktaya limiter ekle.
-   - [ ] Limit 0 (unlimited) iken limiter bypass edilecek.
+   - [x] TCPHandler’da send path’ine upload limiter’ı entegre et.
+   - [x] Download için okuma tarafında pacing gerekiyorsa, uygun noktaya limiter ekle.
+   - [x] Limit 0 (unlimited) iken limiter bypass edilecek.
 
 3. **Daemon & IPC Entegrasyonu**
-   - [ ] IPCHandler’ın `UPLOAD-LIMIT` / `DOWNLOAD-LIMIT` komutlarını, runtime’da config güncelleyecek şekilde doldur.
-   - [ ] Yeni limit değerlerini network plugin’e/daemon’a aktaran setter’lar ekle.
+   - [x] IPCHandler’ın `UPLOAD-LIMIT` / `DOWNLOAD-LIMIT` komutlarını, runtime’da config güncelleyecek şekilde doldur.
+   - [x] Yeni limit değerlerini network plugin’e/daemon’a aktaran setter’lar ekle.
 
 4. **Test & Doğrulama**
-   - [ ] Unit test: rate limiter’ın teorik hız ile pratikteki byte akışını karşılaştır.
-   - [ ] İNTEG: iki peer arasında farklı limit değerlerinde transfer sürelerini ölç.
-   - [ ] Metrics: anlık efektif throughput, drop edilen/bekletilen byte sayısı.
+   - [x] Unit test: rate limiter’ın teorik hız ile pratikteki byte akışını karşılaştır.
+   - [x] İNTEG: iki peer arasında farklı limit değerlerinde transfer sürelerini ölç.
+   - [x] Metrics: anlık efektif throughput, drop edilen/bekletilen byte sayısı.

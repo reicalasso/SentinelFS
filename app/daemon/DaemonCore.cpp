@@ -53,6 +53,16 @@ bool DaemonCore::initialize() {
         network_->setEncryptionEnabled(true);
         logger.info("Encryption enabled", "DaemonCore");
     }
+
+    if (config_.uploadLimit > 0) {
+        network_->setGlobalUploadLimit(config_.uploadLimit);
+        logger.info("Global upload limit configured from startup options", "DaemonCore");
+    }
+
+    if (config_.downloadLimit > 0) {
+        network_->setGlobalDownloadLimit(config_.downloadLimit);
+        logger.info("Global download limit configured from startup options", "DaemonCore");
+    }
     
     // Setup event routing
     setupEventHandlers();
@@ -214,7 +224,8 @@ bool DaemonCore::loadPlugins() {
     auto registerPlugin = [&](const std::string& key,
                               const std::string& relativePath,
                               std::vector<std::string> deps = {},
-                              const std::string& minVersion = "1.0.0") {
+                              const std::string& minVersion = "1.0.0",
+                              bool optional = false) {
         PluginManager::Descriptor desc;
 
         std::string baseDir = pluginDir;
@@ -242,6 +253,7 @@ bool DaemonCore::loadPlugins() {
             : minVersion;
 
         desc.path = baseDir + "/" + relPath;
+        desc.optional = optional;
 
         if (!depsStr.empty()) {
             desc.dependencies = parseDependencies(depsStr);
@@ -256,7 +268,7 @@ bool DaemonCore::loadPlugins() {
     registerPlugin("storage", "storage/libstorage_plugin.so");
     registerPlugin("network", "network/libnetwork_plugin.so", {"storage"});
     registerPlugin("filesystem", "filesystem/libfilesystem_plugin.so");
-    registerPlugin("ml", "ml/libml_plugin.so", {"storage"});
+    registerPlugin("ml", "ml/libml_plugin.so", {"storage"}, "1.0.0", true);
 
     auto storagePlugin = pluginManager_.load("storage", &eventBus_);
     auto networkPlugin = pluginManager_.load("network", &eventBus_);

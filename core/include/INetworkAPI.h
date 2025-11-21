@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 
 namespace SentinelFS {
 
@@ -96,6 +97,23 @@ namespace SentinelFS {
          * @return true if encryption is enabled, false otherwise.
          */
         virtual bool isEncryptionEnabled() const = 0;
+        
+        /**
+         * @brief Set global upload bandwidth limit.
+         * @param bytesPerSecond Maximum upload rate in bytes per second (0 = unlimited)
+         */
+        virtual void setGlobalUploadLimit(std::size_t bytesPerSecond) = 0;
+
+        /**
+         * @brief Set global download bandwidth limit.
+         * @param bytesPerSecond Maximum download rate in bytes per second (0 = unlimited)
+         */
+        virtual void setGlobalDownloadLimit(std::size_t bytesPerSecond) = 0;
+
+        /**
+         * @brief Get human-readable bandwidth limiter statistics.
+         */
+        virtual std::string getBandwidthStats() const = 0;
     };
 }
 

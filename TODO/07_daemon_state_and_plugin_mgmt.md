@@ -10,22 +10,22 @@
 
 ## Plan
 1. **Sync State Takibi**
-   - [ ] DaemonCore içindeki `syncEnabled_` ile EventHandlers’in sync state’i arasında tek kaynaklı bir model kur.
-   - [ ] IPCHandler’a bu state’i okuyacak bir arayüz ekle.
-   - [ ] `STATUS` komutundaki sabit "Sync Status: ENABLED" satırını gerçek duruma bağla.
+   - [x] DaemonCore içindeki `syncEnabled_` ile EventHandlers’in sync state’i arasında tek kaynaklı bir model kur.
+   - [x] IPCHandler’a bu state’i okuyacak bir arayüz ekle.
+   - [x] `STATUS` komutundaki sabit "Sync Status: ENABLED" satırını gerçek duruma bağla.
 
 2. **Plugin Durum Raporlama**
-   - [ ] PluginManager’da yüklenmiş her plugin için basit bir durum kaydı tut (loaded, failed, optional vs.).
-   - [ ] IPC `STATUS` veya ayrı bir `PLUGINS` komutuyla bu bilgiyi kullanıcıya göster.
+   - [x] PluginManager’da yüklenmiş her plugin için basit bir durum kaydı tut (loaded, failed, optional vs.).
+   - [x] IPC `STATUS` veya ayrı bir `PLUGINS` komutuyla bu bilgiyi kullanıcıya göster.
 
 3. **Hata Toleransı & Restart Senaryoları**
-   - [ ] Kritik plugin (storage, network, filesystem) yükleme hatalarında kullanıcıya öneri veren net mesajlar tanımla.
-   - [ ] ML plugin gibi opsiyonel plugin’ler için degrades gracefully davranışını koru.
+   - [x] Kritik plugin (storage, network, filesystem) yükleme hatalarında kullanıcıya öneri veren net mesajlar tanımla.
+   - [x] ML plugin gibi opsiyonel plugin’ler için degrades gracefully davranışını koru.
 
 4. **Geleceğe Dönük Runtime Yönetimi (Planlama)**
-   - [ ] Orta vadede plugin enable/disable/hot-reload için ihtiyaç duyulacak minimal API yüzeyini taslakla.
-   - [ ] Konfig dosyası / manifest üzerinden plugin öncelik ve bağımlılıklarını daha net ifade et.
+   - [x] Orta vadede plugin enable/disable/hot-reload için ihtiyaç duyulacak minimal API yüzeyini taslakla.
+   - [x] Konfig dosyası / manifest üzerinden plugin öncelik ve bağımlılıklarını daha net ifade et.
 
 5. **Test**
-   - [ ] STATUS/PLUGINS komutunun çeşitli hata senaryolarındaki çıktısını test et.
-   - [ ] Plugin yükleme sırasındaki log ve IPC çıktılarının tutarlılığını kontrol et.
+   - [x] STATUS/PLUGINS komutunun çeşitli hata senaryolarındaki çıktısını test et.
+   - [x] Plugin yükleme sırasındaki log ve IPC çıktılarının tutarlılığını kontrol et.

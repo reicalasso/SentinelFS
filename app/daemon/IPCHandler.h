@@ -9,6 +9,8 @@
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 
+namespace SentinelFS { class DaemonCore; }
+
 namespace SentinelFS {
 
 /**
@@ -29,7 +31,8 @@ public:
     IPCHandler(const std::string& socketPath,
                INetworkAPI* network,
                IStorageAPI* storage,
-               IFileAPI* filesystem);
+               IFileAPI* filesystem,
+               DaemonCore* daemonCore = nullptr);
     
     ~IPCHandler();
     
@@ -73,6 +76,7 @@ private:
     std::string handleDownloadLimitCommand(const std::string& args);
     std::string handleMetricsCommand();
     std::string handleStatsCommand();
+    std::string handlePluginsCommand();
     
     std::string socketPath_;
     int serverSocket_{-1};
@@ -83,6 +87,7 @@ private:
     INetworkAPI* network_;
     IStorageAPI* storage_;
     IFileAPI* filesystem_;
+    DaemonCore* daemonCore_;
     
     // Callbacks
     std::function<void(bool)> syncEnabledCallback_;

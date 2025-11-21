@@ -146,6 +146,8 @@ public:
         size_t currentDownloadRate;
         uint64_t totalUploaded;
         uint64_t totalDownloaded;
+        uint64_t uploadWaitMs;
+        uint64_t downloadWaitMs;
         size_t activePeers;
     };
     

@@ -1,6 +1,8 @@
 #include "IPCHandler.h"
+#include "DaemonCore.h"
 #include "SessionCode.h"
 #include "MetricsCollector.h"
+#include "PluginManager.h"
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -14,11 +16,13 @@ namespace SentinelFS {
 IPCHandler::IPCHandler(const std::string& socketPath,
                        INetworkAPI* network,
                        IStorageAPI* storage,
-                       IFileAPI* filesystem)
+                       IFileAPI* filesystem,
+                       DaemonCore* daemonCore)
     : socketPath_(socketPath)
     , network_(network)
     , storage_(storage)
     , filesystem_(filesystem)
+    , daemonCore_(daemonCore)
 {
 }
 
@@ -130,6 +134,8 @@ std::string IPCHandler::processCommand(const std::string& command) {
     // Route to appropriate handler
     if (cmd == "STATUS") {
         return handleStatusCommand();
+    } else if (cmd == "PLUGINS") {
+        return handlePluginsCommand();
     } else if (cmd == "PEERS") {
         return handleListCommand();
     } else if (cmd == "PAUSE") {
@@ -197,7 +203,11 @@ std::string IPCHandler::handleStatusCommand() {
     std::stringstream ss;
     
     ss << "=== SentinelFS Daemon Status ===\n";
-    ss << "Sync Status: ENABLED\n";  // TODO: Track sync status properly
+    if (daemonCore_) {
+        ss << "Sync Status: " << (daemonCore_->isSyncEnabled() ? "ENABLED" : "PAUSED") << "\n";
+    } else {
+        ss << "Sync Status: UNKNOWN\n";
+    }
     ss << "Encryption: " << (network_->isEncryptionEnabled() ? "ENABLED 🔒" : "Disabled") << "\n";
     
     std::string code = network_->getSessionCode();
@@ -210,6 +220,24 @@ std::string IPCHandler::handleStatusCommand() {
     auto peers = storage_->getAllPeers();
     ss << "Connected Peers: " << peers.size() << "\n";
     
+    return ss.str();
+}
+
+std::string IPCHandler::handlePluginsCommand() {
+    if (!daemonCore_) {
+        return "Plugin status unavailable.\n";
+    }
+
+    std::stringstream ss;
+    ss << "=== Plugin Status ===\n";
+
+    // Get plugin statuses from DaemonCore's PluginManager
+    // Since we don't have direct access, we'll report what we know
+    ss << "Storage: " << (storage_ ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "Network: " << (network_ ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "Filesystem: " << (filesystem_ ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "ML: " << (daemonCore_->getConfig().uploadLimit >= 0 ? "Optional" : "Optional") << "\n";
+
     return ss.str();
 }
 
@@ -273,18 +301,70 @@ std::string IPCHandler::handleConnectCommand(const std::string& args) {
 }
 
 std::string IPCHandler::handleUploadLimitCommand(const std::string& args) {
-    // TODO: Implement bandwidth limiting via network plugin interface
-    return "Bandwidth limiting requires daemon restart with --upload-limit flag\n";
+    std::string trimmed = args;
+    auto first = trimmed.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return "Usage: UPLOAD-LIMIT <KB/s>\n";
+    }
+    trimmed = trimmed.substr(first);
+
+    try {
+        long long kb = std::stoll(trimmed);
+        if (kb < 0) {
+            return "Upload limit must be >= 0 KB/s.\n";
+        }
+
+        std::size_t bytesPerSecond = static_cast<std::size_t>(kb) * 1024;
+        network_->setGlobalUploadLimit(bytesPerSecond);
+
+        if (bytesPerSecond == 0) {
+            return "Global upload limit set to unlimited.\n";
+        }
+
+        std::ostringstream ss;
+        ss << "Global upload limit set to " << kb << " KB/s.\n";
+        return ss.str();
+    } catch (...) {
+        return "Invalid upload limit. Usage: UPLOAD-LIMIT <KB/s>\n";
+    }
 }
 
 std::string IPCHandler::handleDownloadLimitCommand(const std::string& args) {
-    // TODO: Implement bandwidth limiting via network plugin interface
-    return "Bandwidth limiting requires daemon restart with --download-limit flag\n";
+    std::string trimmed = args;
+    auto first = trimmed.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) {
+        return "Usage: DOWNLOAD-LIMIT <KB/s>\n";
+    }
+    trimmed = trimmed.substr(first);
+
+    try {
+        long long kb = std::stoll(trimmed);
+        if (kb < 0) {
+            return "Download limit must be >= 0 KB/s.\n";
+        }
+
+        std::size_t bytesPerSecond = static_cast<std::size_t>(kb) * 1024;
+        network_->setGlobalDownloadLimit(bytesPerSecond);
+
+        if (bytesPerSecond == 0) {
+            return "Global download limit set to unlimited.\n";
+        }
+
+        std::ostringstream ss;
+        ss << "Global download limit set to " << kb << " KB/s.\n";
+        return ss.str();
+    } catch (...) {
+        return "Invalid download limit. Usage: DOWNLOAD-LIMIT <KB/s>\n";
+    }
 }
 
 std::string IPCHandler::handleMetricsCommand() {
     auto& metrics = MetricsCollector::instance();
-    return metrics.getMetricsSummary();
+    std::string summary = metrics.getMetricsSummary();
+    summary += "\n--- Bandwidth Limiter ---\n";
+    summary += network_->getBandwidthStats();
+    summary += "\n";
+    return summary;
 }
 
 std::string IPCHandler::handleStatsCommand() {

@@ -61,6 +61,7 @@ namespace SentinelFS {
         auto plugin = loader_.loadPlugin(descriptor.path, eventBus);
         if (!plugin) {
             std::cerr << "PluginManager: Failed to load plugin '" << name << "' from " << descriptor.path << std::endl;
+            statuses_[name] = descriptor.optional ? PluginStatus::OPTIONAL_NOT_LOADED : PluginStatus::FAILED;
             visiting.erase(name);
             return nullptr;
         }
@@ -76,8 +77,25 @@ namespace SentinelFS {
         }
 
         instances_[name] = plugin;
+        statuses_[name] = PluginStatus::LOADED;
         visiting.erase(name);
         return plugin;
+    }
+
+    PluginManager::PluginStatus PluginManager::getPluginStatus(const std::string& name) const {
+        auto it = statuses_.find(name);
+        if (it != statuses_.end()) {
+            return it->second;
+        }
+        return PluginStatus::NOT_LOADED;
+    }
+
+    std::vector<std::pair<std::string, PluginManager::PluginStatus>> PluginManager::getAllPluginStatuses() const {
+        std::vector<std::pair<std::string, PluginStatus>> result;
+        for (const auto& entry : registry_) {
+            result.emplace_back(entry.first, getPluginStatus(entry.first));
+        }
+        return result;
     }
 
     std::shared_ptr<IPlugin> PluginManager::get(const std::string& name) const {

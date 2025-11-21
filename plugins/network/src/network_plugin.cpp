@@ -4,9 +4,12 @@
 #include "HandshakeProtocol.h"
 #include "TCPHandler.h"
 #include "UDPDiscovery.h"
+#include "BandwidthLimiter.h"
 #include <iostream>
 #include <memory>
 #include <random>
+#include <sstream>
+#include <iomanip>
 
 namespace SentinelFS {
 
@@ -99,6 +102,11 @@ public:
                 return false;
             }
         }
+
+        // Apply global/per-peer upload bandwidth limiting
+        if (!bandwidthManager_.requestUpload(peerId, dataToSend.size())) {
+            return false;
+        }
         
         return tcpHandler_->sendData(peerId, dataToSend);
     }
@@ -185,6 +193,48 @@ public:
         return encryptionEnabled_;
     }
 
+    void setGlobalUploadLimit(std::size_t bytesPerSecond) override {
+        bandwidthManager_.setGlobalUploadLimit(bytesPerSecond);
+    }
+
+    void setGlobalDownloadLimit(std::size_t bytesPerSecond) override {
+        bandwidthManager_.setGlobalDownloadLimit(bytesPerSecond);
+    }
+
+    std::string getBandwidthStats() const override {
+        auto stats = bandwidthManager_.getStats();
+
+        std::ostringstream ss;
+
+        ss << "Global Upload Limit: ";
+        if (stats.globalUploadLimit > 0) {
+            ss << (stats.globalUploadLimit / 1024) << " KB/s";
+        } else {
+            ss << "Unlimited";
+        }
+        ss << "\n";
+
+        ss << "Global Download Limit: ";
+        if (stats.globalDownloadLimit > 0) {
+            ss << (stats.globalDownloadLimit / 1024) << " KB/s";
+        } else {
+            ss << "Unlimited";
+        }
+        ss << "\n";
+
+        double uploadedMB = stats.totalUploaded / (1024.0 * 1024.0);
+        double downloadedMB = stats.totalDownloaded / (1024.0 * 1024.0);
+
+        ss << std::fixed << std::setprecision(2);
+        ss << "Total Uploaded (limiter): " << uploadedMB << " MB\n";
+        ss << "Total Downloaded (limiter): " << downloadedMB << " MB\n";
+        ss << "Upload Wait Time: " << stats.uploadWaitMs << " ms\n";
+        ss << "Download Wait Time: " << stats.downloadWaitMs << " ms\n";
+        ss << "Active Peers (with limits): " << stats.activePeers;
+
+        return ss.str();
+    }
+
 private:
     void handleReceivedData(const std::string& peerId, const std::vector<uint8_t>& data) {
         std::vector<uint8_t> decryptedData = data;
@@ -211,6 +261,11 @@ private:
             }
         }
         
+        // Apply global/per-peer download bandwidth limiting
+        if (!bandwidthManager_.requestDownload(peerId, decryptedData.size())) {
+            return;
+        }
+        
         // Publish decrypted data to event bus
         if (eventBus_) {
             eventBus_->publish("DATA_RECEIVED", std::make_pair(peerId, decryptedData));
@@ -227,6 +282,8 @@ private:
     std::unique_ptr<HandshakeProtocol> handshake_;
     std::unique_ptr<TCPHandler> tcpHandler_;
     std::unique_ptr<UDPDiscovery> udpDiscovery_;
+
+    BandwidthManager bandwidthManager_;
 };
 
 // Plugin factory functions
