@@ -4,6 +4,7 @@
 #include "EventBus.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "BandwidthLimiter.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -32,8 +33,9 @@ public:
      * @brief Constructor
      * @param eventBus Event bus for publishing connection events
      * @param handshake Handshake protocol handler
+     * @param bandwidthManager Optional bandwidth manager (nullptr = unlimited)
      */
-    TCPHandler(EventBus* eventBus, HandshakeProtocol* handshake);
+    TCPHandler(EventBus* eventBus, HandshakeProtocol* handshake, BandwidthManager* bandwidthManager = nullptr);
     
     ~TCPHandler();
     
@@ -106,6 +108,7 @@ private:
     
     EventBus* eventBus_;
     HandshakeProtocol* handshake_;
+    BandwidthManager* bandwidthManager_;
     DataCallback dataCallback_;
     
     Logger& logger_{Logger::instance()};

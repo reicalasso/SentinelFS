@@ -12,9 +12,10 @@
 
 namespace SentinelFS {
 
-TCPHandler::TCPHandler(EventBus* eventBus, HandshakeProtocol* handshake)
+TCPHandler::TCPHandler(EventBus* eventBus, HandshakeProtocol* handshake, BandwidthManager* bandwidthManager)
     : eventBus_(eventBus)
     , handshake_(handshake)
+    , bandwidthManager_(bandwidthManager)
 {
 }
 
@@ -225,6 +226,12 @@ bool TCPHandler::sendData(const std::string& peerId, const std::vector<uint8_t>&
     int sock = it->second;
     logger_.log(LogLevel::DEBUG, "Sending " + std::to_string(data.size()) + " bytes to peer " + peerId, "TCPHandler");
     
+    // Rate limiting
+    if (bandwidthManager_) {
+        size_t totalSize = sizeof(uint32_t) + data.size();
+        bandwidthManager_->requestUpload(peerId, totalSize);
+    }
+
     // Send length prefix (network byte order)
     uint32_t len = htonl(data.size());
     if (send(sock, &len, sizeof(len), 0) < 0) {
@@ -352,6 +359,11 @@ void TCPHandler::readLoop(int sock, const std::string& remotePeerId) {
         logger_.log(LogLevel::DEBUG, "Successfully received " + std::to_string(received) + " bytes from " + remotePeerId, "TCPHandler");
         metrics_.incrementBytesReceived(received);
         
+        // Rate limiting
+        if (bandwidthManager_) {
+            bandwidthManager_->requestDownload(remotePeerId, received);
+        }
+
         // Notify via callback
         if (dataCallback_) {
             dataCallback_(remotePeerId, data);

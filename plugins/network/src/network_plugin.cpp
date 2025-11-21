@@ -45,7 +45,7 @@ public:
             localPeerId_, sessionCode_, encryptionEnabled_
         );
         
-        tcpHandler_ = std::make_unique<TCPHandler>(eventBus_, handshake_.get());
+        tcpHandler_ = std::make_unique<TCPHandler>(eventBus_, handshake_.get(), &bandwidthManager_);
         udpDiscovery_ = std::make_unique<UDPDiscovery>(eventBus_, localPeerId_);
         
         // Setup data callback for encryption/decryption
@@ -103,10 +103,7 @@ public:
             }
         }
 
-        // Apply global/per-peer upload bandwidth limiting
-        if (!bandwidthManager_.requestUpload(peerId, dataToSend.size())) {
-            return false;
-        }
+        // Bandwidth limiting is handled internally by TCPHandler now
         
         return tcpHandler_->sendData(peerId, dataToSend);
     }
@@ -261,10 +258,7 @@ private:
             }
         }
         
-        // Apply global/per-peer download bandwidth limiting
-        if (!bandwidthManager_.requestDownload(peerId, decryptedData.size())) {
-            return;
-        }
+        // Bandwidth limiting is handled internally by TCPHandler
         
         // Publish decrypted data to event bus
         if (eventBus_) {
