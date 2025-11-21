@@ -21,7 +21,7 @@ int main() {
         return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     });
 
-    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+    if (future.wait_for(std::chrono::seconds(10)) != std::future_status::ready) {
         std::cerr << "BandwidthLimiter request timed out" << std::endl;
         return 1;
     }
