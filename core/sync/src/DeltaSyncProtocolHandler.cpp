@@ -25,7 +25,6 @@ void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId,
                                                      const std::vector<uint8_t>& rawData) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
-    auto startTime = std::chrono::steady_clock::now();
     
     try {
         std::string fullMsg(rawData.begin(), rawData.end());

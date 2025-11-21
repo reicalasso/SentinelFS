@@ -6,7 +6,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <unordered_map>
 #include <mutex>
 #include <algorithm>
@@ -27,15 +27,27 @@ namespace SentinelFS {
     }
 
     std::string DeltaEngine::calculateSHA256(const uint8_t* data, size_t len) {
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
-        SHA256_Update(&sha256, data, len);
-        SHA256_Final(hash, &sha256);
+        unsigned char hash[EVP_MAX_MD_SIZE];
+        unsigned int hashLen = 0;
+
+        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+        if (!ctx) {
+            throw std::runtime_error("Failed to allocate EVP_MD_CTX");
+        }
+
+        const EVP_MD* md = EVP_sha256();
+        if (EVP_DigestInit_ex(ctx, md, nullptr) != 1 ||
+            EVP_DigestUpdate(ctx, data, len) != 1 ||
+            EVP_DigestFinal_ex(ctx, hash, &hashLen) != 1) {
+            EVP_MD_CTX_free(ctx);
+            throw std::runtime_error("Failed to compute SHA-256 digest");
+        }
+
+        EVP_MD_CTX_free(ctx);
 
         std::stringstream ss;
-        for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+        for (unsigned int i = 0; i < hashLen; ++i) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
         }
         return ss.str();
     }
