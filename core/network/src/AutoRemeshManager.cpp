@@ -76,6 +76,14 @@ namespace SentinelFS {
     }
 
     double AutoRemeshManager::computeScore(const InternalMetrics& m) const {
+        // Filter out stale metrics (older than 60s)
+        auto now = std::chrono::steady_clock::now();
+        auto age = std::chrono::duration_cast<std::chrono::seconds>(now - m.lastUpdated).count();
+        
+        if (age > 60) {
+            return std::numeric_limits<double>::infinity();
+        }
+
         if (m.successProbes < config_.minSamplesForDecision || m.avgRttMs < 0.0) {
             return std::numeric_limits<double>::infinity();
         }

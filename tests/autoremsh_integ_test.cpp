@@ -103,8 +103,67 @@ void test_remesh_with_changing_rtt() {
     assert(connectedCount == 2);
 }
 
+void test_remesh_with_packet_loss() {
+    AutoRemeshManager::Config cfg;
+    cfg.maxActivePeers = 1; // Only pick the best one
+    cfg.minSamplesForDecision = 5;
+    cfg.lossWeight = 10.0; // Heavy penalty for loss
+    AutoRemeshManager manager(cfg);
+
+    std::map<std::string, FakePeerState> peers;
+    peers["packet_loss_peer"] = {"packet_loss_peer", true}; // Low RTT but high loss
+    peers["stable_peer"] = {"stable_peer", true};           // Higher RTT but stable
+
+    // Scenario: 
+    // packet_loss_peer: 20ms RTT, but fails every other time (50% loss)
+    // stable_peer: 50ms RTT, always succeeds (0% loss)
+    
+    // Score calc expectation:
+    // stable_peer score ~= 50
+    // packet_loss_peer score ~= 20 + (10.0 * 50) = 520 (High penalty)
+    
+    // Feed data
+    for(int i=0; i<20; ++i) {
+        // stable_peer always success
+        manager.updateMeasurement("stable_peer", 50, true);
+        
+        // packet_loss_peer fails on even indices
+        if (i % 2 == 0) {
+            manager.updateMeasurement("packet_loss_peer", 20, false);
+        } else {
+            manager.updateMeasurement("packet_loss_peer", 20, true);
+        }
+    }
+
+    auto snapshots = makeSnapshots(peers);
+    auto decision = manager.computeRemesh(snapshots);
+
+    // Expectation: disconnect packet_loss_peer, keep stable_peer
+    bool disconnectLossy = false;
+    for (const auto& id : decision.disconnectPeers) {
+        if (id == "packet_loss_peer") disconnectLossy = true;
+    }
+    
+    // Or maybe it just keeps stable and ignores the other if maxActive is 1
+    // Let's verify the result by checking who would be selected in a connect list if they were disconnected
+    peers["packet_loss_peer"].connected = false;
+    peers["stable_peer"].connected = false;
+    snapshots = makeSnapshots(peers);
+    decision = manager.computeRemesh(snapshots);
+
+    bool connectStable = false;
+    for (const auto& id : decision.connectPeers) {
+        if (id == "stable_peer") connectStable = true;
+    }
+
+    assert(connectStable && "Should prefer stable peer over packet loss peer");
+    assert(decision.connectPeers.size() == 1);
+    assert(decision.connectPeers[0] == "stable_peer");
+}
+
 int main() {
     test_remesh_with_changing_rtt();
+    test_remesh_with_packet_loss();
     std::cout << "AutoRemesh integration test passed" << std::endl;
     return 0;
 }

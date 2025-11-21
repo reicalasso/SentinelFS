@@ -51,11 +51,11 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure
 
-#      - name: Run discovery smoke test
-#        working-directory: build
-#        run: |
-#          export LD_LIBRARY_PATH="${{ github.workspace }}/build/plugins/network:${LD_LIBRARY_PATH}"
-#          ./tests/discovery_test
+      - name: Run discovery smoke test
+        working-directory: build
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/plugins/network:${LD_LIBRARY_PATH}"
+          ./tests/discovery_test
 
-#      - name: Run auto-remesh integration test
-#        run: ./build/tests/autoremsh_integ_test
+      - name: Run auto-remesh integration test
+        run: ./build/tests/autoremsh_integ_test
