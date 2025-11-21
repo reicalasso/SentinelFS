@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "MetricsCollector.h"
 #include <iostream>
+#include <cstdlib>
 
 namespace SentinelFS {
 
@@ -12,10 +13,19 @@ SQLiteHandler::~SQLiteHandler() {
 bool SQLiteHandler::initialize(const std::string& dbPath) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
-    
-    logger.log(LogLevel::INFO, "Initializing SQLite database: " + dbPath, "SQLiteHandler");
-    
-    if (sqlite3_open(dbPath.c_str(), &db_) != SQLITE_OK) {
+
+    std::string resolvedPath = dbPath;
+    if (resolvedPath.empty()) {
+        if (const char* envPath = std::getenv("SENTINEL_DB_PATH")) {
+            resolvedPath = envPath;
+        } else {
+            resolvedPath = "sentinel.db";
+        }
+    }
+
+    logger.log(LogLevel::INFO, "Initializing SQLite database: " + resolvedPath, "SQLiteHandler");
+
+    if (sqlite3_open(resolvedPath.c_str(), &db_) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Cannot open database: " + std::string(sqlite3_errmsg(db_)), "SQLiteHandler");
         metrics.incrementSyncErrors();
         return false;

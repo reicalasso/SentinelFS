@@ -1,0 +1,17 @@
+[Unit]
+Description=SentinelFS daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/sentinel_daemon --config @CMAKE_INSTALL_PREFIX@/etc/sentinelfs/sentinel.conf
+User=sentinelfs
+Group=sentinelfs
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=sentinelfs
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

@@ -13,6 +13,9 @@
 #include "Logger.h"
 #include "MetricsCollector.h"
 #include "AutoRemeshManager.h"
+#include "Config.h"
+#include "PathUtils.h"
+#include <cstdlib>
 
 using namespace SentinelFS;
 
@@ -31,14 +34,43 @@ int main(int argc, char* argv[]) {
     logger.info("=== SentinelFS Daemon Starting ===", "Daemon");
     
     // --- Parse Command Line Arguments ---
+    // Ensure production-friendly directories
+    auto configDir = PathUtils::getConfigDir();
+    auto dataDir = PathUtils::getDataDir();
+    auto runtimeDir = PathUtils::getRuntimeDir();
+    PathUtils::ensureDirectory(configDir);
+    PathUtils::ensureDirectory(dataDir);
+    PathUtils::ensureDirectory(runtimeDir);
+
+    SentinelFS::Config fileConfig;
+    auto configPath = configDir / "sentinel.conf";
+    if (!fileConfig.loadFromFile(configPath.string())) {
+        std::ofstream templateFile(configPath);
+        if (templateFile.is_open()) {
+            templateFile << "# SentinelFS configuration\n";
+            templateFile << "tcp_port=8080\n";
+            templateFile << "discovery_port=9999\n";
+            templateFile << "watch_directory=~/sentinel_sync\n";
+            templateFile << "encryption_enabled=false\n";
+            templateFile << "upload_limit_kbps=0\n";
+            templateFile << "download_limit_kbps=0\n";
+            templateFile << "# session_code=ABC123\n";
+        }
+        fileConfig.loadFromFile(configPath.string());
+    }
+
     DaemonConfig config;
-    config.tcpPort = 8080;
-    config.discoveryPort = 9999;
-    config.watchDirectory = "./watched_folder";
-    config.encryptionEnabled = false;
-    config.uploadLimit = 0;   // 0 = unlimited
-    config.downloadLimit = 0; // 0 = unlimited
-    
+    config.tcpPort = fileConfig.getInt("tcp_port", 8080);
+    config.discoveryPort = fileConfig.getInt("discovery_port", 9999);
+    config.watchDirectory = fileConfig.get("watch_directory", "./watched_folder");
+    config.sessionCode = fileConfig.get("session_code", "");
+    config.encryptionEnabled = fileConfig.getBool("encryption_enabled", false);
+
+    auto uploadLimitKb = fileConfig.getSize("upload_limit_kbps", 0);
+    auto downloadLimitKb = fileConfig.getSize("download_limit_kbps", 0);
+    config.uploadLimit = uploadLimitKb > 0 ? uploadLimitKb * 1024 : 0;
+    config.downloadLimit = downloadLimitKb > 0 ? downloadLimitKb * 1024 : 0;
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         
@@ -120,8 +152,11 @@ int main(int argc, char* argv[]) {
     eventHandlers.setupHandlers();
 
     // --- Setup IPC Handler ---
+    auto socketPath = PathUtils::getSocketPath();
+    auto dbPath = dataDir / "sentinel.db";
+    setenv("SENTINEL_DB_PATH", dbPath.c_str(), 1);
     IPCHandler ipcHandler(
-        "/tmp/sentinel_daemon.sock",
+        socketPath.string(),
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
         daemon.getFilesystemPlugin(),
