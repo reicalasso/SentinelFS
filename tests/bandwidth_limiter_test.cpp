@@ -11,7 +11,8 @@ int main() {
     const std::size_t rateBytesPerSec = 64 * 1024;   // 64 KB/s
     const std::size_t bytesToSend     = rateBytesPerSec; // ~1 second worth of data
 
-    BandwidthLimiter limiter(rateBytesPerSec);
+    // Use a small burst capacity to force throttling on a single request.
+    BandwidthLimiter limiter(rateBytesPerSec, rateBytesPerSec / 4);
 
     auto future = std::async(std::launch::async, [&]() {
         auto start = std::chrono::steady_clock::now();
