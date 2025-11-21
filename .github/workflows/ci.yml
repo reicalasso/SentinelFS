@@ -44,15 +44,17 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Build network plugin
+        run: cmake --build build --target network_plugin --parallel
+
       - name: Run unit tests
         working-directory: build
         run: ctest --output-on-failure
 
-#      - name: Run bandwidth limiter test
-#        run: ./build/tests/bandwidth_limiter_test
-
       - name: Run discovery smoke test
-        run: ./build/tests/discovery_test
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/plugins/network:${LD_LIBRARY_PATH}"
+          ./build/tests/discovery_test
 
       - name: Run auto-remesh integration test
         run: ./build/tests/autoremsh_integ_test
