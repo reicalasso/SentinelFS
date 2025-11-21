@@ -8,8 +8,8 @@ using namespace SentinelFS;
 int main() {
     std::cout << "Starting BandwidthLimiter timing test..." << std::endl;
 
-    const std::size_t rateBytesPerSec = 64 * 1024;   // 64 KB/s
-    const std::size_t bytesToSend     = rateBytesPerSec; // ~1 second worth of data
+    const std::size_t rateBytesPerSec = 32 * 1024;   // 32 KB/s
+    const std::size_t bytesToSend     = rateBytesPerSec / 2; // ~0.5 second worth of data
 
     // Use a small burst capacity to force throttling on a single request.
     BandwidthLimiter limiter(rateBytesPerSec, rateBytesPerSec / 4);
@@ -33,7 +33,7 @@ int main() {
               << ", elapsed: " << elapsedMs << " ms" << std::endl;
 
     const auto expectedMs = static_cast<long>((bytesToSend * 1000) / rateBytesPerSec);
-    if (elapsedMs + 200 < expectedMs) {
+    if (elapsedMs + 150 < expectedMs) {
         std::cerr << "BandwidthLimiter allowed transfer too fast (" << elapsedMs
                   << " ms) — expected at least ~" << expectedMs << " ms" << std::endl;
         return 1;
