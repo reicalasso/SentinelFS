@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 
 namespace SentinelFS {
 
@@ -50,6 +51,14 @@ bool IPCHandler::start() {
     
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         std::cerr << "IPC: Cannot bind socket" << std::endl;
+        close(serverSocket_);
+        serverSocket_ = -1;
+        return false;
+    }
+
+    // Restrict socket permissions to owner/group only
+    if (fchmod(serverSocket_, S_IRUSR | S_IWUSR | S_IRGRP) < 0) {
+        std::cerr << "IPC: Failed to set socket permissions" << std::endl;
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -109,6 +118,17 @@ void IPCHandler::serverLoop() {
 }
 
 void IPCHandler::handleClient(int clientSocket) {
+    struct ucred cred;
+    socklen_t credLen = sizeof(cred);
+    if (getsockopt(clientSocket, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) == 0) {
+        // Only allow same UID by default
+        if (cred.uid != geteuid()) {
+            const char* msg = "Unauthorized IPC client\n";
+            send(clientSocket, msg, strlen(msg), 0);
+            return;
+        }
+    }
+    
     char buffer[1024];
     ssize_t n = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
     

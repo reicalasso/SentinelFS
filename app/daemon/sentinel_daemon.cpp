@@ -8,6 +8,7 @@
 #include <cmath>
 #include "DaemonCore.h"
 #include "IPCHandler.h"
+#include "MetricsServer.h"
 #include "EventHandlers.h"
 #include "SessionCode.h"
 #include "Logger.h"
@@ -63,6 +64,7 @@ int main(int argc, char* argv[]) {
     config.tcpPort = fileConfig.getInt("tcp_port", 8080);
     config.discoveryPort = fileConfig.getInt("discovery_port", 9999);
     config.watchDirectory = fileConfig.get("watch_directory", "./watched_folder");
+    config.metricsPort = fileConfig.getInt("metrics_port", config.metricsPort);
     config.sessionCode = fileConfig.get("session_code", "");
     config.encryptionEnabled = fileConfig.getBool("encryption_enabled", false);
 
@@ -100,6 +102,9 @@ int main(int argc, char* argv[]) {
         } 
         else if (arg == "--download-limit" && i + 1 < argc) {
             config.downloadLimit = std::stoull(argv[++i]) * 1024; // Convert KB/s to B/s
+        }
+        else if (arg == "--metrics-port" && i + 1 < argc) {
+            config.metricsPort = std::stoi(argv[++i]);
         }
         else if (arg == "--help") {
             std::cout << "SentinelFS Daemon - P2P File Synchronization" << std::endl;
@@ -170,6 +175,23 @@ int main(int argc, char* argv[]) {
     
     if (!ipcHandler.start()) {
         std::cerr << "Warning: Failed to start IPC server. CLI commands will not work." << std::endl;
+    }
+
+    // --- Metrics / Health Server ---
+    MetricsServer metricsServer(config.metricsPort);
+    metricsServer.setMetricsHandler([]() {
+        return MetricsCollector::instance().exportPrometheus();
+    });
+    metricsServer.setLivenessHandler([&]() {
+        return daemon.isRunning();
+    });
+    metricsServer.setReadinessHandler([&]() {
+        return daemon.isRunning();
+    });
+
+    if (!metricsServer.start()) {
+        std::cerr << "Warning: Failed to start metrics server on port "
+                  << config.metricsPort << std::endl;
     }
 
     // --- RTT Measurement + Auto-Remesh Thread ---
@@ -372,6 +394,7 @@ int main(int argc, char* argv[]) {
     if (rttThread.joinable()) rttThread.join();
     
     ipcHandler.stop();
+    metricsServer.stop();
 
     return 0;
 }

@@ -1,0 +1,29 @@
+module sentinelfs 1.0;
+
+require {
+    type unconfined_t;
+    type var_run_t;
+    type init_t;
+    class capability { net_bind_service dac_override };
+    class file { getattr open read execute execute_no_trans map write append create unlink };
+    class dir { search read write add_name remove_name };
+    class tcp_socket { name_bind name_connect listen accept };
+    class unix_stream_socket { create connect write read bind listen accept };
+};
+
+# SentinelFS daemon domain
+allow init_t self:process transition;
+
+# Executable and runtime directories
+allow unconfined_t self:file { getattr open read execute execute_no_trans map };
+
+# Capabilities needed by sentinel_daemon
+allow unconfined_t self:capability { net_bind_service dac_override };
+
+# Runtime state under /run/sentinelfs
+allow unconfined_t var_run_t:dir { search read write add_name remove_name };
+allow unconfined_t var_run_t:file { create open read write append getattr unlink };
+allow unconfined_t var_run_t:unix_stream_socket { create connect write read bind listen accept };
+
+# TCP sockets for mesh traffic
+allow unconfined_t self:tcp_socket { name_bind name_connect listen accept };

@@ -12,6 +12,7 @@ add_executable(sentinel_daemon
     sentinel_daemon.cpp
     DaemonCore.cpp
     IPCHandler.cpp
+    MetricsServer.cpp
 )
 
 target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread)

@@ -58,14 +58,34 @@ public:
     void setEncryptionEnabled(bool enabled) { encryptionEnabled_ = enabled; }
     
 private:
-    std::string createHelloMessage() const;
+    std::string createHelloMessage(const std::vector<uint8_t>& clientNonce) const;
+    std::string createChallengeMessage(const std::string& remotePeerId,
+                                       const std::vector<uint8_t>& clientNonce,
+                                       const std::vector<uint8_t>& serverNonce) const;
+    std::string createAuthMessage(const std::string& digest) const;
     std::string createWelcomeMessage() const;
     std::string createRejectMessage(const std::string& reason) const;
     
     bool sendMessage(int socket, const std::string& message);
     std::string receiveMessage(int socket, size_t maxSize = 1024);
     
-    bool validateHelloMessage(const std::string& message, std::string& remotePeerId);
+    bool parseHelloMessage(const std::string& message,
+                           std::string& remotePeerId,
+                           std::vector<uint8_t>& clientNonce,
+                           std::string& remoteSessionCode,
+                           bool& legacyFormat);
+    bool parseChallengeMessage(const std::string& message,
+                               std::string& remotePeerId,
+                               std::vector<uint8_t>& echoedClientNonce,
+                               std::vector<uint8_t>& serverNonce);
+    bool parseAuthMessage(const std::string& message,
+                          std::string& remotePeerId,
+                          std::string& digest);
+    std::string computeAuthDigest(const std::vector<uint8_t>& clientNonce,
+                                  const std::vector<uint8_t>& serverNonce,
+                                  const std::string& remotePeerId,
+                                  const std::string& purpose) const;
+    std::vector<uint8_t> generateNonce() const;
     
     std::string localPeerId_;
     std::string sessionCode_;

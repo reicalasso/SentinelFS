@@ -18,6 +18,7 @@ namespace SentinelFS {
 struct DaemonConfig {
     int tcpPort = 8000;
     int discoveryPort = 9999;
+    int metricsPort = 9100;
     std::string watchDirectory = ".";
     std::string sessionCode;
     bool encryptionEnabled = false;

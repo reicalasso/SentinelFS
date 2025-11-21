@@ -1,0 +1,37 @@
+# SentinelFS daemon AppArmor profile (template)
+# Save as /etc/apparmor.d/usr.bin.sentinel_daemon and adjust paths as needed.
+
+#include <tunables/global>
+
+profile sentinel_daemon /usr/bin/sentinel_daemon flags=(attach_disconnected) {
+  ## Capabilities ##
+  capability net_bind_service,
+  capability dac_override,
+
+  ## File access ##
+  /usr/bin/sentinel_daemon mr,
+  /usr/lib/sentinelfs/** r,
+  /etc/sentinelfs/** r,
+  /var/lib/sentinelfs/** rwk,
+  /var/log/sentinelfs/** rw,
+  /run/sentinelfs/** rw,
+
+  ## IPC / sockets ##
+  /run/sentinelfs/sentinel_daemon.sock rw,
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  ## Allow ptrace for self (needed for some debuggers) ##
+  ptrace (readby, tracedby) peer=sentinel_daemon,
+
+  ## Deny everything else by default ##
+  deny /etc/passwd w,
+  deny /root/** rwk,
+
+  # Inherit common AppArmor policies
+  #include <abstractions/base>
+  #include <abstractions/openssl>
+  #include <abstractions/nameservice>
+}
