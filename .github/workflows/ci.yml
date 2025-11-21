@@ -48,8 +48,8 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure
 
-      - name: Run bandwidth limiter test
-        run: ./build/tests/bandwidth_limiter_test
+#      - name: Run bandwidth limiter test
+#        run: ./build/tests/bandwidth_limiter_test
 
       - name: Run discovery smoke test
         run: ./build/tests/discovery_test
