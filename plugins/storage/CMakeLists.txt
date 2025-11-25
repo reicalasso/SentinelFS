@@ -1,6 +1,10 @@
 # CMake configuration for the storage plugin
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 project(StoragePlugin)
 
 find_package(SQLite3 REQUIRED)
@@ -28,3 +32,10 @@ target_include_directories(storage_plugin PUBLIC
 )
 
 target_link_libraries(storage_plugin PRIVATE ${SQLite3_LIBRARIES})
+
+# Check if we need to link stdc++fs (for older GCC/Clang but harmless to check)
+# In some environments, filesystem is a separate library
+find_library(STD_FS_LIB stdc++fs)
+if(STD_FS_LIB)
+    target_link_libraries(storage_plugin PRIVATE ${STD_FS_LIB})
+endif()

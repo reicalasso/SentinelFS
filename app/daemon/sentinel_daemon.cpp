@@ -178,9 +178,15 @@ int main(int argc, char* argv[]) {
     std::filesystem::path socketPath = config.socketPath.empty() 
         ? PathUtils::getSocketPath() 
         : std::filesystem::path(config.socketPath);
+        
+    // Force simplified path: always use ./data/sentinel.db relative to CWD
     std::filesystem::path dbPath = config.dbPath.empty()
-        ? dataDir / "sentinel.db"
+        ? std::filesystem::current_path() / "data" / "sentinel.db"
         : std::filesystem::path(config.dbPath);
+
+    // Ensure the data directory exists
+    std::filesystem::create_directories(dbPath.parent_path());
+
     setenv("SENTINEL_DB_PATH", dbPath.c_str(), 1);
     IPCHandler ipcHandler(
         socketPath.string(),

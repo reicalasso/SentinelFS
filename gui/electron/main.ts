@@ -36,8 +36,8 @@ function getDaemonPath() {
         return path.join(process.resourcesPath, 'bin', 'sentinel_daemon')
     } else {
         // Dev: SentinelFS/build/app/daemon/sentinel_daemon
-        // __dirname is dist-electron, so ../ points to SentinelFS/gui
-        return path.join(__dirname, '../build/app/daemon/sentinel_daemon')
+        // __dirname is dist-electron, so ../.. points to SentinelFS root
+        return path.join(__dirname, '../../build/app/daemon/sentinel_daemon')
     }
 }
 
@@ -61,14 +61,17 @@ function startDaemon() {
         if (app.isPackaged) {
             pluginDir = path.join(process.resourcesPath, 'lib', 'plugins')
         } else {
-            pluginDir = path.join(__dirname, '../build/plugins')
+            pluginDir = path.join(__dirname, '../../build/plugins')
         }
+
+        const projectRoot = app.isPackaged ? process.resourcesPath : path.resolve(__dirname, '../../')
 
         try {
             // Pass arguments if needed, e.g., config path
             daemonProcess = spawn(daemonPath, [], {
                 stdio: 'ignore', // Daemon logs to file anyway, or use 'pipe' to capture
                 detached: false,
+                cwd: projectRoot,
                 env: { ...process.env, SENTINELFS_PLUGIN_DIR: pluginDir }
             })
             

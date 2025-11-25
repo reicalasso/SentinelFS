@@ -31,3 +31,307 @@
 [2025-11-25 13:26:25] [WARN] [DaemonCore] ML plugin failed to load (optional)
 [2025-11-25 13:26:25] [ERROR] [DaemonCore] Failed to load plugins
 [2025-11-25 13:26:25] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 22:12:21] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 22:12:21] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 22:12:21] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 22:12:21] [INFO] [DaemonCore] Loading plugins from: /home/rei/sentinelFS-demo/SentinelFS/build/plugins
+[2025-11-25 22:12:21] [INFO] [DaemonCore] No plugin manifest found at: /home/rei/sentinelFS-demo/SentinelFS/build/plugins/plugins.conf (using built-in defaults)
+[2025-11-25 22:12:21] [INFO] [SQLiteHandler] Initializing SQLite database: sentinel.db
+[2025-11-25 22:12:21] [INFO] [SQLiteHandler] Database opened successfully
+[2025-11-25 22:12:21] [DEBUG] [SQLiteHandler] Creating database tables
+[2025-11-25 22:12:21] [INFO] [SQLiteHandler] Database tables created successfully
+[2025-11-25 22:12:21] [INFO] [InotifyWatcher] Initializing inotify watcher
+[2025-11-25 22:12:21] [INFO] [InotifyWatcher] Inotify watcher initialized successfully
+[2025-11-25 22:12:21] [DEBUG] [InotifyWatcher] Monitor loop started
+[2025-11-25 22:12:21] [INFO] [DaemonCore] All critical plugins loaded successfully
+[2025-11-25 22:12:21] [INFO] [DaemonCore] ML plugin (anomaly detection) loaded
+[2025-11-25 22:12:21] [INFO] [TCPHandler] Starting TCP listener on port 8080
+[2025-11-25 22:12:21] [INFO] [TCPHandler] TCP server listening on port 8080
+[2025-11-25 22:12:21] [INFO] [DaemonCore] TCP listener started on port 8080
+[2025-11-25 22:12:21] [INFO] [UDPDiscovery] Starting UDP discovery on port 9999
+[2025-11-25 22:12:21] [INFO] [UDPDiscovery] UDP discovery listening on port 9999
+[2025-11-25 22:12:21] [INFO] [DaemonCore] UDP discovery started on port 9999
+[2025-11-25 22:12:21] [DEBUG] [UDPDiscovery] UDP discovery loop started
+[2025-11-25 22:12:21] [DEBUG] [InotifyWatcher] Adding watch for: /home/rei/sentinel_sync
+[2025-11-25 22:12:21] [INFO] [InotifyWatcher] Now watching directory: /home/rei/sentinel_sync
+[2025-11-25 22:12:21] [INFO] [DaemonCore] Filesystem watcher started for: /home/rei/sentinel_sync
+[2025-11-25 22:12:21] [INFO] [DaemonCore] Daemon initialization complete
+[2025-11-25 22:12:21] [DEBUG] [FileSyncHandler] FileSyncHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:12:21] [DEBUG] [DeltaSyncProtocol] DeltaSyncProtocolHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:12:21] [INFO] [DaemonCore] Daemon running. Press Ctrl+C to stop.
+[2025-11-25 22:12:26] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:26] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:26] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:26] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:31] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:31] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:31] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:31] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:36] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:36] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:36] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:36] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:41] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:41] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:41] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:41] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:46] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:46] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:46] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:46] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:51] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:51] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:51] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:51] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:12:56] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:12:56] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:12:56] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:12:56] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:01] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:01] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:01] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:01] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:06] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:06] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:06] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:06] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:11] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:11] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:11] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:11] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:16] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:16] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:16] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:16] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:21] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:21] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:21] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:21] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:26] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:26] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:26] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:26] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:31] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:31] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:31] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:31] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:36] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:36] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:36] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:36] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:41] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:41] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:41] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:41] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:46] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:46] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:46] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:46] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:51] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:51] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:51] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:51] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:13:56] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:13:56] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:13:56] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:13:56] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:14:01] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:14:01] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:14:01] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:14:01] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:14:06] [INFO] [DaemonCore] Received signal 15, initiating shutdown
+[2025-11-25 22:14:06] [INFO] [DaemonCore] Shutting down daemon...
+[2025-11-25 22:14:06] [DEBUG] [DaemonCore] ML plugin stopped
+[2025-11-25 22:14:06] [INFO] [InotifyWatcher] Shutting down inotify watcher
+[2025-11-25 22:14:06] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:14:06] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_41750|8080 to port 9999
+[2025-11-25 22:14:06] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_41750|8080 from 192.168.1.100
+[2025-11-25 22:14:06] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:20:19] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 22:20:19] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 22:20:19] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 22:20:19] [INFO] [DaemonCore] Loading plugins from: /home/rei/sentinelFS-demo/SentinelFS/build/plugins
+[2025-11-25 22:20:19] [INFO] [DaemonCore] No plugin manifest found at: /home/rei/sentinelFS-demo/SentinelFS/build/plugins/plugins.conf (using built-in defaults)
+[2025-11-25 22:20:19] [INFO] [SQLiteHandler] Initializing SQLite database: sentinel.db
+[2025-11-25 22:20:19] [INFO] [SQLiteHandler] Database opened successfully
+[2025-11-25 22:20:19] [DEBUG] [SQLiteHandler] Creating database tables
+[2025-11-25 22:20:19] [INFO] [SQLiteHandler] Database tables created successfully
+[2025-11-25 22:20:19] [INFO] [InotifyWatcher] Initializing inotify watcher
+[2025-11-25 22:20:19] [INFO] [InotifyWatcher] Inotify watcher initialized successfully
+[2025-11-25 22:20:19] [DEBUG] [InotifyWatcher] Monitor loop started
+[2025-11-25 22:20:19] [INFO] [DaemonCore] All critical plugins loaded successfully
+[2025-11-25 22:20:19] [INFO] [DaemonCore] ML plugin (anomaly detection) loaded
+[2025-11-25 22:20:19] [INFO] [TCPHandler] Starting TCP listener on port 8080
+[2025-11-25 22:20:19] [INFO] [TCPHandler] TCP server listening on port 8080
+[2025-11-25 22:20:19] [INFO] [DaemonCore] TCP listener started on port 8080
+[2025-11-25 22:20:19] [INFO] [UDPDiscovery] Starting UDP discovery on port 9999
+[2025-11-25 22:20:19] [INFO] [UDPDiscovery] UDP discovery listening on port 9999
+[2025-11-25 22:20:19] [INFO] [DaemonCore] UDP discovery started on port 9999
+[2025-11-25 22:20:19] [DEBUG] [UDPDiscovery] UDP discovery loop started
+[2025-11-25 22:20:19] [DEBUG] [InotifyWatcher] Adding watch for: /home/rei/sentinel_sync
+[2025-11-25 22:20:19] [INFO] [InotifyWatcher] Now watching directory: /home/rei/sentinel_sync
+[2025-11-25 22:20:19] [INFO] [DaemonCore] Filesystem watcher started for: /home/rei/sentinel_sync
+[2025-11-25 22:20:19] [INFO] [DaemonCore] Daemon initialization complete
+[2025-11-25 22:20:19] [DEBUG] [FileSyncHandler] FileSyncHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:20:19] [DEBUG] [DeltaSyncProtocol] DeltaSyncProtocolHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:20:19] [INFO] [DaemonCore] Daemon running. Press Ctrl+C to stop.
+[2025-11-25 22:20:24] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:20:24] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_76014|8080 from 192.168.1.100
+[2025-11-25 22:20:24] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_76014|8080 to port 9999
+[2025-11-25 22:20:24] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:20:29] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:20:29] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_76014|8080 from 192.168.1.100
+[2025-11-25 22:20:29] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:20:29] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_76014|8080 to port 9999
+[2025-11-25 22:20:34] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:20:34] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_76014|8080 from 192.168.1.100
+[2025-11-25 22:20:34] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:20:34] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_76014|8080 to port 9999
+[2025-11-25 22:20:35] [INFO] [DaemonCore] Received signal 15, initiating shutdown
+[2025-11-25 22:20:35] [INFO] [DaemonCore] Shutting down daemon...
+[2025-11-25 22:20:35] [DEBUG] [DaemonCore] ML plugin stopped
+[2025-11-25 22:20:35] [INFO] [InotifyWatcher] Shutting down inotify watcher
+[2025-11-25 22:20:39] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:20:39] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_76014|8080 to port 9999
+[2025-11-25 22:20:39] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_76014|8080 from 192.168.1.100
+[2025-11-25 22:20:39] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:31] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 22:22:31] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 22:22:31] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 22:22:31] [INFO] [DaemonCore] Loading plugins from: /home/rei/sentinelFS-demo/SentinelFS/build/plugins
+[2025-11-25 22:22:31] [INFO] [DaemonCore] No plugin manifest found at: /home/rei/sentinelFS-demo/SentinelFS/build/plugins/plugins.conf (using built-in defaults)
+[2025-11-25 22:22:31] [INFO] [SQLiteHandler] Initializing SQLite database: data/sentinel.db
+[2025-11-25 22:22:31] [INFO] [SQLiteHandler] Database opened successfully
+[2025-11-25 22:22:31] [DEBUG] [SQLiteHandler] Creating database tables
+[2025-11-25 22:22:31] [INFO] [SQLiteHandler] Database tables created successfully
+[2025-11-25 22:22:31] [INFO] [InotifyWatcher] Initializing inotify watcher
+[2025-11-25 22:22:31] [INFO] [InotifyWatcher] Inotify watcher initialized successfully
+[2025-11-25 22:22:31] [DEBUG] [InotifyWatcher] Monitor loop started
+[2025-11-25 22:22:31] [INFO] [DaemonCore] All critical plugins loaded successfully
+[2025-11-25 22:22:31] [INFO] [DaemonCore] ML plugin (anomaly detection) loaded
+[2025-11-25 22:22:31] [INFO] [TCPHandler] Starting TCP listener on port 8080
+[2025-11-25 22:22:31] [INFO] [TCPHandler] TCP server listening on port 8080
+[2025-11-25 22:22:31] [INFO] [DaemonCore] TCP listener started on port 8080
+[2025-11-25 22:22:31] [INFO] [UDPDiscovery] Starting UDP discovery on port 9999
+[2025-11-25 22:22:31] [INFO] [UDPDiscovery] UDP discovery listening on port 9999
+[2025-11-25 22:22:31] [INFO] [DaemonCore] UDP discovery started on port 9999
+[2025-11-25 22:22:31] [DEBUG] [UDPDiscovery] UDP discovery loop started
+[2025-11-25 22:22:31] [DEBUG] [InotifyWatcher] Adding watch for: /home/rei/sentinel_sync
+[2025-11-25 22:22:31] [INFO] [InotifyWatcher] Now watching directory: /home/rei/sentinel_sync
+[2025-11-25 22:22:31] [INFO] [DaemonCore] Filesystem watcher started for: /home/rei/sentinel_sync
+[2025-11-25 22:22:31] [INFO] [DaemonCore] Daemon initialization complete
+[2025-11-25 22:22:31] [DEBUG] [FileSyncHandler] FileSyncHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:22:31] [DEBUG] [DeltaSyncProtocol] DeltaSyncProtocolHandler initialized for: /home/rei/sentinel_sync
+[2025-11-25 22:22:31] [INFO] [DaemonCore] Daemon running. Press Ctrl+C to stop.
+[2025-11-25 22:22:36] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:36] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:36] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:36] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:41] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:41] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:41] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:41] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:45] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:45] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:45] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:45] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:46] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:46] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:46] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:46] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:51] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:51] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:51] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:51] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:22:56] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:22:56] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:22:56] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:22:56] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:01] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:01] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:01] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:01] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:06] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:06] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:06] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:06] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:11] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:11] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:11] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:11] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:16] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:16] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:16] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:16] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:21] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:21] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:21] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:21] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:26] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:26] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:26] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:26] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:31] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:31] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:31] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:31] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:36] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:36] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:36] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:36] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:41] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:41] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:41] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:41] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:46] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:46] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:46] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:46] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:51] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:51] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:51] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:51] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:23:56] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:23:56] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:23:56] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:23:56] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:01] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:01] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:01] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:01] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:06] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:06] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:06] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:06] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:11] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:11] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:11] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:11] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:16] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:16] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:16] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:16] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:21] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:21] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:21] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:21] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:26] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:26] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:26] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:26] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:31] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:31] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:31] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:31] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:36] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:36] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999
+[2025-11-25 22:24:36] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:36] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:40] [INFO] [DaemonCore] Received signal 15, initiating shutdown
+[2025-11-25 22:24:40] [INFO] [DaemonCore] Shutting down daemon...
+[2025-11-25 22:24:40] [DEBUG] [DaemonCore] ML plugin stopped
+[2025-11-25 22:24:40] [INFO] [InotifyWatcher] Shutting down inotify watcher
+[2025-11-25 22:24:41] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 22:24:41] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_96297|8080 from 192.168.1.100
+[2025-11-25 22:24:41] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 22:24:41] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_96297|8080 to port 9999

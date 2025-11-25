@@ -19,7 +19,23 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
         if (const char* envPath = std::getenv("SENTINEL_DB_PATH")) {
             resolvedPath = envPath;
         } else {
-            resolvedPath = "sentinel.db";
+            // Force usage of 'data' directory
+            resolvedPath = "data/sentinel.db";
+        }
+    }
+
+    // Ensure directory exists using system command (fallback for filesystem issues)
+    std::string dirPath;
+    size_t lastSlash = resolvedPath.find_last_of('/');
+    if (lastSlash != std::string::npos) {
+        dirPath = resolvedPath.substr(0, lastSlash);
+    }
+
+    if (!dirPath.empty()) {
+        std::string command = "mkdir -p \"" + dirPath + "\"";
+        int res = std::system(command.c_str());
+        if (res != 0) {
+             logger.log(LogLevel::ERROR, "Failed to create database directory: " + dirPath, "SQLiteHandler");
         }
     }
 

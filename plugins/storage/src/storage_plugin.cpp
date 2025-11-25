@@ -36,7 +36,15 @@ public:
     bool initialize(EventBus* eventBus) override {
         std::cout << "StoragePlugin initialized" << std::endl;
         
-        if (!sqliteHandler_->initialize()) {
+        std::string dbPath = "";
+        if (const char* envPath = std::getenv("SENTINEL_DB_PATH")) {
+            dbPath = envPath;
+            std::cout << "StoragePlugin: Using DB path from env: " << dbPath << std::endl;
+        } else {
+            std::cout << "StoragePlugin: No SENTINEL_DB_PATH set, using default." << std::endl;
+        }
+
+        if (!sqliteHandler_->initialize(dbPath)) {
             return false;
         }
 
