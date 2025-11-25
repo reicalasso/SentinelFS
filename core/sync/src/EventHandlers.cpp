@@ -38,6 +38,10 @@ void EventHandlers::setupHandlers() {
         handlePeerDiscovered(data);
     });
     
+    eventBus_.subscribe("PEER_CONNECTED", [this](const std::any& data) {
+        handlePeerConnected(data);
+    });
+    
     eventBus_.subscribe("FILE_MODIFIED", [this](const std::any& data) {
         handleFileModified(data);
     });
@@ -96,15 +100,7 @@ void EventHandlers::handlePeerDiscovered(const std::any& data) {
             
             int port = std::stoi(portStr);
 
-            PeerInfo peer;
-            peer.id = id;
-            peer.ip = ip;
-            peer.port = port;
-            peer.lastSeen = std::time(nullptr);
-            peer.status = "active";
-            peer.latency = -1;
-
-            storage_->addPeer(peer);
+            logger.info("Discovered peer: " + id + " at " + ip + ":" + std::to_string(port), "EventHandlers");
             metrics.incrementPeersDiscovered();
 
             if (!network_) {
@@ -112,16 +108,52 @@ void EventHandlers::handlePeerDiscovered(const std::any& data) {
                 return;
             }
 
-            if (network_->connectToPeer(ip, port)) {
-                metrics.incrementPeersConnected();
-                logger.info("Discovered peer: " + id + " at " + ip + ":" + std::to_string(port), "EventHandlers");
-            } else {
-                logger.warn("Failed to connect to peer " + id + " at " + ip + ":" + std::to_string(port) + ". Removing from database.", "EventHandlers");
+            // Store peer info temporarily for connection
+            PeerInfo peer;
+            peer.id = id;
+            peer.ip = ip;
+            peer.port = port;
+            peer.lastSeen = std::time(nullptr);
+            peer.status = "connecting";
+            peer.latency = -1;
+            
+            storage_->addPeer(peer);
+            
+            // Try to connect - PEER_CONNECTED event will be triggered on success
+            if (!network_->connectToPeer(ip, port)) {
+                logger.warn("Failed to initiate connection to peer " + id, "EventHandlers");
                 storage_->removePeer(id);
             }
         }
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling PEER_DISCOVERED: ") + e.what(), "EventHandlers");
+    }
+}
+
+void EventHandlers::handlePeerConnected(const std::any& data) {
+    try {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        std::string peerId = std::any_cast<std::string>(data);
+        
+        logger.info("Peer connected: " + peerId + ", updating status to active", "EventHandlers");
+        
+        // Update peer status to active
+        auto peerOpt = storage_->getPeer(peerId);
+        if (peerOpt.has_value()) {
+            PeerInfo peer = peerOpt.value();
+            peer.status = "active";
+            peer.lastSeen = std::time(nullptr);
+            storage_->addPeer(peer);
+            metrics.incrementPeersConnected();
+            logger.info("Peer " + peerId + " is now active and ready for sync", "EventHandlers");
+        } else {
+            logger.warn("PEER_CONNECTED event for unknown peer: " + peerId, "EventHandlers");
+        }
+        
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling PEER_CONNECTED: ") + e.what(), "EventHandlers");
     }
 }
 

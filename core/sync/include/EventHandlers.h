@@ -64,6 +64,7 @@ public:
 private:
     // Event handler implementations
     void handlePeerDiscovered(const std::any& data);
+    void handlePeerConnected(const std::any& data);
     void handlePeerDisconnected(const std::any& data);
     void handleFileModified(const std::any& data);
     void handleDataReceived(const std::any& data);
