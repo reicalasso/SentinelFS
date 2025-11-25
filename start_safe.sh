@@ -41,5 +41,7 @@ fi
 
 echo -e "${GREEN}Launching Application...${NC}"
 # This will launch Electron, which spawns the daemon from ../build/app/daemon/sentinel_daemon
-npm run dev
+# Suppress GTK/GLib warnings that are harmless but noisy
+export GDK_BACKEND=x11
+npm run dev 2>&1 | grep -v "GLib-GObject\|GtkFileChooserNative\|gsignal.c"
 

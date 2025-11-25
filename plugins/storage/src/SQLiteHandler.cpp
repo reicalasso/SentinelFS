@@ -185,7 +185,12 @@ bool SQLiteHandler::createTables() {
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "path TEXT UNIQUE NOT NULL,"
         "added_at INTEGER,"
-        "status TEXT DEFAULT 'active');";
+        "status TEXT DEFAULT 'active');"
+
+        "CREATE TABLE IF NOT EXISTS ignore_patterns ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "pattern TEXT UNIQUE NOT NULL,"
+        "created_at INTEGER);";
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {

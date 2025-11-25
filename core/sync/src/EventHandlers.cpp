@@ -6,6 +6,7 @@
 #include "MetricsCollector.h"
 #include <iostream>
 #include <ctime>
+#include <sqlite3.h>
 
 namespace SentinelFS {
 
@@ -61,6 +62,40 @@ void EventHandlers::setupHandlers() {
     eventBus_.subscribe("PEER_DISCONNECTED", [this](const std::any& data) {
         handlePeerDisconnected(data);
     });
+
+    eventBus_.subscribe("WATCH_ADDED", [this](const std::any& data) {
+        try {
+            std::string path = std::any_cast<std::string>(data);
+            auto& logger = Logger::instance();
+            logger.info("Received WATCH_ADDED event for: " + path, "EventHandlers");
+            fileSyncHandler_->scanDirectory(path);
+        } catch (const std::exception& e) {
+            Logger::instance().error("Error handling WATCH_ADDED: " + std::string(e.what()), "EventHandlers");
+        }
+    });
+
+    // Trigger initial scan of the watched directory
+    fileSyncHandler_->scanDirectory();
+
+    // Scan other watched folders from DB
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (path) {
+                    std::string pathStr = path;
+                    // Avoid rescanning default dir if it's in DB
+                    if (pathStr != watchDirectory_) {
+                        fileSyncHandler_->scanDirectory(pathStr);
+                    }
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
 }
 
 void EventHandlers::setSyncEnabled(bool enabled) {

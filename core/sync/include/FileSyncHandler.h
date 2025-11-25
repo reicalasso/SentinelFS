@@ -30,6 +30,15 @@ public:
     void handleFileModified(const std::string& fullPath);
 
     /**
+     * @brief Perform scan of a directory
+     * @param path Optional directory path to scan. If empty, scans default watch directory.
+     * 
+     * Scans all files in the directory and adds/updates
+     * their metadata in the database.
+     */
+    void scanDirectory(const std::string& path = "");
+
+    /**
      * @brief Enable/disable sync operations
      * @param enabled true to enable, false to disable
      */
@@ -41,6 +50,8 @@ public:
     bool isSyncEnabled() const { return syncEnabled_; }
 
 private:
+    std::string calculateFileHash(const std::string& path);
+
     INetworkAPI* network_;
     IStorageAPI* storage_;
     std::string watchDirectory_;

@@ -226,6 +226,31 @@ export function Settings({ config }: SettingsProps) {
                                 <span className="text-muted-foreground">Watch Directory:</span>
                                 <span className="font-mono text-xs">{config?.watchDirectory || '~/sentinel_sync'}</span>
                             </div>
+                            
+                            {/* Display additional watched folders */}
+                            {config?.watchedFolders && config.watchedFolders.length > 0 && (
+                                <div className="pt-2 mt-2 border-t border-border/50">
+                                    <span className="text-muted-foreground block mb-1">Additional Watch Folders:</span>
+                                    <div className="space-y-1 pl-1">
+                                        {config.watchedFolders.map((folder: string, i: number) => (
+                                            <div key={i} className="flex justify-between items-center group">
+                                                <span className="font-mono text-xs break-all">{folder}</span>
+                                                <button 
+                                                    onClick={async () => {
+                                                        if (confirm(`Stop watching ${folder}?`)) {
+                                                            if (window.api) await window.api.sendCommand(`REMOVE_WATCH ${folder}`)
+                                                        }
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 text-red-500 rounded transition-opacity"
+                                                    title="Remove folder"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Section>
                 </div>

@@ -116,6 +116,28 @@ bool DaemonCore::initialize() {
 
         filesystem_->startWatching(watchDir);
         logger.info("Filesystem watcher started for: " + watchDir, "DaemonCore");
+
+        // Load and watch persisted folders from database
+        if (storage_) {
+            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+            const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                    if (path) {
+                        std::string pathStr = path;
+                        // Avoid duplicate watch for default dir
+                        if (pathStr != watchDir) {
+                            filesystem_->startWatching(pathStr);
+                            logger.info("Restored watch for: " + pathStr, "DaemonCore");
+                        }
+                    }
+                }
+                sqlite3_finalize(stmt);
+            }
+        }
+
     } catch (const std::exception& e) {
         logger.error("Failed to start filesystem watcher: " + std::string(e.what()), "DaemonCore");
         return false;
@@ -443,6 +465,10 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
         // Start watching the directory with filesystem plugin
         filesystem_->startWatching(absPath);
         logger.info("Directory watch added successfully: " + absPath, "DaemonCore");
+        
+        // Trigger immediate scan of the new directory
+        eventBus_.publish("WATCH_ADDED", absPath);
+        
         return true;
         
     } catch (const std::exception& e) {

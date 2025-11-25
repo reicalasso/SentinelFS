@@ -15,6 +15,7 @@ include_directories(
 )
 
 find_package(OpenSSL REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 # Explicitly list all source files (better than GLOB for CMake)
 set(CORE_SOURCES
@@ -56,9 +57,10 @@ target_include_directories(sentinel_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/storage/include
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/include
     ${OPENSSL_INCLUDE_DIR}
+    ${SQLite3_INCLUDE_DIRS}
 )
 
-target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto ${SQLite3_LIBRARIES})
 
 # Export for parent CMakeLists
 set(SENTINEL_CORE_LIB sentinel_core PARENT_SCOPE)

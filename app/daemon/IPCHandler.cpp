@@ -312,11 +312,25 @@ std::string IPCHandler::processCommand(const std::string& command) {
             return "Error: Storage not initialized\n";
         }
         
-        // Remove from watched folders (if it's a root folder)
-        const char* sql = "UPDATE watched_folders SET status = 'inactive' WHERE path = ?";
-        sqlite3_stmt* stmt;
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        sqlite3_stmt* stmt;
         
+        // First, delete all files that belong to this folder
+        std::string folderPrefix = args;
+        if (!folderPrefix.empty() && folderPrefix.back() != '/') {
+            folderPrefix += '/';
+        }
+        
+        const char* deleteFilesSql = "DELETE FROM files WHERE path LIKE ?";
+        if (sqlite3_prepare_v2(db, deleteFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            std::string pattern = folderPrefix + "%";
+            sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+        
+        // Then, remove from watched folders
+        const char* sql = "DELETE FROM watched_folders WHERE path = ?";
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
             
@@ -598,160 +612,97 @@ std::string IPCHandler::handleFilesJsonCommand() {
     ss << "{\"files\": [";
     
     if (storage_) {
-        // Get all files from the files table (synced files)
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        bool first = true;
+        std::vector<std::string> watchedFolders;
+        
+        // 1. Get watched folders first (Roots)
+        const char* folderSql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        sqlite3_stmt* folderStmt;
+        
+        if (sqlite3_prepare_v2(db, folderSql, -1, &folderStmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(folderStmt) == SQLITE_ROW) {
+                const char* folderPath = reinterpret_cast<const char*>(sqlite3_column_text(folderStmt, 0));
+                if (folderPath) {
+                    std::string pathStr = folderPath;
+                    watchedFolders.push_back(pathStr);
+                    
+                    // Calculate folder size from files table
+                    int64_t folderSize = 0;
+                    std::string sizeSql = "SELECT COALESCE(SUM(size), 0) FROM files WHERE path LIKE ?";
+                    sqlite3_stmt* sizeStmt;
+                    if (sqlite3_prepare_v2(db, sizeSql.c_str(), -1, &sizeStmt, nullptr) == SQLITE_OK) {
+                        std::string pattern = pathStr + "/%";
+                        sqlite3_bind_text(sizeStmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+                        if (sqlite3_step(sizeStmt) == SQLITE_ROW) {
+                            folderSize = sqlite3_column_int64(sizeStmt, 0);
+                        }
+                        sqlite3_finalize(sizeStmt);
+                    }
+                    
+                    if (!first) ss << ",";
+                    first = false;
+                    
+                    ss << "{";
+                    ss << "\"path\":\"" << pathStr << "\",";
+                    ss << "\"hash\":\"\",";
+                    ss << "\"size\":" << folderSize << ",";
+                    ss << "\"lastModified\":" << std::time(nullptr) << ",";
+                    ss << "\"syncStatus\":\"watching\",";
+                    ss << "\"isFolder\":true";
+                    ss << "}";
+                }
+            }
+            sqlite3_finalize(folderStmt);
+        }
+
+        // 2. Get all files from the files table
         const char* sql = "SELECT path, hash, timestamp, size FROM files ORDER BY timestamp DESC LIMIT 1000";
         sqlite3_stmt* stmt;
-        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            bool first = true;
             while (sqlite3_step(stmt) == SQLITE_ROW) {
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (!path) continue;
+                
+                std::string pathStr = path;
+                
+                // Determine parent folder
+                std::string parent = "";
+                // Find the longest matching watched folder
+                size_t maxLen = 0;
+                
+                for (const auto& folder : watchedFolders) {
+                    if (pathStr.find(folder) == 0) { // Starts with folder path
+                        // Ensure exact match or directory boundary
+                        if (pathStr.length() == folder.length() || pathStr[folder.length()] == std::filesystem::path::preferred_separator) {
+                             if (folder.length() > maxLen) {
+                                 maxLen = folder.length();
+                                 parent = folder;
+                             }
+                        }
+                    }
+                }
+                
                 if (!first) ss << ",";
                 first = false;
                 
-                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
                 const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
                 int64_t timestamp = sqlite3_column_int64(stmt, 2);
                 int64_t size = sqlite3_column_int64(stmt, 3);
                 
                 ss << "{";
-                ss << "\"path\":\"" << (path ? path : "") << "\",";
+                ss << "\"path\":\"" << pathStr << "\",";
                 ss << "\"hash\":\"" << (hash ? hash : "") << "\",";
                 ss << "\"size\":" << size << ",";
                 ss << "\"lastModified\":" << timestamp << ",";
                 ss << "\"syncStatus\":\"synced\"";
+                if (!parent.empty()) {
+                    ss << ",\"parent\":\"" << parent << "\"";
+                }
                 ss << "}";
             }
             sqlite3_finalize(stmt);
-        }
-        
-        // If no files in database, scan watched folders
-        if (ss.str() == "{\"files\": [") {
-            // Get watched folders and scan them
-            const char* folderSql = "SELECT path FROM watched_folders WHERE status = 'active'";
-            sqlite3_stmt* folderStmt;
-            
-            if (sqlite3_prepare_v2(db, folderSql, -1, &folderStmt, nullptr) == SQLITE_OK) {
-                bool first = true;
-                while (sqlite3_step(folderStmt) == SQLITE_ROW) {
-                    const char* folderPath = reinterpret_cast<const char*>(sqlite3_column_text(folderStmt, 0));
-                    
-                    if (folderPath) {
-                        std::string pathStr = folderPath;
-                        
-                        // Calculate total size for root folder
-                        uintmax_t rootFolderSize = 0;
-                        std::vector<std::pair<std::string, uintmax_t>> subdirs;
-                        
-                        try {
-                            for (const auto& entry : std::filesystem::directory_iterator(pathStr)) {
-                                if (entry.is_directory()) {
-                                    // Calculate subdirectory size
-                                    uintmax_t subdirSize = 0;
-                                    try {
-                                        for (const auto& subEntry : std::filesystem::recursive_directory_iterator(entry.path())) {
-                                            if (subEntry.is_regular_file()) {
-                                                subdirSize += subEntry.file_size();
-                                            }
-                                        }
-                                    } catch (...) {}
-                                    subdirs.push_back({entry.path().string(), subdirSize});
-                                    rootFolderSize += subdirSize;
-                                } else if (entry.is_regular_file()) {
-                                    rootFolderSize += entry.file_size();
-                                }
-                            }
-                        } catch (...) {}
-                        
-                        // Add root folder first
-                        if (!first) ss << ",";
-                        first = false;
-                        
-                        ss << "{";
-                        ss << "\"path\":\"" << pathStr << "\",";
-                        ss << "\"hash\":\"\",";
-                        ss << "\"size\":" << rootFolderSize << ",";
-                        ss << "\"lastModified\":" << std::time(nullptr) << ",";
-                        ss << "\"syncStatus\":\"watching\",";
-                        ss << "\"isFolder\":true";
-                        ss << "}";
-                        
-                        // Add subdirectories with calculated sizes and their files
-                        for (const auto& [subdirPath, subdirSize] : subdirs) {
-                            if (!first) ss << ",";
-                            first = false;
-                            
-                            ss << "{";
-                            ss << "\"path\":\"" << subdirPath << "\",";
-                            ss << "\"hash\":\"\",";
-                            ss << "\"size\":" << subdirSize << ",";
-                            ss << "\"lastModified\":" << std::time(nullptr) << ",";
-                            ss << "\"syncStatus\":\"watching\",";
-                            ss << "\"isFolder\":true,";
-                            ss << "\"parent\":\"" << pathStr << "\"";
-                            ss << "}";
-                            
-                            // Add files in this subdirectory
-                            try {
-                                for (const auto& subEntry : std::filesystem::directory_iterator(subdirPath)) {
-                                    if (subEntry.is_regular_file()) {
-                                        if (!first) ss << ",";
-                                        first = false;
-                                        
-                                        auto subFilePath = subEntry.path().string();
-                                        auto subFileSize = subEntry.file_size();
-                                        auto subLastWrite = std::filesystem::last_write_time(subEntry);
-                                        auto subSctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                                            subLastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now()
-                                        );
-                                        auto subTimestamp = std::chrono::system_clock::to_time_t(subSctp);
-                                        
-                                        ss << "{";
-                                        ss << "\"path\":\"" << subFilePath << "\",";
-                                        ss << "\"hash\":\"\",";
-                                        ss << "\"size\":" << subFileSize << ",";
-                                        ss << "\"lastModified\":" << subTimestamp << ",";
-                                        ss << "\"syncStatus\":\"pending\",";
-                                        ss << "\"parent\":\"" << subdirPath << "\"";
-                                        ss << "}";
-                                    }
-                                }
-                            } catch (...) {}
-                        }
-                        
-                        // Scan directory for files
-                        try {
-                            for (const auto& entry : std::filesystem::directory_iterator(pathStr)) {
-                                if (entry.is_regular_file()) {
-                                    if (!first) ss << ",";
-                                    first = false;
-                                    
-                                    // Add file
-                                    auto filePath = entry.path().string();
-                                    auto fileSize = entry.file_size();
-                                    auto lastWrite = std::filesystem::last_write_time(entry);
-                                    auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                                        lastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now()
-                                    );
-                                    auto timestamp = std::chrono::system_clock::to_time_t(sctp);
-                                    
-                                    ss << "{";
-                                    ss << "\"path\":\"" << filePath << "\",";
-                                    ss << "\"hash\":\"\",";
-                                    ss << "\"size\":" << fileSize << ",";
-                                    ss << "\"lastModified\":" << timestamp << ",";
-                                    ss << "\"syncStatus\":\"pending\",";
-                                    ss << "\"parent\":\"" << pathStr << "\"";
-                                    ss << "}";
-                                }
-                            }
-                        } catch (const std::exception& e) {
-                            // Skip folders we can't read
-                        }
-                    }
-                }
-                sqlite3_finalize(folderStmt);
-            }
         }
     }
     
@@ -885,6 +836,28 @@ std::string IPCHandler::handleConfigJsonCommand() {
         ss << ",\"syncEnabled\":" << (daemonCore_->isSyncEnabled() ? "true" : "false");
     }
     
+    // Add watched folders list from database
+    ss << ",\"watchedFolders\":[";
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            bool first = true;
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (path) {
+                    // Simple JSON string escape (for basic paths)
+                    ss << "\"" << path << "\"";
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    ss << "]";
+
     ss << "}\n";
     return ss.str();
 }
