@@ -36,10 +36,9 @@ void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId,
             return;
         }
         
-        std::string filename = fullMsg.substr(prefix.length());
-        logger.info("Peer " + peerId + " has update for: " + filename, "DeltaSyncProtocol");
-        
-        std::string localPath = watchDirectory_ + "/" + filename;
+        std::string localPath = fullMsg.substr(prefix.length());
+        std::string filename = std::filesystem::path(localPath).filename().string();
+        logger.info("Peer " + peerId + " has update for: " + filename + " (" + localPath + ")", "DeltaSyncProtocol");
         
         // Calculate local signature
         std::vector<BlockSignature> sigs;
@@ -52,8 +51,8 @@ void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId,
         
         auto serializedSig = DeltaSerialization::serializeSignature(sigs);
         
-        // Send delta request
-        std::string header = "REQUEST_DELTA|" + filename + "|";
+        // Send delta request with full path
+        std::string header = "REQUEST_DELTA|" + localPath + "|";
         std::vector<uint8_t> payload(header.begin(), header.end());
         payload.insert(payload.end(), serializedSig.begin(), serializedSig.end());
         
@@ -88,8 +87,9 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
             return;
         }
         
-        std::string filename = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
-        logger.info("Received delta request for: " + filename + " from " + peerId, "DeltaSyncProtocol");
+        std::string localPath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string filename = std::filesystem::path(localPath).filename().string();
+        logger.info("Received delta request for: " + filename + " (" + localPath + ") from " + peerId, "DeltaSyncProtocol");
         
         if (rawData.size() <= secondPipe + 1) {
             logger.error("No signature data in REQUEST_DELTA", "DeltaSyncProtocol");
@@ -99,9 +99,8 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
         std::vector<uint8_t> sigData(rawData.begin() + secondPipe + 1, rawData.end());
         auto sigs = DeltaSerialization::deserializeSignature(sigData);
         
-        std::string localPath = watchDirectory_ + "/" + filename;
         if (!std::filesystem::exists(localPath)) {
-            logger.warn("File not found locally: " + filename, "DeltaSyncProtocol");
+            logger.warn("File not found locally: " + filename + " at " + localPath, "DeltaSyncProtocol");
             return;
         }
         
@@ -124,7 +123,7 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
 
         if (totalChunks == 0) {
             // No delta data, but send an empty payload for protocol symmetry
-            std::string header = "DELTA_DATA|" + filename + "|";
+            std::string header = "DELTA_DATA|" + localPath + "|";
             std::vector<uint8_t> payload(header.begin(), header.end());
             bool sent = network_->sendData(peerId, payload);
             if (!sent) {
@@ -139,7 +138,7 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
             std::size_t offset = static_cast<std::size_t>(chunkId) * CHUNK_SIZE;
             std::size_t len = std::min(CHUNK_SIZE, totalSize - offset);
 
-            std::string header = "DELTA_DATA|" + filename + "|" +
+            std::string header = "DELTA_DATA|" + localPath + "|" +
                                  std::to_string(chunkId) + "/" + std::to_string(totalChunks) + "|";
             std::vector<uint8_t> payload(header.begin(), header.end());
             payload.insert(payload.end(),
@@ -187,9 +186,10 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
             return;
         }
         
-        std::string filename = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string localPath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string filename = std::filesystem::path(localPath).filename().string();
         
-        // Check if this is a chunked DELTA_DATA message: DELTA_DATA|filename|chunkId/total|...
+        // Check if this is a chunked DELTA_DATA message: DELTA_DATA|localPath|chunkId/total|...
         size_t thirdPipe = msg.find('|', secondPipe + 1);
         if (thirdPipe != std::string::npos) {
             std::string chunkInfo = msg.substr(secondPipe + 1, thirdPipe - secondPipe - 1);
@@ -239,7 +239,7 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
 
                 pendingDeltas_.erase(key);
 
-                std::string header = "DELTA_DATA|" + filename + "|";
+                std::string header = "DELTA_DATA|" + localPath + "|";
                 std::vector<uint8_t> fullRaw(header.begin(), header.end());
                 fullRaw.insert(fullRaw.end(), fullDelta.begin(), fullDelta.end());
 
@@ -259,8 +259,6 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
         auto deltas = DeltaSerialization::deserializeDelta(deltaData);
         
         logger.debug("Applying " + std::to_string(deltas.size()) + " delta instructions", "DeltaSyncProtocol");
-        
-        std::string localPath = watchDirectory_ + "/" + filename;
         
         // Create empty file if doesn't exist
         if (!std::filesystem::exists(localPath)) {

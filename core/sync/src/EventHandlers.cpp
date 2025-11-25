@@ -42,6 +42,10 @@ void EventHandlers::setupHandlers() {
         handlePeerConnected(data);
     });
     
+    eventBus_.subscribe("FILE_CREATED", [this](const std::any& data) {
+        handleFileCreated(data);
+    });
+    
     eventBus_.subscribe("FILE_MODIFIED", [this](const std::any& data) {
         handleFileModified(data);
     });
@@ -154,6 +158,34 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
         
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling PEER_CONNECTED: ") + e.what(), "EventHandlers");
+    }
+}
+
+void EventHandlers::handleFileCreated(const std::any& data) {
+    try {
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        std::string fullPath = std::any_cast<std::string>(data);
+        
+        // Check ignore list
+        std::string filename = std::filesystem::path(fullPath).filename().string();
+        {
+            std::lock_guard<std::mutex> lock(ignoreMutex_);
+            if (ignoreList_.count(filename)) {
+                auto now = std::chrono::steady_clock::now();
+                if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
+                    logger.debug("Ignoring creation for " + filename + " (recently patched)", "EventHandlers");
+                    return;
+                }
+                ignoreList_.erase(filename);
+            }
+        }
+        
+        metrics.incrementFilesModified();
+        fileSyncHandler_->handleFileModified(fullPath);
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling FILE_CREATED: ") + e.what(), "EventHandlers");
     }
 }
 

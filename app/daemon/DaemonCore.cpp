@@ -440,7 +440,8 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
             }
         }
         
-        // TODO: Filesystem plugin needs addWatch() method for actual file monitoring
+        // Start watching the directory with filesystem plugin
+        filesystem_->startWatching(absPath);
         logger.info("Directory watch added successfully: " + absPath, "DaemonCore");
         return true;
         

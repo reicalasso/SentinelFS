@@ -37,8 +37,8 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         
         logger.info("Broadcasting update for " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "FileSyncHandler");
         
-        // Broadcast UPDATE_AVAILABLE to all peers
-        std::string updateMsg = "UPDATE_AVAILABLE|" + filename;
+        // Broadcast UPDATE_AVAILABLE to all peers with full path
+        std::string updateMsg = "UPDATE_AVAILABLE|" + fullPath;
         std::vector<uint8_t> payload(updateMsg.begin(), updateMsg.end());
         
         int successCount = 0;

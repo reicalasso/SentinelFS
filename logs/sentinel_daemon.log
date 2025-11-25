@@ -1,0 +1,33 @@
+[2025-11-25 13:23:39] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 13:23:39] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 13:23:39] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 13:23:39] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 13:23:39] [INFO] [DaemonCore] No plugin manifest found at: ./plugins/plugins.conf (using built-in defaults)
+[2025-11-25 13:23:39] [CRITICAL] [DaemonCore] Failed to load one or more critical plugins
+[2025-11-25 13:23:39] [ERROR] [DaemonCore] Storage plugin failed to load
+[2025-11-25 13:23:39] [ERROR] [DaemonCore] Network plugin failed to load
+[2025-11-25 13:23:39] [ERROR] [DaemonCore] Filesystem plugin failed to load
+[2025-11-25 13:23:39] [WARN] [DaemonCore] ML plugin failed to load (optional)
+[2025-11-25 13:23:39] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 13:26:25] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 13:26:25] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 13:26:25] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 13:26:25] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 13:26:25] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 13:26:25] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS
+[2025-11-25 13:26:25] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 13:26:25] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 13:26:25] [INFO] [DaemonCore] No plugin manifest found at: ./plugins/plugins.conf (using built-in defaults)
+[2025-11-25 13:26:25] [INFO] [DaemonCore] No plugin manifest found at: ./plugins/plugins.conf (using built-in defaults)
+[2025-11-25 13:26:25] [CRITICAL] [DaemonCore] Failed to load one or more critical plugins
+[2025-11-25 13:26:25] [CRITICAL] [DaemonCore] Failed to load one or more critical plugins
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Storage plugin failed to load
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Storage plugin failed to load
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Network plugin failed to load
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Network plugin failed to load
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Filesystem plugin failed to load
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Filesystem plugin failed to load
+[2025-11-25 13:26:25] [WARN] [DaemonCore] ML plugin failed to load (optional)
+[2025-11-25 13:26:25] [WARN] [DaemonCore] ML plugin failed to load (optional)
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 13:26:25] [ERROR] [DaemonCore] Failed to load plugins
