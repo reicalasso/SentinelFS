@@ -18,6 +18,7 @@
 #include <ctime>
 #include <filesystem>
 #include <chrono>
+#include <random>
 
 namespace SentinelFS {
 
@@ -304,6 +305,21 @@ std::string IPCHandler::processCommand(const std::string& command) {
             // Start UDP discovery on port 3344
             network_->startDiscovery(3344);
             return "Discovery started.\n";
+        }
+        return "Error: Network plugin not initialized.\n";
+    } else if (cmd == "GENERATE_CODE") {
+        // Generate a random 6-character session code
+        static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoiding confusing chars like 0/O, 1/I
+        std::string code;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, sizeof(chars) - 2);
+        for (int i = 0; i < 6; i++) {
+            code += chars[dis(gen)];
+        }
+        if (network_) {
+            network_->setSessionCode(code);
+            return "CODE:" + code + "\n";
         }
         return "Error: Network plugin not initialized.\n";
     } else {
@@ -819,7 +835,9 @@ std::string IPCHandler::handleConfigJsonCommand() {
         ss << "\"discoveryPort\":" << config.discoveryPort << ",";
         ss << "\"metricsPort\":" << config.metricsPort << ",";
         ss << "\"watchDirectory\":\"" << config.watchDirectory << "\",";
-        ss << "\"sessionCode\":\"" << (config.sessionCode.empty() ? "" : "******") << "\",";
+        // Get actual session code from network plugin (runtime value)
+        std::string currentSessionCode = network_ ? network_->getSessionCode() : config.sessionCode;
+        ss << "\"sessionCode\":\"" << currentSessionCode << "\",";
         ss << "\"encryptionEnabled\":" << (config.encryptionEnabled ? "true" : "false") << ",";
         ss << "\"uploadLimit\":" << (config.uploadLimit / 1024) << ",";  // Convert to KB/s
         ss << "\"downloadLimit\":" << (config.downloadLimit / 1024);  // Convert to KB/s

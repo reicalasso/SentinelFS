@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, Database, Globe, Lock, Moon, Shield, Smartphone, Save } from 'lucide-react'
+import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key } from 'lucide-react'
 
 interface SettingsProps {
   config: any
@@ -11,9 +11,17 @@ export function Settings({ config }: SettingsProps) {
   // Local state for form inputs
   const [uploadLimit, setUploadLimit] = useState('0')
   const [downloadLimit, setDownloadLimit] = useState('0')
-  const [sessionCode, setSessionCode] = useState('')
+  const [newSessionCode, setNewSessionCode] = useState('')
   const [encryptionEnabled, setEncryptionEnabled] = useState(false)
   const [syncEnabled, setSyncEnabled] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  
+  // Format session code as ABC-123
+  const formatCode = (code: string) => {
+    if (!code || code.length !== 6) return code
+    return `${code.slice(0, 3)}-${code.slice(3)}`
+  }
   
   // Update local state when config changes
   useEffect(() => {
@@ -40,9 +48,25 @@ export function Settings({ config }: SettingsProps) {
   }
   
   const handleSessionCodeChange = () => {
-    if (sessionCode.length === 6) {
-      sendConfig('sessionCode', sessionCode)
-      setSessionCode('') // Clear after setting
+    if (newSessionCode.length === 6) {
+      sendConfig('sessionCode', newSessionCode)
+      setNewSessionCode('') // Clear after setting
+    }
+  }
+  
+  const handleGenerateCode = async () => {
+    if (window.api) {
+      setIsGenerating(true)
+      await window.api.sendCommand('GENERATE_CODE')
+      setTimeout(() => setIsGenerating(false), 1000)
+    }
+  }
+  
+  const handleCopyCode = () => {
+    if (config?.sessionCode) {
+      navigator.clipboard.writeText(config.sessionCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
   
@@ -173,46 +197,110 @@ export function Settings({ config }: SettingsProps) {
             {activeTab === 'security' && (
                 <div className="space-y-6">
                     <Section title="Session Code">
-                        <div className="mb-4">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">6-Character Code</label>
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    value={sessionCode}
-                                    onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                                    maxLength={6}
-                                    placeholder="ABC123"
-                                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
-                                />
+                        {/* Current Code Display */}
+                        {config?.sessionCode && (
+                            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-blue-500/20">
+                                            <Key className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-muted-foreground uppercase tracking-wider">Current Session Code</div>
+                                            <div className="font-mono text-2xl font-bold tracking-widest text-blue-500">
+                                                {formatCode(config.sessionCode)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={handleCopyCode}
+                                        className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                                        title="Copy to clipboard"
+                                    >
+                                        {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2">Share this code with peers to allow them to connect.</p>
+                            </div>
+                        )}
+                        
+                        {/* No Code Warning */}
+                        {!config?.sessionCode && (
+                            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                                <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                                    <Shield className="w-4 h-4" />
+                                    <span className="text-sm font-semibold">No Session Code Set</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Any peer can connect to your device. Set a session code for secure pairing.</p>
+                            </div>
+                        )}
+                        
+                        {/* Generate or Set Code */}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Quick Generate</label>
                                 <button 
-                                    onClick={handleSessionCodeChange}
-                                    disabled={sessionCode.length !== 6}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-secondary disabled:text-muted-foreground text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    onClick={handleGenerateCode}
+                                    disabled={isGenerating}
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <Save className="w-4 h-4" />
-                                    Set
+                                    <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                                    {isGenerating ? 'Generating...' : 'Generate New Code'}
                                 </button>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                                {config?.hasSessionCode ? '✓ Session code is set' : '⚠ No session code set - any peer can connect'}
+                            
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-border"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-card px-2 text-muted-foreground">or enter manually</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Manual Entry</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={newSessionCode}
+                                        onChange={(e) => setNewSessionCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                        maxLength={6}
+                                        placeholder="ABC123"
+                                        className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all tracking-widest text-center" 
+                                    />
+                                    <button 
+                                        onClick={handleSessionCodeChange}
+                                        disabled={newSessionCode.length !== 6}
+                                        className="px-4 py-2 bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        Set
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </Section>
+                    
                     <Section title="Encryption">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <span className="text-sm font-medium block">Enable AES-256 Encryption</span>
-                                <span className="text-xs text-muted-foreground">Requires session code to be set</span>
+                                <span className="text-xs text-muted-foreground">Encrypt all peer-to-peer traffic</span>
                             </div>
                             <Toggle checked={encryptionEnabled} onChange={handleEncryptionToggle} />
                         </div>
-                        {encryptionEnabled && (
+                        {encryptionEnabled ? (
                             <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
                                 <div className="flex items-center gap-2 text-green-500 mb-2">
                                     <Shield className="w-4 h-4" />
                                     <span className="text-sm font-semibold">Encryption Active</span>
                                 </div>
-                                <p className="text-xs text-muted-foreground">All traffic is encrypted with AES-256-CBC</p>
+                                <p className="text-xs text-muted-foreground">All traffic is encrypted with AES-256-CBC + HMAC verification.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-secondary/50 p-4 rounded-lg border border-border">
+                                <p className="text-xs text-muted-foreground">⚠ Traffic is not encrypted. Enable encryption for secure file transfers.</p>
                             </div>
                         )}
                     </Section>

@@ -1,12 +1,5 @@
-import { FolderOpen, Plus, MoreVertical, CheckCircle, AlertCircle, Clock, File, Search, Trash2, ChevronRight, ChevronDown, Folder } from 'lucide-react'
 import { useState } from 'react'
-
-const mockFolders = [
-  { name: '~/Documents', files: 1247, size: '4.2 GB', status: 'synced', lastSync: '2 min ago' },
-  { name: '~/Pictures', files: 3891, size: '12.8 GB', status: 'syncing', lastSync: 'Now' },
-  { name: '~/Projects', files: 892, size: '2.1 GB', status: 'synced', lastSync: '5 min ago' },
-  { name: '~/Music', files: 456, size: '8.4 GB', status: 'pending', lastSync: 'Never' },
-]
+import { FolderOpen, Plus, File, Search, Trash2, ChevronRight, ChevronDown, Folder } from 'lucide-react'
 
 export function Files({ files }: { files?: any[] }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())

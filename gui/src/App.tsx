@@ -1,5 +1,5 @@
 import { useState, useEffect, cloneElement } from 'react'
-import { Activity, Folder, HardDrive, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft } from 'lucide-react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'

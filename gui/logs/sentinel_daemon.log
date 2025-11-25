@@ -88,3 +88,68 @@
 [2025-11-25 08:31:15] [INFO] [DaemonCore] Loading plugins from: ./plugins
 [2025-11-25 08:31:15] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
 [2025-11-25 08:31:15] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 10:50:20] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 10:50:20] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Loading plugins from: /home/rei/sentinelFS-demo/SentinelFS/build/plugins
+[2025-11-25 10:50:20] [INFO] [DaemonCore] No plugin manifest found at: /home/rei/sentinelFS-demo/SentinelFS/build/plugins/plugins.conf (using built-in defaults)
+[2025-11-25 10:50:20] [INFO] [SQLiteHandler] Initializing SQLite database: sentinel.db
+[2025-11-25 10:50:20] [INFO] [SQLiteHandler] Database opened successfully
+[2025-11-25 10:50:20] [DEBUG] [SQLiteHandler] Creating database tables
+[2025-11-25 10:50:20] [INFO] [SQLiteHandler] Database tables created successfully
+[2025-11-25 10:50:20] [INFO] [InotifyWatcher] Initializing inotify watcher
+[2025-11-25 10:50:20] [INFO] [InotifyWatcher] Inotify watcher initialized successfully
+[2025-11-25 10:50:20] [DEBUG] [InotifyWatcher] Monitor loop started
+[2025-11-25 10:50:20] [INFO] [DaemonCore] All critical plugins loaded successfully
+[2025-11-25 10:50:20] [INFO] [DaemonCore] ML plugin (anomaly detection) loaded
+[2025-11-25 10:50:20] [INFO] [TCPHandler] Starting TCP listener on port 8080
+[2025-11-25 10:50:20] [INFO] [TCPHandler] TCP server listening on port 8080
+[2025-11-25 10:50:20] [INFO] [DaemonCore] TCP listener started on port 8080
+[2025-11-25 10:50:20] [INFO] [UDPDiscovery] Starting UDP discovery on port 9999
+[2025-11-25 10:50:20] [INFO] [UDPDiscovery] UDP discovery listening on port 9999
+[2025-11-25 10:50:20] [INFO] [DaemonCore] UDP discovery started on port 9999
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Created watch directory: ~/sentinel_sync
+[2025-11-25 10:50:20] [DEBUG] [UDPDiscovery] UDP discovery loop started
+[2025-11-25 10:50:20] [DEBUG] [InotifyWatcher] Adding watch for: ~/sentinel_sync
+[2025-11-25 10:50:20] [INFO] [InotifyWatcher] Now watching directory: ~/sentinel_sync
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Filesystem watcher started for: ~/sentinel_sync
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Daemon initialization complete
+[2025-11-25 10:50:20] [DEBUG] [FileSyncHandler] FileSyncHandler initialized for: ~/sentinel_sync
+[2025-11-25 10:50:20] [DEBUG] [DeltaSyncProtocol] DeltaSyncProtocolHandler initialized for: ~/sentinel_sync
+[2025-11-25 10:50:20] [INFO] [DaemonCore] Daemon running. Press Ctrl+C to stop.
+[2025-11-25 10:50:25] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:25] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:25] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:25] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:30] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:30] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:30] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:30] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:35] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:35] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:35] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:35] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:40] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:40] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:40] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:40] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:45] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:45] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:45] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:45] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:50] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:50] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:50] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:50:50] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:55] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:50:55] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:50:55] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:50:55] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:51:00] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:51:00] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:51:00] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:51:00] [DEBUG] [UDPDiscovery] Ignoring self-discovery message
+[2025-11-25 10:51:05] [DEBUG] [UDPDiscovery] Broadcasting presence on port 9999
+[2025-11-25 10:51:05] [INFO] [UDPDiscovery] Broadcast sent: SENTINEL_DISCOVERY|PEER_17379|8080 to port 9999
+[2025-11-25 10:51:05] [DEBUG] [UDPDiscovery] Received broadcast: SENTINEL_DISCOVERY|PEER_17379|8080 from 10.116.82.63
+[2025-11-25 10:51:05] [DEBUG] [UDPDiscovery] Ignoring self-discovery message

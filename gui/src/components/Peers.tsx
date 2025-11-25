@@ -1,12 +1,5 @@
-import { Laptop, Smartphone, MoreHorizontal, Globe, ShieldCheck, Ban, Scan, Loader2 } from 'lucide-react'
 import { useState } from 'react'
-
-const mockPeers = [
-    { name: 'MacBook Pro M2', ip: '192.168.1.45', type: 'laptop', status: 'Connected', trusted: true, lastSeen: 'Now' },
-    { name: 'iPhone 15 Pro', ip: '192.168.1.89', type: 'mobile', status: 'Connected', trusted: true, lastSeen: 'Now' },
-    { name: 'Ubuntu Server', ip: '10.0.0.5', type: 'server', status: 'Disconnected', trusted: true, lastSeen: '2 hours ago' },
-    { name: 'Unknown Device', ip: '192.168.1.112', type: 'unknown', status: 'Pending', trusted: false, lastSeen: '1 min ago' },
-]
+import { Laptop, Smartphone, Globe, ShieldCheck, Ban, Scan, Loader2 } from 'lucide-react'
 
 export function Peers({ peers }: { peers?: any[] }) {
   const [isDiscovering, setIsDiscovering] = useState(false)
@@ -33,7 +26,7 @@ export function Peers({ peers }: { peers?: any[] }) {
       status: p.status || 'Disconnected',
       trusted: true, // Assume trusted for synced peers
       lastSeen: p.latency >= 0 ? `${p.latency}ms` : 'Unknown'
-  })) : mockPeers
+  })) : []
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -53,13 +46,14 @@ export function Peers({ peers }: { peers?: any[] }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayPeers.length === 0 && (
+                <div className="col-span-full bg-card border border-border rounded-xl p-8 text-center">
+                    <Laptop className="w-12 h-12 mx-auto mb-3 opacity-50 text-muted-foreground" />
+                    <p className="text-muted-foreground">No devices found. Click "Scan for Devices" to discover peers on your network.</p>
+                </div>
+            )}
             {displayPeers.map((peer, i) => (
                 <div key={i} className="bg-card border border-border rounded-xl p-6 shadow-sm hover:border-blue-500/30 transition-colors relative group">
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1 hover:bg-secondary rounded text-muted-foreground">
-                            <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                    </div>
                     
                     <div className="flex items-center gap-4 mb-4">
                         <div className={`p-3 rounded-full ${
