@@ -199,6 +199,8 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleResumeCommand();
     } else if (cmd == "CONNECT") {
         return handleConnectCommand(args);
+    } else if (cmd == "ADD_PEER") {
+        return handleAddPeerCommand(args);
     } else if (cmd == "UPLOAD-LIMIT") {
         return handleUploadLimitCommand(args);
     } else if (cmd == "DOWNLOAD-LIMIT") {
@@ -613,6 +615,32 @@ std::string IPCHandler::handleConnectCommand(const std::string& args) {
         return "Connecting to " + ip + ":" + std::to_string(port) + "...\n";
     } else {
         return "Failed to initiate connection.\n";
+    }
+}
+
+std::string IPCHandler::handleAddPeerCommand(const std::string& args) {
+    // Parse IP:PORT
+    size_t colonPos = args.find(':');
+    if (colonPos == std::string::npos) {
+        return "Error: Invalid format. Use: ADD_PEER <ip>:<port>\n";
+    }
+    
+    std::string ip = args.substr(0, colonPos);
+    int port;
+    try {
+        port = std::stoi(args.substr(colonPos + 1));
+    } catch (...) {
+        return "Error: Invalid port number.\n";
+    }
+    
+    if (!network_) {
+        return "Error: Network subsystem not initialized.\n";
+    }
+    
+    if (network_->connectToPeer(ip, port)) {
+        return "Success: Connecting to peer " + ip + ":" + std::to_string(port) + "...\n";
+    } else {
+        return "Error: Failed to initiate connection to " + ip + ":" + std::to_string(port) + "\n";
     }
 }
 

@@ -72,6 +72,7 @@ private:
     std::string handlePauseCommand();
     std::string handleResumeCommand();
     std::string handleConnectCommand(const std::string& args);
+    std::string handleAddPeerCommand(const std::string& args);
     std::string handleUploadLimitCommand(const std::string& args);
     std::string handleDownloadLimitCommand(const std::string& args);
     std::string handleMetricsCommand();

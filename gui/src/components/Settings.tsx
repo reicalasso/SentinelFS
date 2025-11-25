@@ -25,6 +25,10 @@ export function Settings({ config }: SettingsProps) {
   const [ignorePatterns, setIgnorePatterns] = useState<string[]>([])
   const [newPattern, setNewPattern] = useState('')
   
+  // Manual peer connection state
+  const [peerIp, setPeerIp] = useState('')
+  const [peerPort, setPeerPort] = useState('8080')
+  
   // Format session code as ABC-123
   const formatCode = (code: string) => {
     if (!code || code.length !== 6) return code
@@ -99,6 +103,24 @@ export function Settings({ config }: SettingsProps) {
     const newValue = !syncEnabled
     setSyncEnabled(newValue)
     sendConfig('syncEnabled', newValue ? 'true' : 'false')
+  }
+  
+  const handleAddPeer = async () => {
+    if (!peerIp || !peerPort) {
+      addNotification('error', 'Please enter both IP address and port')
+      return
+    }
+    
+    if (window.api) {
+      const res = await window.api.sendCommand(`ADD_PEER ${peerIp}:${peerPort}`)
+      if (res.includes('Success')) {
+        addNotification('success', `Connecting to ${peerIp}:${peerPort}`)
+        setPeerIp('')
+        setPeerPort('8080')
+      } else {
+        addNotification('error', res.replace('Error: ', ''))
+      }
+    }
   }
   
   // Export config
@@ -258,6 +280,41 @@ export function Settings({ config }: SettingsProps) {
 
             {activeTab === 'network' && (
                 <div className="space-y-6">
+                    <Section title="Manual Peer Connection">
+                        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 mb-4">
+                            <div className="flex items-start gap-2 text-blue-500 mb-3">
+                                <Globe className="w-4 h-4 mt-0.5" />
+                                <div>
+                                    <span className="text-sm font-semibold">Connect to a specific peer</span>
+                                    <p className="text-xs text-muted-foreground mt-1">Enter the IP address and port of a peer on a different network</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                <input 
+                                    type="text" 
+                                    value={peerIp}
+                                    onChange={(e) => setPeerIp(e.target.value)}
+                                    placeholder="192.168.1.100"
+                                    className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                />
+                                <input 
+                                    type="number" 
+                                    value={peerPort}
+                                    onChange={(e) => setPeerPort(e.target.value)}
+                                    placeholder="8080"
+                                    className="w-24 bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                />
+                                <button 
+                                    onClick={handleAddPeer}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Connect
+                                </button>
+                            </div>
+                        </div>
+                    </Section>
+                    
                     <Section title="Bandwidth Limits">
                         <div className="mb-4">
                             <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Upload Limit (KB/s)</label>
