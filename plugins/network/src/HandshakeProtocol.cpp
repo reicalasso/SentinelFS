@@ -244,7 +244,8 @@ HandshakeProtocol::performServerHandshake(int socket) {
     std::string expectedDigest = computeAuthDigest(clientNonce, serverNonce, remotePeerId, "CLIENT_AUTH");
     if (expectedDigest.empty() || expectedDigest != digest) {
         result.errorMessage = "Handshake authentication failed";
-        logger.log(LogLevel::WARN, result.errorMessage, "HandshakeProtocol");
+        logger.log(LogLevel::WARN, "Authentication failed - Expected: " + expectedDigest.substr(0, 16) + 
+                   "..., Received: " + digest.substr(0, 16) + "...", "HandshakeProtocol");
         metrics.incrementSyncErrors();
         std::string reject = createRejectMessage("Authentication failed");
         sendMessage(socket, reject);
@@ -482,6 +483,10 @@ std::string HandshakeProtocol::computeAuthDigest(const std::vector<uint8_t>& cli
         + Crypto::toHex(clientNonce) + "|" + Crypto::toHex(serverNonce);
     std::vector<uint8_t> payloadBytes(payload.begin(), payload.end());
 
+    logger.log(LogLevel::DEBUG, "Computing auth digest - Purpose: " + purpose + 
+               ", Local: " + localPeerId_ + ", Remote: " + remotePeerId + 
+               ", SessionCode: " + sessionCode_, "HandshakeProtocol");
+
     std::vector<uint8_t> digest;
     try {
         digest = Crypto::hmacSHA256(payloadBytes, key);
@@ -490,7 +495,9 @@ std::string HandshakeProtocol::computeAuthDigest(const std::vector<uint8_t>& cli
         return "";
     }
 
-    return Crypto::toHex(digest);
+    std::string result = Crypto::toHex(digest);
+    logger.log(LogLevel::DEBUG, "Computed digest: " + result.substr(0, 16) + "...", "HandshakeProtocol");
+    return result;
 }
 
 std::vector<uint8_t> HandshakeProtocol::generateNonce() const {
