@@ -12,10 +12,8 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
     
     logger.log(LogLevel::DEBUG, "Adding file metadata: " + path, "FileMetadataManager");
     
-    const char* sql = "INSERT OR REPLACE INTO files (path, hash, timestamp, size) VALUES (?, ?, ?, ?);";
-    sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
-
+    sqlite3_stmt* stmt;
     bool inTransaction = false;
     char* errMsg = nullptr;
 
@@ -27,8 +25,10 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
     }
     inTransaction = true;
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+    // Use INSERT OR IGNORE to avoid overwriting synced status
+    const char* insertSql = "INSERT OR IGNORE INTO files (path, hash, timestamp, size, synced) VALUES (?, ?, ?, ?, 0);";
+    if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to prepare INSERT statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         metrics.incrementSyncErrors();
         if (inTransaction) {
             sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
@@ -42,7 +42,34 @@ bool FileMetadataManager::addFile(const std::string& path, const std::string& ha
     sqlite3_bind_int64(stmt, 4, size);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        logger.log(LogLevel::ERROR, "Failed to execute INSERT: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        sqlite3_finalize(stmt);
+        metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
+        return false;
+    }
+    sqlite3_finalize(stmt);
+    
+    // Update existing record (preserves synced status)
+    const char* updateSql = "UPDATE files SET hash = ?, timestamp = ?, size = ? WHERE path = ?;";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        logger.log(LogLevel::ERROR, "Failed to prepare UPDATE statement: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
+        metrics.incrementSyncErrors();
+        if (inTransaction) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, hash.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, timestamp);
+    sqlite3_bind_int64(stmt, 3, size);
+    sqlite3_bind_text(stmt, 4, path.c_str(), -1, SQLITE_STATIC);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        logger.log(LogLevel::ERROR, "Failed to execute UPDATE: " + std::string(sqlite3_errmsg(db)), "FileMetadataManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
         if (inTransaction) {

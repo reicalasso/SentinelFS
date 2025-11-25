@@ -336,55 +336,24 @@ std::string IPCHandler::processCommand(const std::string& command) {
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         sqlite3_stmt* stmt;
         
+        // Count files that will be removed from monitoring (but NOT deleted)
         std::string folderPrefix = cleanPath;
         if (!folderPrefix.empty() && folderPrefix.back() != '/') {
             folderPrefix += '/';
         }
         
-        // Check if this is a file (not a folder) - delete just the file
-        if (std::filesystem::exists(cleanPath) && std::filesystem::is_regular_file(cleanPath)) {
-            // Delete the physical file
-            try {
-                std::filesystem::remove(cleanPath);
-            } catch (...) {}
-            
-            // Delete from database
-            const char* deleteFileSql = "DELETE FROM files WHERE path = ?";
-            if (sqlite3_prepare_v2(db, deleteFileSql, -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, cleanPath.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
-            return "Success: Removed file: " + cleanPath + "\n";
-        }
-        
-        // It's a folder - get list of files first, then delete them physically
-        std::vector<std::string> filesToDelete;
-        const char* selectFilesSql = "SELECT path FROM files WHERE path LIKE ?";
-        if (sqlite3_prepare_v2(db, selectFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
+        int fileCount = 0;
+        const char* countSql = "SELECT COUNT(*) FROM files WHERE path LIKE ?";
+        if (sqlite3_prepare_v2(db, countSql, -1, &stmt, nullptr) == SQLITE_OK) {
             std::string pattern = folderPrefix + "%";
             sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
-            while (sqlite3_step(stmt) == SQLITE_ROW) {
-                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                if (path) {
-                    filesToDelete.push_back(path);
-                }
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                fileCount = sqlite3_column_int(stmt, 0);
             }
             sqlite3_finalize(stmt);
         }
         
-        // Delete physical files
-        int deletedCount = 0;
-        for (const auto& filePath : filesToDelete) {
-            try {
-                if (std::filesystem::exists(filePath)) {
-                    std::filesystem::remove(filePath);
-                    deletedCount++;
-                }
-            } catch (...) {}
-        }
-        
-        // Delete files from database
+        // Remove files from database (but NOT from disk)
         const char* deleteFilesSql = "DELETE FROM files WHERE path LIKE ?";
         if (sqlite3_prepare_v2(db, deleteFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
             std::string pattern = folderPrefix + "%";
@@ -393,20 +362,22 @@ std::string IPCHandler::processCommand(const std::string& command) {
             sqlite3_finalize(stmt);
         }
         
-        // Remove from watched folders
-        const char* sql = "DELETE FROM watched_folders WHERE path = ?";
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        // Remove watched folder from database
+        const char* deleteFolderSql = "DELETE FROM watched_folders WHERE path = ?";
+        if (sqlite3_prepare_v2(db, deleteFolderSql, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_text(stmt, 1, cleanPath.c_str(), -1, SQLITE_TRANSIENT);
             
             if (sqlite3_step(stmt) == SQLITE_DONE) {
                 sqlite3_finalize(stmt);
                 
-                // Also stop filesystem watcher
+                // Stop filesystem watcher
                 if (filesystem_) {
                     filesystem_->stopWatching(cleanPath);
                 }
                 
-                return "Success: Stopped watching and deleted " + std::to_string(deletedCount) + " files from: " + cleanPath + "\n";
+                // Files removed from database but remain on disk
+                return "Success: Stopped watching " + cleanPath + " (" + 
+                       std::to_string(fileCount) + " files remain on disk and will no longer be monitored)\n";
             }
             sqlite3_finalize(stmt);
         }
@@ -827,7 +798,7 @@ std::string IPCHandler::handleFilesJsonCommand() {
         }
 
         // 2. Get all files from the files table
-        const char* sql = "SELECT path, hash, timestamp, size FROM files ORDER BY timestamp DESC LIMIT 1000";
+        const char* sql = "SELECT path, hash, timestamp, size, synced FROM files ORDER BY timestamp DESC LIMIT 1000";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -854,19 +825,25 @@ std::string IPCHandler::handleFilesJsonCommand() {
                     }
                 }
                 
+                // Skip files that don't belong to any active watched folder
+                if (parent.empty()) {
+                    continue;
+                }
+                
                 if (!first) ss << ",";
                 first = false;
                 
                 const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
                 int64_t timestamp = sqlite3_column_int64(stmt, 2);
                 int64_t size = sqlite3_column_int64(stmt, 3);
+                int synced = sqlite3_column_int(stmt, 4);
                 
                 ss << "{";
                 ss << "\"path\":\"" << pathStr << "\",";
                 ss << "\"hash\":\"" << (hash ? hash : "") << "\",";
                 ss << "\"size\":" << size << ",";
                 ss << "\"lastModified\":" << timestamp << ",";
-                ss << "\"syncStatus\":\"synced\"";
+                ss << "\"syncStatus\":\"" << (synced ? "synced" : "pending") << "\"";
                 if (!parent.empty()) {
                     ss << ",\"parent\":\"" << parent << "\"";
                 }

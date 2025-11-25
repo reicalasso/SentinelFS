@@ -237,12 +237,12 @@ export function Settings({ config }: SettingsProps) {
                                                 <span className="font-mono text-xs break-all">{folder}</span>
                                                 <button 
                                                     onClick={async () => {
-                                                        if (confirm(`Stop watching ${folder}?`)) {
+                                                        if (confirm(`Stop watching ${folder}?\n\nFiles will remain on disk, only monitoring will stop.`)) {
                                                             if (window.api) await window.api.sendCommand(`REMOVE_WATCH ${folder}`)
                                                         }
                                                     }}
                                                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 text-red-500 rounded transition-opacity"
-                                                    title="Remove folder"
+                                                    title="Stop watching (files will NOT be deleted)"
                                                 >
                                                     <X className="w-3 h-3" />
                                                 </button>

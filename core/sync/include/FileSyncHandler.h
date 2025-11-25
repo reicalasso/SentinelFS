@@ -54,6 +54,19 @@ public:
      * @brief Reload ignore patterns from database
      */
     void loadIgnorePatterns();
+    
+    /**
+     * @brief Update file metadata in database (always runs, even when paused)
+     * @param fullPath Absolute path to modified file
+     * @return true if successfully updated database
+     */
+    bool updateFileInDatabase(const std::string& fullPath);
+    
+    /**
+     * @brief Broadcast file update to peers (only when sync enabled)
+     * @param fullPath Absolute path to modified file
+     */
+    void broadcastUpdate(const std::string& fullPath);
 
 private:
     std::string calculateFileHash(const std::string& path);

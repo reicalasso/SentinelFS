@@ -110,7 +110,8 @@ bool SQLiteHandler::createTables() {
         "hash TEXT,"
         "timestamp INTEGER,"
         "size INTEGER,"
-        "vector_clock TEXT);"
+        "vector_clock TEXT,"
+        "synced INTEGER DEFAULT 0);"
         
         "CREATE TABLE IF NOT EXISTS peers ("
         "id TEXT PRIMARY KEY,"
@@ -198,6 +199,32 @@ bool SQLiteHandler::createTables() {
         sqlite3_free(errMsg);
         metrics.incrementSyncErrors();
         return false;
+    }
+    
+    // One-time migration: Check if synced column migration has been done
+    const char* checkMigrationSql = "SELECT value FROM config WHERE key = 'synced_column_migrated';";
+    sqlite3_stmt* checkStmt;
+    bool migrationDone = false;
+    
+    if (sqlite3_prepare_v2(db_, checkMigrationSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
+        if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+            migrationDone = true;
+        }
+        sqlite3_finalize(checkStmt);
+    }
+    
+    if (!migrationDone) {
+        // First time after adding synced column - mark all existing files as synced
+        const char* migrationSql = "UPDATE files SET synced = 1 WHERE synced IS NULL OR synced = 0;";
+        if (sqlite3_exec(db_, migrationSql, 0, 0, &errMsg) == SQLITE_OK) {
+            // Mark migration as done
+            const char* markDoneSql = "INSERT OR REPLACE INTO config (key, value) VALUES ('synced_column_migrated', '1');";
+            sqlite3_exec(db_, markDoneSql, 0, 0, nullptr);
+            logger.log(LogLevel::INFO, "Migrated existing files to synced status", "SQLiteHandler");
+        } else {
+            logger.log(LogLevel::WARN, "Migration warning (non-critical): " + std::string(errMsg), "SQLiteHandler");
+            sqlite3_free(errMsg);
+        }
     }
     
     logger.log(LogLevel::INFO, "Database tables created successfully", "SQLiteHandler");

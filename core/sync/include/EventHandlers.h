@@ -4,6 +4,7 @@
 #include <atomic>
 #include <mutex>
 #include <map>
+#include <vector>
 #include <chrono>
 #include <memory>
 #include <filesystem>
@@ -71,6 +72,9 @@ private:
     void handleDataReceived(const std::any& data);
     void handleAnomalyDetected(const std::any& data);
     
+    // Process pending file changes (called when sync is resumed)
+    void processPendingChanges();
+    
     EventBus& eventBus_;
     INetworkAPI* network_;
     IStorageAPI* storage_;
@@ -86,6 +90,10 @@ private:
     // Ignore list to prevent sync loops
     std::mutex ignoreMutex_;
     std::map<std::string, std::chrono::steady_clock::time_point> ignoreList_;
+    
+    // Pending changes queue (files modified while sync is paused)
+    std::mutex pendingMutex_;
+    std::vector<std::string> pendingChanges_;
 };
 
 } // namespace SentinelFS

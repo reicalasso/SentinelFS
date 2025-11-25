@@ -129,61 +129,77 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
     }
 }
 
-void FileSyncHandler::handleFileModified(const std::string& fullPath) {
+bool FileSyncHandler::updateFileInDatabase(const std::string& fullPath) {
+    auto& logger = Logger::instance();
+    std::string filename = std::filesystem::path(fullPath).filename().string();
+    
+    try {
+        // Check if file exists
+        if (!std::filesystem::exists(fullPath)) {
+            storage_->removeFile(fullPath);
+            logger.info("File removed from DB: " + filename, "FileSyncHandler");
+            return false;
+        }
+
+        // Calculate hash and metadata
+        std::string hash = calculateFileHash(fullPath);
+        long long size = std::filesystem::file_size(fullPath);
+        long long timestamp = std::time(nullptr);
+
+        // Update database
+        // Note: addFile() uses INSERT OR IGNORE + UPDATE, which preserves synced status for existing files
+        // and sets synced=0 for new files
+        if (storage_->addFile(fullPath, hash, timestamp, size)) {
+            logger.info("💾 Database updated for file: " + filename + " (" + std::to_string(size) + " bytes)" + 
+                       (syncEnabled_ ? " [will broadcast]" : " [pending - paused]"), "FileSyncHandler");
+            return true;
+        } else {
+            logger.error("Failed to update database for file: " + filename, "FileSyncHandler");
+            return false;
+        }
+    } catch (const std::exception& e) {
+        logger.error("Error updating database for " + filename + ": " + std::string(e.what()), "FileSyncHandler");
+        return false;
+    }
+}
+
+void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
     
     std::string filename = std::filesystem::path(fullPath).filename().string();
     
-    // Check if sync is enabled first
-    if (!syncEnabled_) {
-        logger.debug("Sync disabled, skipping update for: " + filename, "FileSyncHandler");
-        return;
-    }
-    
-    // Check ignore patterns
-    if (shouldIgnore(fullPath)) {
-        logger.debug("File ignored by pattern: " + filename, "FileSyncHandler");
-        return;
-    }
-    
     try {
-        // 1. Calculate Hash & Metadata
         if (!std::filesystem::exists(fullPath)) {
-            // File might be deleted
-            storage_->removeFile(fullPath);
-            logger.info("File removed from DB: " + filename, "FileSyncHandler");
-            // TODO: Broadcast delete?
+            logger.warn("Cannot broadcast - file no longer exists: " + filename, "FileSyncHandler");
             return;
         }
 
+        // Get file info for broadcast
         std::string hash = calculateFileHash(fullPath);
         long long size = std::filesystem::file_size(fullPath);
         
-        // Use current time as modification time or get from filesystem
-        // std::filesystem::last_write_time is tricky across platforms with chrono, using current time for simplicity or 0
-        long long timestamp = std::time(nullptr); 
-
-        // 2. Update Database
-        if (storage_->addFile(fullPath, hash, timestamp, size)) {
-            logger.info("Database updated for file: " + filename, "FileSyncHandler");
-        } else {
-            logger.error("Failed to update database for file: " + filename, "FileSyncHandler");
-        }
-
-        // 3. Broadcast Update
         // Get connected peers
         auto peers = storage_->getAllPeers();
         
         if (peers.empty()) {
-            logger.debug("No peers connected, skipping broadcast for: " + filename, "FileSyncHandler");
+            logger.debug("No peers connected, marking file as synced locally: " + filename, "FileSyncHandler");
+            
+            // Mark as synced even without peers (no one to broadcast to)
+            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+            const char* updateSyncedSql = "UPDATE files SET synced = 1 WHERE path = ?";
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db, updateSyncedSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
             return;
         }
         
-        logger.info("Broadcasting update for " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "FileSyncHandler");
+        logger.info("📡 Broadcasting update for " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "FileSyncHandler");
         
-
-        
+        // Calculate relative path
         std::string relativePath = fullPath;
         if (fullPath.find(watchDirectory_) == 0) {
             relativePath = fullPath.substr(watchDirectory_.length());
@@ -217,6 +233,16 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         
         if (successCount > 0) {
             metrics.incrementFilesSynced();
+            
+            // Mark file as synced after successful broadcast
+            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+            const char* updateSyncedSql = "UPDATE files SET synced = 1 WHERE path = ?";
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db, updateSyncedSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
         }
         
         if (failCount > 0) {
@@ -227,9 +253,38 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         }
         
     } catch (const std::exception& e) {
-        logger.error("Error in handleFileModified: " + std::string(e.what()), "FileSyncHandler");
+        logger.error("Error broadcasting update for " + filename + ": " + std::string(e.what()), "FileSyncHandler");
         metrics.incrementSyncErrors();
     }
+}
+
+void FileSyncHandler::handleFileModified(const std::string& fullPath) {
+    auto& logger = Logger::instance();
+    std::string filename = std::filesystem::path(fullPath).filename().string();
+    
+    // Check ignore patterns
+    if (shouldIgnore(fullPath)) {
+        logger.debug("File ignored by pattern: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // ALWAYS update database (even when sync is paused)
+    // This ensures GUI shows correct file information
+    bool dbUpdated = updateFileInDatabase(fullPath);
+    
+    if (!dbUpdated) {
+        logger.warn("Skipping broadcast - database update failed for: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // Only broadcast if sync is enabled
+    if (!syncEnabled_) {
+        logger.info("⏸️  Sync paused - database updated but broadcast skipped for: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // Broadcast to peers
+    broadcastUpdate(fullPath);
 }
 
 } // namespace SentinelFS

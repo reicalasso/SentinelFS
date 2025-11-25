@@ -105,8 +105,10 @@ void EventHandlers::setSyncEnabled(bool enabled) {
     auto& logger = Logger::instance();
     if (enabled) {
         logger.info("Synchronization ENABLED", "EventHandlers");
+        // Process any pending changes that accumulated while paused
+        processPendingChanges();
     } else {
-        logger.warn("Synchronization DISABLED", "EventHandlers");
+        logger.warn("Synchronization DISABLED - changes will be queued as pending", "EventHandlers");
     }
 }
 
@@ -217,8 +219,17 @@ void EventHandlers::handleFileCreated(const std::any& data) {
             }
         }
         
+        // Queue for resume if paused
+        if (!syncEnabled_) {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingChanges_.push_back(fullPath);
+            logger.info("⏸️  Sync paused - queued file creation: " + filename + " (" + std::to_string(pendingChanges_.size()) + " pending)", "EventHandlers");
+        }
+        
+        // ALWAYS process file (updates DB even when paused, broadcasts only when enabled)
         metrics.incrementFilesModified();
         fileSyncHandler_->handleFileModified(fullPath);
+        
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling FILE_CREATED: ") + e.what(), "EventHandlers");
     }
@@ -245,8 +256,17 @@ void EventHandlers::handleFileModified(const std::any& data) {
             }
         }
         
+        // Queue for resume if paused
+        if (!syncEnabled_) {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingChanges_.push_back(fullPath);
+            logger.info("⏸️  Sync paused - queued file modification: " + filename + " (" + std::to_string(pendingChanges_.size()) + " pending)", "EventHandlers");
+        }
+        
+        // ALWAYS process file (updates DB even when paused, broadcasts only when enabled)
         metrics.incrementFilesModified();
         fileSyncHandler_->handleFileModified(fullPath);
+        
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling FILE_MODIFIED: ") + e.what(), "EventHandlers");
     }
@@ -330,6 +350,84 @@ void EventHandlers::handlePeerDisconnected(const std::any& data) {
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling PEER_DISCONNECTED: ") + e.what(), "EventHandlers");
     }
+}
+
+void EventHandlers::processPendingChanges() {
+    auto& logger = Logger::instance();
+    
+    std::vector<std::string> changesToProcess;
+    
+    // Get pending changes from memory (files added during this session while paused)
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        changesToProcess = std::move(pendingChanges_);
+        pendingChanges_.clear();
+    }
+    
+    // Also get pending changes from database (synced=0)
+    // This handles files that were pending when app was closed
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        const char* sql = "SELECT path FROM files WHERE synced = 0";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (path) {
+                    changesToProcess.push_back(path);
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    
+    if (changesToProcess.empty()) {
+        logger.debug("No pending changes to broadcast", "EventHandlers");
+        return;
+    }
+    
+    logger.info("▶️  Resume: Broadcasting " + std::to_string(changesToProcess.size()) + " pending file change(s)", "EventHandlers");
+    
+    // Remove duplicates - keep only the last occurrence of each path
+    std::map<std::string, size_t> pathIndices;
+    for (size_t i = 0; i < changesToProcess.size(); ++i) {
+        pathIndices[changesToProcess[i]] = i;
+    }
+    
+    std::vector<std::string> uniqueChanges;
+    for (const auto& pair : pathIndices) {
+        uniqueChanges.push_back(pair.first);
+    }
+    
+    if (uniqueChanges.size() != changesToProcess.size()) {
+        logger.info("📋 After deduplication: " + std::to_string(uniqueChanges.size()) + " unique file(s) to broadcast", "EventHandlers");
+    }
+    
+    // Broadcast each unique file change
+    // Note: Files were already added to database when paused, now we just broadcast
+    for (const auto& fullPath : uniqueChanges) {
+        try {
+            // Verify file still exists before broadcasting
+            if (!std::filesystem::exists(fullPath)) {
+                std::string filename = std::filesystem::path(fullPath).filename().string();
+                logger.warn("Skipping pending broadcast for " + filename + " (file no longer exists)", "EventHandlers");
+                continue;
+            }
+            
+            std::string filename = std::filesystem::path(fullPath).filename().string();
+            long long fileSize = std::filesystem::file_size(fullPath);
+            logger.info("📡 Broadcasting pending file: " + filename + " (" + std::to_string(fileSize) + " bytes)", "EventHandlers");
+            
+            // Broadcast only (database was already updated when file was modified)
+            fileSyncHandler_->broadcastUpdate(fullPath);
+            
+        } catch (const std::exception& e) {
+            logger.error("Error broadcasting pending change for " + fullPath + ": " + std::string(e.what()), "EventHandlers");
+        }
+    }
+    
+    logger.info("✅ Finished broadcasting pending changes", "EventHandlers");
 }
 
 } // namespace SentinelFS
