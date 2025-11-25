@@ -6,7 +6,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <iomanip>
 #include <sstream>
 #include <regex>
@@ -66,20 +66,29 @@ std::string FileSyncHandler::calculateFileHash(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) return "";
 
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) return "";
+
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return "";
+    }
 
     char buffer[8192];
     while (file.read(buffer, sizeof(buffer))) {
-        SHA256_Update(&sha256, buffer, file.gcount());
+        EVP_DigestUpdate(ctx, buffer, file.gcount());
     }
-    SHA256_Update(&sha256, buffer, file.gcount());
+    if (file.gcount() > 0) {
+        EVP_DigestUpdate(ctx, buffer, file.gcount());
+    }
 
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_Final(hash, &sha256);
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLen = 0;
+    EVP_DigestFinal_ex(ctx, hash, &hashLen);
+    EVP_MD_CTX_free(ctx);
 
     std::stringstream ss;
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+    for(unsigned int i = 0; i < hashLen; i++) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
     }
     return ss.str();

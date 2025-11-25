@@ -6,3 +6,4 @@ gui/dist-electron/
 data/
 sentinel.db
 logs/
+*.log

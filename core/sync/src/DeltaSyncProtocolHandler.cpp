@@ -44,14 +44,14 @@ void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId,
         
         std::string relativePath = payload;
         std::string remoteHash;
-        long long remoteSize = 0;
         
         if (firstPipe != std::string::npos) {
             relativePath = payload.substr(0, firstPipe);
             if (secondPipe != std::string::npos) {
                 remoteHash = payload.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+                // remoteSize parsed but not currently used for delta sync decision
                 try {
-                    remoteSize = std::stoll(payload.substr(secondPipe + 1));
+                    (void)std::stoll(payload.substr(secondPipe + 1));
                 } catch (...) {}
             }
         }
