@@ -105,11 +105,20 @@ void EventHandlers::handlePeerDiscovered(const std::any& data) {
             peer.latency = -1;
 
             storage_->addPeer(peer);
-            network_->connectToPeer(ip, port);
-            
             metrics.incrementPeersDiscovered();
-            metrics.incrementPeersConnected();
-            logger.info("Discovered peer: " + id + " at " + ip + ":" + std::to_string(port), "EventHandlers");
+
+            if (!network_) {
+                logger.warn("Network plugin unavailable, cannot connect to peer " + id, "EventHandlers");
+                return;
+            }
+
+            if (network_->connectToPeer(ip, port)) {
+                metrics.incrementPeersConnected();
+                logger.info("Discovered peer: " + id + " at " + ip + ":" + std::to_string(port), "EventHandlers");
+            } else {
+                logger.warn("Failed to connect to peer " + id + " at " + ip + ":" + std::to_string(port) + ". Removing from database.", "EventHandlers");
+                storage_->removePeer(id);
+            }
         }
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling PEER_DISCOVERED: ") + e.what(), "EventHandlers");
@@ -206,7 +215,9 @@ void EventHandlers::handlePeerDisconnected(const std::any& data) {
         logger.info("Peer disconnected: " + peerId + ", removing from storage", "EventHandlers");
         
         // Remove peer from storage
-        storage_->removePeer(peerId);
+        if (!storage_->removePeer(peerId)) {
+            logger.warn("Peer " + peerId + " was not present in storage during disconnect cleanup", "EventHandlers");
+        }
         
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling PEER_DISCONNECTED: ") + e.what(), "EventHandlers");

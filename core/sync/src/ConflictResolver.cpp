@@ -136,7 +136,9 @@ bool ConflictResolver::applyKeepBoth(
         auto now = std::chrono::system_clock::now();
         auto time_t = std::chrono::system_clock::to_time_t(now);
         std::stringstream ss;
-        ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
+        struct tm tm_buf;
+        localtime_r(&time_t, &tm_buf);
+        ss << std::put_time(&tm_buf, "%Y%m%d_%H%M%S");
         std::string timestamp = ss.str();
         
         // Save local version with .conflict.local suffix

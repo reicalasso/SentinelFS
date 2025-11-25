@@ -21,6 +21,7 @@ UDPDiscovery::~UDPDiscovery() {
 }
 
 bool UDPDiscovery::startDiscovery(int port) {
+    std::unique_lock<std::mutex> lock(discoveryMutex_);
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
 
@@ -33,7 +34,9 @@ bool UDPDiscovery::startDiscovery(int port) {
         logger.log(LogLevel::INFO,
                    "Restarting UDP discovery on new port " + std::to_string(port),
                    "UDPDiscovery");
+        lock.unlock();
         stopDiscovery();
+        lock.lock();
     }
 
     logger.log(LogLevel::INFO, "Starting UDP discovery on port " + std::to_string(port), "UDPDiscovery");
@@ -85,6 +88,7 @@ bool UDPDiscovery::startDiscovery(int port) {
 }
 
 void UDPDiscovery::stopDiscovery() {
+    std::unique_lock<std::mutex> lock(discoveryMutex_);
     if (!running_) return;
     
     auto& logger = Logger::instance();
@@ -99,8 +103,11 @@ void UDPDiscovery::stopDiscovery() {
     }
     currentPort_ = -1;
     
-    if (discoveryThread_.joinable()) {
-        discoveryThread_.join();
+    std::thread localThread;
+    std::swap(localThread, discoveryThread_);
+    lock.unlock();
+    if (localThread.joinable()) {
+        localThread.join();
     }
     
     logger.log(LogLevel::INFO, "UDP discovery stopped", "UDPDiscovery");
@@ -166,7 +173,10 @@ void UDPDiscovery::discoveryLoop() {
         if (len > 0) {
             buffer[len] = '\0';
             std::string msg(buffer);
-            std::string senderIp = inet_ntoa(senderAddr.sin_addr);
+            
+            char senderIpBuf[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(senderAddr.sin_addr), senderIpBuf, INET_ADDRSTRLEN);
+            std::string senderIp(senderIpBuf);
             
             logger.log(LogLevel::DEBUG, "Received broadcast: " + msg + " from " + senderIp, "UDPDiscovery");
             metrics.incrementBytesReceived(len);

@@ -113,7 +113,10 @@ void TCPHandler::listenLoop() {
         int clientSocket = accept(serverSocket_, (struct sockaddr*)&clientAddr, &len);
         
         if (clientSocket >= 0) {
-            std::string clientIp = inet_ntoa(clientAddr.sin_addr);
+            char clientIpBuf[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIpBuf, INET_ADDRSTRLEN);
+            std::string clientIp(clientIpBuf);
+
             logger_.log(LogLevel::INFO, "New connection from " + clientIp, "TCPHandler");
             metrics_.incrementConnections();
             

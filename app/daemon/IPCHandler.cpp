@@ -329,12 +329,13 @@ std::string IPCHandler::processCommand(const std::string& command) {
         
         return "Error: Failed to remove watch for: " + args + "\n";
     } else if (cmd == "DISCOVER") {
-        if (network_) {
-            // Start UDP discovery on port 3344
-            network_->startDiscovery(3344);
-            return "Discovery started.\n";
+        if (!network_ || !daemonCore_) {
+            return "Error: Network subsystem not ready.\n";
         }
-        return "Error: Network plugin not initialized.\n";
+
+        const auto& cfg = daemonCore_->getConfig();
+        network_->broadcastPresence(cfg.discoveryPort, cfg.tcpPort);
+        return "Discovery broadcast sent.\n";
     } else if (cmd == "GENERATE_CODE") {
         // Generate a random 6-character session code
         static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoiding confusing chars like 0/O, 1/I

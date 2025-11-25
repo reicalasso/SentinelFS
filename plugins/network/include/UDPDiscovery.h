@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 namespace SentinelFS {
 
@@ -61,6 +62,7 @@ private:
     int currentPort_{-1};
     std::atomic<bool> running_{false};
     std::thread discoveryThread_;
+    std::mutex discoveryMutex_;
 };
 
 } // namespace SentinelFS
