@@ -1,0 +1,90 @@
+[2025-11-24 21:55:34] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 21:55:34] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 21:55:34] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 21:55:34] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 21:55:34] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 21:55:34] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:01:51] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:01:51] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:01:51] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:01:51] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:01:51] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:01:51] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:05:15] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:05:15] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:05:15] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:05:15] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:05:15] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:05:15] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:09:07] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:09:07] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:09:07] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:09:07] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:09:07] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:09:07] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:10:35] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:10:35] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:10:35] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:10:35] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:10:35] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:10:35] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:11:35] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:11:35] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:11:35] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:11:35] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:11:35] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:11:35] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:12:17] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:12:17] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:12:17] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:12:17] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:12:17] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:12:17] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:12:44] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:12:44] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:12:44] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:12:44] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:12:44] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:12:44] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:13:10] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:13:10] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:13:10] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:13:10] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:13:10] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:13:10] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:29:31] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:29:31] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:29:31] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:29:31] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:29:31] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:29:31] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:40:45] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:40:45] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:40:45] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:40:45] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:40:45] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:40:45] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-24 22:41:39] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-24 22:41:39] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-24 22:41:39] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-24 22:41:39] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-24 22:41:39] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-24 22:41:39] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 08:30:12] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 08:30:12] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 08:30:12] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-25 08:30:12] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 08:30:12] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-25 08:30:12] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 08:30:44] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 08:30:44] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 08:30:44] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-25 08:30:44] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 08:30:44] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-25 08:30:44] [ERROR] [DaemonCore] Failed to load plugins
+[2025-11-25 08:31:15] [INFO] [Daemon] === SentinelFS Daemon Starting ===
+[2025-11-25 08:31:15] [INFO] [DaemonCore] SentinelFS Daemon initializing...
+[2025-11-25 08:31:15] [INFO] [DaemonCore] Current working directory: /home/rei/sentinelFS-demo/SentinelFS/gui
+[2025-11-25 08:31:15] [INFO] [DaemonCore] Loading plugins from: ./plugins
+[2025-11-25 08:31:15] [ERROR] [DaemonCore] Plugin directory does not exist: ./plugins
+[2025-11-25 08:31:15] [ERROR] [DaemonCore] Failed to load plugins

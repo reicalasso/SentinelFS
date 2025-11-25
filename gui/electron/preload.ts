@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeListener(channel, callback)
   },
   sendCommand: (command: string) => ipcRenderer.invoke('send-command', command),
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
 })

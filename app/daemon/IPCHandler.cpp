@@ -3,14 +3,21 @@
 #include "SessionCode.h"
 #include "MetricsCollector.h"
 #include "PluginManager.h"
+#include "../../plugins/storage/include/SQLiteHandler.h"
 #include <iostream>
 #include <sstream>
 #include <cstring>
+#include <thread>
+#include <cerrno>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <sqlite3.h>
+#include <ctime>
+#include <filesystem>
+#include <chrono>
 
 namespace SentinelFS {
 
@@ -112,8 +119,11 @@ void IPCHandler::serverLoop() {
         int clientSocket = accept(serverSocket_, NULL, NULL);
         if (clientSocket < 0) continue;
         
-        handleClient(clientSocket);
-        close(clientSocket);
+        // Spawn thread for persistent client connection
+        std::thread([this, clientSocket]() {
+            handleClient(clientSocket);
+            close(clientSocket);
+        }).detach();
     }
 }
 
@@ -129,14 +139,38 @@ void IPCHandler::handleClient(int clientSocket) {
         }
     }
     
+    // Persistent connection: keep reading commands until client disconnects
     char buffer[1024];
-    ssize_t n = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+    std::string lineBuffer;
     
-    if (n > 0) {
-        buffer[n] = '\0';
-        std::string command(buffer);
-        std::string response = processCommand(command);
-        send(clientSocket, response.c_str(), response.length(), 0);
+    while (running_) {
+        ssize_t n = recv(clientSocket, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
+        
+        if (n > 0) {
+            buffer[n] = '\0';
+            lineBuffer += buffer;
+            
+            // Process complete lines (commands end with \n)
+            size_t pos;
+            while ((pos = lineBuffer.find('\n')) != std::string::npos) {
+                std::string command = lineBuffer.substr(0, pos);
+                lineBuffer.erase(0, pos + 1);
+                
+                if (!command.empty()) {
+                    std::string response = processCommand(command);
+                    send(clientSocket, response.c_str(), response.length(), 0);
+                }
+            }
+        } else if (n == 0) {
+            // Client disconnected
+            break;
+        } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            // Real error
+            break;
+        }
+        
+        // Small sleep to avoid busy-wait
+        usleep(10000); // 10ms
     }
 }
 
@@ -176,6 +210,8 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handlePeersJsonCommand();
     } else if (cmd == "METRICS_JSON") {
         return handleMetricsJsonCommand();
+    } else if (cmd == "FILES_JSON") {
+        return handleFilesJsonCommand();
     } else if (cmd == "STATS") {
         return handleStatsCommand();
     } else if (cmd == "CONFLICTS") {
@@ -215,7 +251,46 @@ std::string IPCHandler::processCommand(const std::string& command) {
         } catch (...) {
             return "Invalid conflict ID.\n";
         }
+    } else if (cmd == "ADD_FOLDER") {
+        if (args.empty()) {
+            return "Error: No folder path provided\n";
+        }
         
+        if (!daemonCore_) {
+            return "Error: Daemon core not initialized\n";
+        }
+        
+        // Add the folder to watch list
+        if (daemonCore_->addWatchDirectory(args)) {
+            return "Success: Folder added to watch list: " + args + "\n";
+        } else {
+            return "Error: Failed to add folder to watch list: " + args + "\n";
+        }
+    } else if (cmd == "REMOVE_WATCH") {
+        if (args.empty()) {
+            return "Error: No path provided\n";
+        }
+        
+        if (!storage_) {
+            return "Error: Storage not initialized\n";
+        }
+        
+        // Remove from watched folders (if it's a root folder)
+        const char* sql = "UPDATE watched_folders SET status = 'inactive' WHERE path = ?";
+        sqlite3_stmt* stmt;
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+            
+            if (sqlite3_step(stmt) == SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return "Success: Stopped watching: " + args + "\n";
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        return "Error: Failed to remove watch for: " + args + "\n";
     } else {
         std::stringstream ss;
         ss << "Unknown command: " << cmd << "\n";
@@ -455,6 +530,172 @@ std::string IPCHandler::handleMetricsJsonCommand() {
     ss << "\"totalDownloaded\": " << netMetrics.bytesDownloaded << ",";
     ss << "\"filesSynced\": " << metrics.getSyncMetrics().filesSynced;
     ss << "}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleFilesJsonCommand() {
+    std::stringstream ss;
+    ss << "[";
+    
+    if (storage_) {
+        // Get all files from the files table (synced files)
+        const char* sql = "SELECT path, hash, timestamp, size FROM files ORDER BY timestamp DESC LIMIT 1000";
+        sqlite3_stmt* stmt;
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            bool first = true;
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                int64_t timestamp = sqlite3_column_int64(stmt, 2);
+                int64_t size = sqlite3_column_int64(stmt, 3);
+                
+                ss << "{";
+                ss << "\"path\":\"" << (path ? path : "") << "\",";
+                ss << "\"hash\":\"" << (hash ? hash : "") << "\",";
+                ss << "\"size\":" << size << ",";
+                ss << "\"lastModified\":" << timestamp << ",";
+                ss << "\"syncStatus\":\"synced\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // If no files in database, scan watched folders
+        if (ss.str() == "[") {
+            // Get watched folders and scan them
+            const char* folderSql = "SELECT path FROM watched_folders WHERE status = 'active'";
+            sqlite3_stmt* folderStmt;
+            
+            if (sqlite3_prepare_v2(db, folderSql, -1, &folderStmt, nullptr) == SQLITE_OK) {
+                bool first = true;
+                while (sqlite3_step(folderStmt) == SQLITE_ROW) {
+                    const char* folderPath = reinterpret_cast<const char*>(sqlite3_column_text(folderStmt, 0));
+                    
+                    if (folderPath) {
+                        std::string pathStr = folderPath;
+                        
+                        // Calculate total size for root folder
+                        uintmax_t rootFolderSize = 0;
+                        std::vector<std::pair<std::string, uintmax_t>> subdirs;
+                        
+                        try {
+                            for (const auto& entry : std::filesystem::directory_iterator(pathStr)) {
+                                if (entry.is_directory()) {
+                                    // Calculate subdirectory size
+                                    uintmax_t subdirSize = 0;
+                                    try {
+                                        for (const auto& subEntry : std::filesystem::recursive_directory_iterator(entry.path())) {
+                                            if (subEntry.is_regular_file()) {
+                                                subdirSize += subEntry.file_size();
+                                            }
+                                        }
+                                    } catch (...) {}
+                                    subdirs.push_back({entry.path().string(), subdirSize});
+                                    rootFolderSize += subdirSize;
+                                } else if (entry.is_regular_file()) {
+                                    rootFolderSize += entry.file_size();
+                                }
+                            }
+                        } catch (...) {}
+                        
+                        // Add root folder first
+                        if (!first) ss << ",";
+                        first = false;
+                        
+                        ss << "{";
+                        ss << "\"path\":\"" << pathStr << "\",";
+                        ss << "\"hash\":\"\",";
+                        ss << "\"size\":" << rootFolderSize << ",";
+                        ss << "\"lastModified\":" << std::time(nullptr) << ",";
+                        ss << "\"syncStatus\":\"watching\",";
+                        ss << "\"isFolder\":true";
+                        ss << "}";
+                        
+                        // Add subdirectories with calculated sizes and their files
+                        for (const auto& [subdirPath, subdirSize] : subdirs) {
+                            if (!first) ss << ",";
+                            first = false;
+                            
+                            ss << "{";
+                            ss << "\"path\":\"" << subdirPath << "\",";
+                            ss << "\"hash\":\"\",";
+                            ss << "\"size\":" << subdirSize << ",";
+                            ss << "\"lastModified\":" << std::time(nullptr) << ",";
+                            ss << "\"syncStatus\":\"watching\",";
+                            ss << "\"isFolder\":true,";
+                            ss << "\"parent\":\"" << pathStr << "\"";
+                            ss << "}";
+                            
+                            // Add files in this subdirectory
+                            try {
+                                for (const auto& subEntry : std::filesystem::directory_iterator(subdirPath)) {
+                                    if (subEntry.is_regular_file()) {
+                                        if (!first) ss << ",";
+                                        first = false;
+                                        
+                                        auto subFilePath = subEntry.path().string();
+                                        auto subFileSize = subEntry.file_size();
+                                        auto subLastWrite = std::filesystem::last_write_time(subEntry);
+                                        auto subSctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                                            subLastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now()
+                                        );
+                                        auto subTimestamp = std::chrono::system_clock::to_time_t(subSctp);
+                                        
+                                        ss << "{";
+                                        ss << "\"path\":\"" << subFilePath << "\",";
+                                        ss << "\"hash\":\"\",";
+                                        ss << "\"size\":" << subFileSize << ",";
+                                        ss << "\"lastModified\":" << subTimestamp << ",";
+                                        ss << "\"syncStatus\":\"pending\",";
+                                        ss << "\"parent\":\"" << subdirPath << "\"";
+                                        ss << "}";
+                                    }
+                                }
+                            } catch (...) {}
+                        }
+                        
+                        // Scan directory for files
+                        try {
+                            for (const auto& entry : std::filesystem::directory_iterator(pathStr)) {
+                                if (entry.is_regular_file()) {
+                                    if (!first) ss << ",";
+                                    first = false;
+                                    
+                                    // Add file
+                                    auto filePath = entry.path().string();
+                                    auto fileSize = entry.file_size();
+                                    auto lastWrite = std::filesystem::last_write_time(entry);
+                                    auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                                        lastWrite - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now()
+                                    );
+                                    auto timestamp = std::chrono::system_clock::to_time_t(sctp);
+                                    
+                                    ss << "{";
+                                    ss << "\"path\":\"" << filePath << "\",";
+                                    ss << "\"hash\":\"\",";
+                                    ss << "\"size\":" << fileSize << ",";
+                                    ss << "\"lastModified\":" << timestamp << ",";
+                                    ss << "\"syncStatus\":\"pending\",";
+                                    ss << "\"parent\":\"" << pathStr << "\"";
+                                    ss << "}";
+                                }
+                            }
+                        } catch (const std::exception& e) {
+                            // Skip folders we can't read
+                        }
+                    }
+                }
+                sqlite3_finalize(folderStmt);
+            }
+        }
+    }
+    
+    ss << "]\n";
     return ss.str();
 }
 

@@ -163,7 +163,13 @@ bool SQLiteHandler::createTables() {
         "op_type TEXT NOT NULL,"
         "device_id TEXT,"
         "timestamp INTEGER,"
-        "FOREIGN KEY(device_id) REFERENCES device(device_id));";
+        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+        
+        "CREATE TABLE IF NOT EXISTS watched_folders ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "path TEXT UNIQUE NOT NULL,"
+        "added_at INTEGER,"
+        "status TEXT DEFAULT 'active');";
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {

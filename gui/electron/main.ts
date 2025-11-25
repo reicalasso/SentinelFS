@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'node:path'
 import net from 'node:net'
 import os from 'node:os'
@@ -21,12 +21,13 @@ let daemonProcess: ChildProcess | null = null
 const RECONNECT_INTERVAL = 5000
 
 // Dynamic socket path based on XDG or fallback
+// Must match PathUtils::getSocketPath() in C++ daemon
 function getSocketPath() {
   const runtimeDir = process.env.XDG_RUNTIME_DIR
   if (runtimeDir) {
-    return path.join(runtimeDir, 'sentinelfs.sock')
+    return path.join(runtimeDir, 'sentinelfs', 'sentinel_daemon.sock')
   }
-  return path.join(os.tmpdir(), 'sentinelfs.sock')
+  return path.join(os.tmpdir(), 'sentinelfs', 'sentinel_daemon.sock')
 }
 
 function getDaemonPath() {
@@ -34,8 +35,9 @@ function getDaemonPath() {
         // In AppImage: resources/bin/sentinel_daemon
         return path.join(process.resourcesPath, 'bin', 'sentinel_daemon')
     } else {
-        // Dev: build_release/app/daemon/sentinel_daemon
-        return path.join(__dirname, '../../build_release/app/daemon/sentinel_daemon')
+        // Dev: SentinelFS/build/app/daemon/sentinel_daemon
+        // __dirname is dist-electron, so ../ points to SentinelFS/gui
+        return path.join(__dirname, '../build/app/daemon/sentinel_daemon')
     }
 }
 
@@ -59,7 +61,7 @@ function startDaemon() {
         if (app.isPackaged) {
             pluginDir = path.join(process.resourcesPath, 'lib', 'plugins')
         } else {
-            pluginDir = path.join(__dirname, '../../build_release/plugins')
+            pluginDir = path.join(__dirname, '../build/plugins')
         }
 
         try {
@@ -67,7 +69,7 @@ function startDaemon() {
             daemonProcess = spawn(daemonPath, [], {
                 stdio: 'ignore', // Daemon logs to file anyway, or use 'pipe' to capture
                 detached: false,
-                env: { ...process.env, SENTINEL_PLUGIN_DIR: pluginDir }
+                env: { ...process.env, SENTINELFS_PLUGIN_DIR: pluginDir }
             })
             
             daemonProcess.on('error', (err) => {
@@ -142,30 +144,47 @@ function connectToDaemon() {
     startMonitoring()
   })
 
+  let buffer = ''
+  
   daemonSocket.on('data', (data) => {
-    const message = data.toString()
+    buffer += data.toString()
     
-    try {
-        // If it looks like JSON, parse it and determine type
-        if (message.trim().startsWith('{') || message.trim().startsWith('[')) {
-            const json = JSON.parse(message)
-            
-            if (json.syncStatus) {
-                win?.webContents.send('daemon-data', { type: 'STATUS', payload: json })
-            } else if (json.totalUploaded !== undefined) {
-                win?.webContents.send('daemon-data', { type: 'METRICS', payload: json })
-            } else if (Array.isArray(json)) {
-                win?.webContents.send('daemon-data', { type: 'PEERS', payload: json })
+    // Process complete lines
+    let newlineIndex
+    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.substring(0, newlineIndex).trim()
+        buffer = buffer.substring(newlineIndex + 1)
+        
+        if (!line) continue
+        
+        try {
+            // Try to parse as JSON
+            if (line.startsWith('{') || line.startsWith('[')) {
+                const json = JSON.parse(line)
+                
+                // Determine message type based on content
+                if (json.syncStatus !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'STATUS', payload: json })
+                } else if (json.totalUploaded !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'METRICS', payload: json })
+                } else if (Array.isArray(json)) {
+                    // Distinguish between PEERS and FILES by checking first element
+                    if (json.length > 0 && json[0].path !== undefined) {
+                        win?.webContents.send('daemon-data', { type: 'FILES', payload: json })
+                    } else {
+                        win?.webContents.send('daemon-data', { type: 'PEERS', payload: json })
+                    }
+                } else {
+                    win?.webContents.send('daemon-data', { type: 'UNKNOWN', payload: json })
+                }
             } else {
-                win?.webContents.send('daemon-data', { type: 'UNKNOWN', payload: json })
+                // Plain text log
+                win?.webContents.send('daemon-log', line)
             }
-        } else {
-             // Handle raw text responses (logs or command results)
-             win?.webContents.send('daemon-log', message)
+        } catch (e) {
+            // Not JSON, treat as log
+            win?.webContents.send('daemon-log', line)
         }
-    } catch (e) {
-        // If JSON parse fails, treat as log
-        win?.webContents.send('daemon-log', message)
     }
   })
 
@@ -193,11 +212,10 @@ function startMonitoring() {
     monitorInterval = setInterval(() => {
         if (daemonSocket && !daemonSocket.destroyed) {
             // Send multiple commands in sequence
-            // Note: In a real implementation, we might want to queue these
-            // to avoid mixed responses, but for now we rely on the single-threaded nature
             daemonSocket.write('STATUS_JSON\n')
             setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 200)
             setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 400)
+            setTimeout(() => daemonSocket?.write('FILES_JSON\n'), 600)
         }
     }, 1000)
 }
@@ -230,4 +248,16 @@ ipcMain.handle('send-command', async (_event, command: string) => {
     } catch (err) {
         return { success: false, error: (err as Error).message }
     }
+})
+
+ipcMain.handle('select-folder', async () => {
+    const result = await dialog.showOpenDialog(win!, {
+        properties: ['openDirectory']
+    })
+    
+    if (result.canceled) {
+        return null
+    }
+    
+    return result.filePaths[0]
 })

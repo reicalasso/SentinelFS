@@ -138,6 +138,10 @@ public:
                        long long timestamp) override {
         return fileAccessLogManager_ ? fileAccessLogManager_->logAccess(filePath, opType, deviceId, timestamp) : false;
     }
+    
+    void* getDB() override {
+        return sqliteHandler_ ? sqliteHandler_->getDB() : nullptr;
+    }
 
 private:
     std::unique_ptr<SQLiteHandler> sqliteHandler_;

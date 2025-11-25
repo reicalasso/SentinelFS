@@ -80,6 +80,13 @@ public:
     bool isRunning() const { return running_; }
     
     /**
+     * @brief Add a new directory to watch
+     * @param path Absolute path to directory
+     * @return true if successfully added
+     */
+    bool addWatchDirectory(const std::string& path);
+    
+    /**
      * @brief Get plugins with proper naming for new interface
      */
     IStorageAPI* getStoragePlugin() const { return storage_.get(); }

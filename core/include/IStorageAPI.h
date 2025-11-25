@@ -142,6 +142,12 @@ namespace SentinelFS {
                                    const std::string& opType,
                                    const std::string& deviceId,
                                    long long timestamp) = 0;
+        
+        /**
+         * @brief Get direct access to SQLite database handle
+         * @return sqlite3* database handle
+         */
+        virtual void* getDB() = 0;
     };
 }
 

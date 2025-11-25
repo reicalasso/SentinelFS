@@ -15,7 +15,7 @@ add_executable(sentinel_daemon
     MetricsServer.cpp
 )
 
-target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread)
+target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread sqlite3)
 target_include_directories(sentinel_daemon PRIVATE 
     ../../core/include
     ../../core/network/include
