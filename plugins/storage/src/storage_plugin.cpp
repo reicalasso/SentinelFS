@@ -101,6 +101,10 @@ public:
     std::vector<PeerInfo> getPeersByLatency() override {
         return peerManager_->getPeersByLatency();
     }
+    
+    bool removePeer(const std::string& peerId) override {
+        return peerManager_->removePeer(peerId);
+    }
 
     // --- Conflict Operations (delegated to ConflictManager) ---
 

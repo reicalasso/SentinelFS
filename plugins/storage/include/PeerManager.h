@@ -38,6 +38,11 @@ public:
      * @brief Get peers sorted by latency (fastest first)
      */
     std::vector<PeerInfo> getPeersByLatency();
+    
+    /**
+     * @brief Remove a peer by ID
+     */
+    bool removePeer(const std::string& peerId);
 
 private:
     SQLiteHandler* handler_;

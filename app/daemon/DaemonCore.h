@@ -24,6 +24,8 @@ struct DaemonConfig {
     bool encryptionEnabled = false;
     size_t uploadLimit = 0;     // 0 = unlimited
     size_t downloadLimit = 0;   // 0 = unlimited
+    std::string socketPath;     // Empty = use default
+    std::string dbPath;         // Empty = use default
 };
 
 /**

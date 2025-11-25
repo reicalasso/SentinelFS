@@ -49,6 +49,10 @@ void EventHandlers::setupHandlers() {
     eventBus_.subscribe("ANOMALY_DETECTED", [this](const std::any& data) {
         handleAnomalyDetected(data);
     });
+    
+    eventBus_.subscribe("PEER_DISCONNECTED", [this](const std::any& data) {
+        handlePeerDisconnected(data);
+    });
 }
 
 void EventHandlers::setSyncEnabled(bool enabled) {
@@ -70,15 +74,27 @@ void EventHandlers::handlePeerDiscovered(const std::any& data) {
         
         std::string msg = std::any_cast<std::string>(data);
         
+        // Format: SENTINEL_DISCOVERY|PEER_ID|TCP_PORT|SENDER_IP
         size_t firstPipe = msg.find('|');
         size_t secondPipe = msg.find('|', firstPipe + 1);
+        size_t thirdPipe = msg.find('|', secondPipe + 1);
         
         if (secondPipe != std::string::npos) {
             std::string id = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
-            std::string portStr = msg.substr(secondPipe + 1);
-            int port = std::stoi(portStr);
             
-            std::string ip = "127.0.0.1";
+            std::string portStr;
+            std::string ip = "127.0.0.1";  // Default fallback
+            
+            if (thirdPipe != std::string::npos) {
+                // New format with IP
+                portStr = msg.substr(secondPipe + 1, thirdPipe - secondPipe - 1);
+                ip = msg.substr(thirdPipe + 1);
+            } else {
+                // Old format without IP
+                portStr = msg.substr(secondPipe + 1);
+            }
+            
+            int port = std::stoi(portStr);
 
             PeerInfo peer;
             peer.id = id;
@@ -178,6 +194,22 @@ void EventHandlers::handleAnomalyDetected(const std::any& data) {
         setSyncEnabled(false);
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling ANOMALY_DETECTED: ") + e.what(), "EventHandlers");
+    }
+}
+
+void EventHandlers::handlePeerDisconnected(const std::any& data) {
+    try {
+        auto& logger = Logger::instance();
+        
+        std::string peerId = std::any_cast<std::string>(data);
+        
+        logger.info("Peer disconnected: " + peerId + ", removing from storage", "EventHandlers");
+        
+        // Remove peer from storage
+        storage_->removePeer(peerId);
+        
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling PEER_DISCONNECTED: ") + e.what(), "EventHandlers");
     }
 }
 

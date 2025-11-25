@@ -384,6 +384,11 @@ void TCPHandler::readLoop(int sock, const std::string& remotePeerId) {
     close(sock);
     logger_.log(LogLevel::INFO, "Connection closed from peer: " + remotePeerId, "TCPHandler");
     metrics_.incrementDisconnections();
+    
+    // Publish disconnect event so peer can be removed from storage
+    if (eventBus_) {
+        eventBus_->publish("PEER_DISCONNECTED", remotePeerId);
+    }
 }
 
 } // namespace SentinelFS

@@ -106,6 +106,12 @@ int main(int argc, char* argv[]) {
         else if (arg == "--metrics-port" && i + 1 < argc) {
             config.metricsPort = std::stoi(argv[++i]);
         }
+        else if (arg == "--socket" && i + 1 < argc) {
+            config.socketPath = argv[++i];
+        }
+        else if (arg == "--db" && i + 1 < argc) {
+            config.dbPath = argv[++i];
+        }
         else if (arg == "--help") {
             std::cout << "SentinelFS Daemon - P2P File Synchronization" << std::endl;
             std::cout << "\nUsage: " << argv[0] << " [OPTIONS]" << std::endl;
@@ -118,6 +124,9 @@ int main(int argc, char* argv[]) {
             std::cout << "  --encrypt                  Enable AES-256-CBC encryption (requires session code)" << std::endl;
             std::cout << "  --upload-limit <KB/s>      Limit upload bandwidth (0 = unlimited)" << std::endl;
             std::cout << "  --download-limit <KB/s>    Limit download bandwidth (0 = unlimited)" << std::endl;
+            std::cout << "  --metrics-port <PORT>      Metrics server port (default: 9100)" << std::endl;
+            std::cout << "  --socket <PATH>            IPC socket path (for multiple instances)" << std::endl;
+            std::cout << "  --db <PATH>                Database path (for multiple instances)" << std::endl;
             std::cout << "  --help                     Show this help message" << std::endl;
             return 0;
         }
@@ -146,19 +155,32 @@ int main(int argc, char* argv[]) {
     AutoRemeshManager autoRemesh;
 
     // --- Setup Event Handlers ---
+    // Expand tilde in watch directory
+    std::string expandedWatchDir = config.watchDirectory;
+    if (!expandedWatchDir.empty() && expandedWatchDir[0] == '~') {
+        const char* home = std::getenv("HOME");
+        if (home) {
+            expandedWatchDir = std::string(home) + expandedWatchDir.substr(1);
+        }
+    }
+    
     EventHandlers eventHandlers(
         *daemon.getEventBus(),  // Dereference pointer to get reference
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
         daemon.getFilesystemPlugin(),
-        config.watchDirectory
+        expandedWatchDir
     );
     
     eventHandlers.setupHandlers();
 
     // --- Setup IPC Handler ---
-    auto socketPath = PathUtils::getSocketPath();
-    auto dbPath = dataDir / "sentinel.db";
+    std::filesystem::path socketPath = config.socketPath.empty() 
+        ? PathUtils::getSocketPath() 
+        : std::filesystem::path(config.socketPath);
+    std::filesystem::path dbPath = config.dbPath.empty()
+        ? dataDir / "sentinel.db"
+        : std::filesystem::path(config.dbPath);
     setenv("SENTINEL_DB_PATH", dbPath.c_str(), 1);
     IPCHandler ipcHandler(
         socketPath.string(),

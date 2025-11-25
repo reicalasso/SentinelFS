@@ -21,6 +21,28 @@ namespace {
         receivedSignalNum = signal;
         signalReceived = true;
     }
+    
+    // Expand tilde in path to home directory
+    std::string expandTilde(const std::string& path) {
+        if (path.empty() || path[0] != '~') {
+            return path;
+        }
+        
+        const char* home = std::getenv("HOME");
+        if (!home) {
+            return path;
+        }
+        
+        if (path.size() == 1) {
+            return home;
+        }
+        
+        if (path[1] == '/') {
+            return std::string(home) + path.substr(1);
+        }
+        
+        return path;
+    }
 }
 
 DaemonCore::DaemonCore(const DaemonConfig& config)
@@ -84,13 +106,16 @@ bool DaemonCore::initialize() {
     
     // Start filesystem monitoring
     try {
-        if (!std::filesystem::exists(config_.watchDirectory)) {
-            std::filesystem::create_directories(config_.watchDirectory);
-            logger.info("Created watch directory: " + config_.watchDirectory, "DaemonCore");
+        // Expand tilde in watch directory path
+        std::string watchDir = expandTilde(config_.watchDirectory);
+        
+        if (!std::filesystem::exists(watchDir)) {
+            std::filesystem::create_directories(watchDir);
+            logger.info("Created watch directory: " + watchDir, "DaemonCore");
         }
 
-        filesystem_->startWatching(config_.watchDirectory);
-        logger.info("Filesystem watcher started for: " + config_.watchDirectory, "DaemonCore");
+        filesystem_->startWatching(watchDir);
+        logger.info("Filesystem watcher started for: " + watchDir, "DaemonCore");
     } catch (const std::exception& e) {
         logger.error("Failed to start filesystem watcher: " + std::string(e.what()), "DaemonCore");
         return false;

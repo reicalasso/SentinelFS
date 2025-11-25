@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key } from 'lucide-react'
+import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key, Moon, Sun, Download, Upload, Plus, X, FileX } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
+import { useNotifications } from '../context/NotificationContext'
 
 interface SettingsProps {
   config: any
@@ -7,6 +9,8 @@ interface SettingsProps {
 
 export function Settings({ config }: SettingsProps) {
   const [activeTab, setActiveTab] = useState('general')
+  const { theme, toggleTheme } = useTheme()
+  const { addNotification } = useNotifications()
   
   // Local state for form inputs
   const [uploadLimit, setUploadLimit] = useState('0')
@@ -17,11 +21,26 @@ export function Settings({ config }: SettingsProps) {
   const [copied, setCopied] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   
+  // Ignore patterns state
+  const [ignorePatterns, setIgnorePatterns] = useState<string[]>([])
+  const [newPattern, setNewPattern] = useState('')
+  
   // Format session code as ABC-123
   const formatCode = (code: string) => {
     if (!code || code.length !== 6) return code
     return `${code.slice(0, 3)}-${code.slice(3)}`
   }
+  
+  // Load ignore patterns
+  useEffect(() => {
+    const loadPatterns = async () => {
+      if (window.api) {
+        const res = await window.api.sendCommand('LIST_IGNORE')
+        // Parse response - it will be handled by daemon-data event
+      }
+    }
+    loadPatterns()
+  }, [])
   
   // Update local state when config changes
   useEffect(() => {
@@ -81,6 +100,59 @@ export function Settings({ config }: SettingsProps) {
     setSyncEnabled(newValue)
     sendConfig('syncEnabled', newValue ? 'true' : 'false')
   }
+  
+  // Export config
+  const handleExportConfig = async () => {
+    if (window.api) {
+      const res = await window.api.sendCommand('EXPORT_CONFIG')
+      // Create download
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'sentinelfs-config.json'
+      a.click()
+      URL.revokeObjectURL(url)
+      addNotification('success', 'Config Exported', 'Configuration saved to sentinelfs-config.json')
+    }
+  }
+  
+  // Import config
+  const handleImportConfig = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0]
+      if (file) {
+        const text = await file.text()
+        if (window.api) {
+          await window.api.sendCommand(`IMPORT_CONFIG ${text}`)
+          addNotification('success', 'Config Imported', 'Configuration loaded successfully')
+        }
+      }
+    }
+    input.click()
+  }
+  
+  // Add ignore pattern
+  const handleAddPattern = async () => {
+    if (newPattern.trim() && window.api) {
+      await window.api.sendCommand(`ADD_IGNORE ${newPattern.trim()}`)
+      setIgnorePatterns(prev => [...prev, newPattern.trim()])
+      setNewPattern('')
+      addNotification('success', 'Pattern Added', `Now ignoring: ${newPattern}`)
+    }
+  }
+  
+  // Remove ignore pattern
+  const handleRemovePattern = async (pattern: string) => {
+    if (window.api) {
+      await window.api.sendCommand(`REMOVE_IGNORE ${pattern}`)
+      setIgnorePatterns(prev => prev.filter(p => p !== pattern))
+      addNotification('info', 'Pattern Removed', `No longer ignoring: ${pattern}`)
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
@@ -126,6 +198,18 @@ export function Settings({ config }: SettingsProps) {
                                 <span className="text-xs text-muted-foreground">Pause/resume file synchronization</span>
                             </div>
                             <Toggle checked={syncEnabled} onChange={handleSyncToggle} />
+                        </div>
+                    </Section>
+                    <Section title="Appearance">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-500" /> : <Sun className="w-5 h-5 text-yellow-500" />}
+                                <div>
+                                    <span className="text-sm font-medium block">Theme</span>
+                                    <span className="text-xs text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                                </div>
+                            </div>
+                            <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
                         </div>
                     </Section>
                     <Section title="Configuration">
@@ -337,6 +421,65 @@ export function Settings({ config }: SettingsProps) {
                             </div>
                         </div>
                     </Section>
+                    <Section title="Ignore Patterns">
+                        <p className="text-xs text-muted-foreground mb-4">Files and folders matching these patterns will not be synchronized.</p>
+                        <div className="space-y-3">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    value={newPattern}
+                                    onChange={(e) => setNewPattern(e.target.value)}
+                                    placeholder="*.log, node_modules/, .git/"
+                                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddPattern()}
+                                />
+                                <button 
+                                    onClick={handleAddPattern}
+                                    disabled={!newPattern.trim()}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> Add
+                                </button>
+                            </div>
+                            {ignorePatterns.length > 0 ? (
+                                <div className="space-y-2">
+                                    {ignorePatterns.map((pattern, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <FileX className="w-4 h-4 text-muted-foreground" />
+                                                <span className="font-mono text-sm">{pattern}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleRemovePattern(pattern)}
+                                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center py-4">No ignore patterns defined</p>
+                            )}
+                        </div>
+                    </Section>
+                    <Section title="Export / Import">
+                        <div className="grid grid-cols-2 gap-4">
+                            <button 
+                                onClick={handleExportConfig}
+                                className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <Download className="w-4 h-4" /> Export Config
+                            </button>
+                            <button 
+                                onClick={handleImportConfig}
+                                className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <Upload className="w-4 h-4" /> Import Config
+                            </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">Export settings to share with other devices or backup your configuration.</p>
+                    </Section>
                     <Section title="ML Anomaly Detection">
                         <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20">
                             <div className="flex items-center gap-2 text-yellow-500 mb-2">
@@ -358,9 +501,9 @@ export function Settings({ config }: SettingsProps) {
                                 className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-md text-sm font-medium transition-colors"
                                 onClick={() => {
                                     if (confirm('Are you sure you want to reset all settings to defaults?')) {
-                                        // Reset to defaults
                                         sendConfig('uploadLimit', '0')
                                         sendConfig('downloadLimit', '0')
+                                        addNotification('warning', 'Settings Reset', 'All settings have been reset to defaults')
                                     }
                                 }}
                             >

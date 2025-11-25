@@ -91,6 +91,11 @@ namespace SentinelFS {
          */
         virtual std::vector<PeerInfo> getPeersByLatency() = 0;
         
+        /**
+         * @brief Remove a peer by ID.
+         */
+        virtual bool removePeer(const std::string& peerId) = 0;
+        
         // --- Conflict Operations ---
         
         /**

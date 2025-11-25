@@ -221,6 +221,34 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleConfigJsonCommand();
     } else if (cmd == "SET_CONFIG") {
         return handleSetConfigCommand(args);
+    } else if (cmd == "CONFLICTS_JSON") {
+        return handleConflictsJsonCommand();
+    } else if (cmd == "SYNC_QUEUE_JSON") {
+        return handleSyncQueueJsonCommand();
+    } else if (cmd == "EXPORT_CONFIG") {
+        return handleExportConfigCommand();
+    } else if (cmd == "IMPORT_CONFIG") {
+        return handleImportConfigCommand(args);
+    } else if (cmd == "ADD_IGNORE") {
+        return handleAddIgnoreCommand(args);
+    } else if (cmd == "REMOVE_IGNORE") {
+        return handleRemoveIgnoreCommand(args);
+    } else if (cmd == "LIST_IGNORE") {
+        return handleListIgnoreCommand();
+    } else if (cmd == "RESOLVE_CONFLICT") {
+        return handleResolveConflictCommand(args);
+    } else if (cmd == "BLOCK_PEER") {
+        return handleBlockPeerCommand(args);
+    } else if (cmd == "UNBLOCK_PEER") {
+        return handleUnblockPeerCommand(args);
+    } else if (cmd == "CLEAR_PEERS") {
+        // Clear all stale peers from database
+        if (storage_) {
+            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+            sqlite3_exec(db, "DELETE FROM peers", nullptr, nullptr, nullptr);
+            return "Success: All peers cleared from database\n";
+        }
+        return "Error: Storage not initialized\n";
     } else if (cmd == "STATS") {
         return handleStatsCommand();
     } else if (cmd == "CONFLICTS") {
@@ -918,6 +946,344 @@ std::string IPCHandler::handleSetConfigCommand(const std::string& args) {
     }
     
     return "Error: Failed to set config\n";
+}
+
+std::string IPCHandler::handleConflictsJsonCommand() {
+    std::stringstream ss;
+    ss << "{\"conflicts\":[";
+    
+    if (storage_) {
+        auto conflicts = storage_->getUnresolvedConflicts();
+        bool first = true;
+        for (const auto& c : conflicts) {
+            if (!first) ss << ",";
+            first = false;
+            ss << "{";
+            ss << "\"id\":" << c.id << ",";
+            ss << "\"path\":\"" << c.path << "\",";
+            ss << "\"localSize\":" << c.localSize << ",";
+            ss << "\"remoteSize\":" << c.remoteSize << ",";
+            ss << "\"localTimestamp\":" << c.localTimestamp << ",";
+            ss << "\"remoteTimestamp\":" << c.remoteTimestamp << ",";
+            ss << "\"remotePeerId\":\"" << c.remotePeerId << "\",";
+            ss << "\"strategy\":" << c.strategy;
+            ss << "}";
+        }
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleSyncQueueJsonCommand() {
+    std::stringstream ss;
+    ss << "{\"queue\":[";
+    
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        const char* sql = "SELECT id, file_path, operation, status, progress, size, peer_id, created_at FROM sync_queue ORDER BY created_at DESC LIMIT 50";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            bool first = true;
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                int id = sqlite3_column_int(stmt, 0);
+                const char* path = (const char*)sqlite3_column_text(stmt, 1);
+                const char* op = (const char*)sqlite3_column_text(stmt, 2);
+                const char* status = (const char*)sqlite3_column_text(stmt, 3);
+                int progress = sqlite3_column_int(stmt, 4);
+                int64_t size = sqlite3_column_int64(stmt, 5);
+                const char* peer = (const char*)sqlite3_column_text(stmt, 6);
+                const char* created = (const char*)sqlite3_column_text(stmt, 7);
+                
+                ss << "{";
+                ss << "\"id\":" << id << ",";
+                ss << "\"path\":\"" << (path ? path : "") << "\",";
+                ss << "\"operation\":\"" << (op ? op : "") << "\",";
+                ss << "\"status\":\"" << (status ? status : "") << "\",";
+                ss << "\"progress\":" << progress << ",";
+                ss << "\"size\":" << size << ",";
+                ss << "\"peer\":\"" << (peer ? peer : "") << "\",";
+                ss << "\"created\":\"" << (created ? created : "") << "\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleExportConfigCommand() {
+    std::stringstream ss;
+    ss << "{";
+    
+    if (daemonCore_) {
+        const auto& config = daemonCore_->getConfig();
+        std::string sessionCode = network_ ? network_->getSessionCode() : config.sessionCode;
+        bool encryption = network_ ? network_->isEncryptionEnabled() : config.encryptionEnabled;
+        
+        ss << "\"tcpPort\":" << config.tcpPort << ",";
+        ss << "\"discoveryPort\":" << config.discoveryPort << ",";
+        ss << "\"metricsPort\":" << config.metricsPort << ",";
+        ss << "\"watchDirectory\":\"" << config.watchDirectory << "\",";
+        ss << "\"sessionCode\":\"" << sessionCode << "\",";
+        ss << "\"encryptionEnabled\":" << (encryption ? "true" : "false") << ",";
+        ss << "\"uploadLimit\":" << config.uploadLimit << ",";
+        ss << "\"downloadLimit\":" << config.downloadLimit << ",";
+        ss << "\"syncEnabled\":" << (daemonCore_->isSyncEnabled() ? "true" : "false");
+    }
+    
+    ss << "}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleImportConfigCommand(const std::string& args) {
+    // Parse JSON config and apply settings
+    // Format: IMPORT_CONFIG {"sessionCode":"ABC123","encryption":true,...}
+    try {
+        // Simple parsing - look for key values
+        if (args.find("sessionCode") != std::string::npos) {
+            size_t start = args.find("sessionCode\":\"") + 14;
+            size_t end = args.find("\"", start);
+            if (start != std::string::npos && end != std::string::npos && network_) {
+                std::string code = args.substr(start, end - start);
+                if (!code.empty()) network_->setSessionCode(code);
+            }
+        }
+        
+        if (args.find("\"encryptionEnabled\":true") != std::string::npos && network_) {
+            network_->setEncryptionEnabled(true);
+        } else if (args.find("\"encryptionEnabled\":false") != std::string::npos && network_) {
+            network_->setEncryptionEnabled(false);
+        }
+        
+        if (args.find("uploadLimit\":") != std::string::npos && network_) {
+            size_t start = args.find("uploadLimit\":") + 13;
+            size_t end = args.find_first_of(",}", start);
+            if (start != std::string::npos && end != std::string::npos) {
+                size_t limit = std::stoull(args.substr(start, end - start));
+                network_->setGlobalUploadLimit(limit);
+            }
+        }
+        
+        if (args.find("downloadLimit\":") != std::string::npos && network_) {
+            size_t start = args.find("downloadLimit\":") + 15;
+            size_t end = args.find_first_of(",}", start);
+            if (start != std::string::npos && end != std::string::npos) {
+                size_t limit = std::stoull(args.substr(start, end - start));
+                network_->setGlobalDownloadLimit(limit);
+            }
+        }
+        
+        return "Success: Configuration imported\n";
+    } catch (const std::exception& e) {
+        return "Error: Failed to import config: " + std::string(e.what()) + "\n";
+    }
+}
+
+std::string IPCHandler::handleAddIgnoreCommand(const std::string& args) {
+    if (args.empty()) {
+        return "Error: No pattern provided\n";
+    }
+    
+    if (!storage_) {
+        return "Error: Storage not initialized\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    
+    // Create ignore_patterns table if not exists
+    const char* createSql = "CREATE TABLE IF NOT EXISTS ignore_patterns (id INTEGER PRIMARY KEY, pattern TEXT UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
+    sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
+    
+    const char* sql = "INSERT OR IGNORE INTO ignore_patterns (pattern) VALUES (?)";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Pattern added: " + args + "\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to add pattern\n";
+}
+
+std::string IPCHandler::handleRemoveIgnoreCommand(const std::string& args) {
+    if (args.empty()) {
+        return "Error: No pattern provided\n";
+    }
+    
+    if (!storage_) {
+        return "Error: Storage not initialized\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    const char* sql = "DELETE FROM ignore_patterns WHERE pattern = ?";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Pattern removed: " + args + "\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to remove pattern\n";
+}
+
+std::string IPCHandler::handleListIgnoreCommand() {
+    std::stringstream ss;
+    ss << "{\"patterns\":[";
+    
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        
+        // Create table if not exists
+        const char* createSql = "CREATE TABLE IF NOT EXISTS ignore_patterns (id INTEGER PRIMARY KEY, pattern TEXT UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
+        sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
+        
+        const char* sql = "SELECT pattern FROM ignore_patterns ORDER BY pattern";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            bool first = true;
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                const char* pattern = (const char*)sqlite3_column_text(stmt, 0);
+                ss << "\"" << (pattern ? pattern : "") << "\"";
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleResolveConflictCommand(const std::string& args) {
+    // Format: RESOLVE_CONFLICT <id> <resolution>
+    // resolution: local, remote, both
+    std::istringstream iss(args);
+    int conflictId;
+    std::string resolution;
+    
+    if (!(iss >> conflictId >> resolution)) {
+        return "Error: Usage: RESOLVE_CONFLICT <id> <local|remote|both>\n";
+    }
+    
+    if (!storage_) {
+        return "Error: Storage not initialized\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    const char* sql = "UPDATE conflicts SET resolved = 1, resolved_at = datetime('now'), strategy = ? WHERE id = ?";
+    sqlite3_stmt* stmt;
+    
+    int strategy = 0; // 0=local, 1=remote, 2=both
+    std::string msg;
+    
+    if (resolution == "local") {
+        strategy = 0;
+        msg = "keeping local version";
+    } else if (resolution == "remote") {
+        strategy = 1;
+        msg = "keeping remote version";
+    } else if (resolution == "both") {
+        strategy = 2;
+        msg = "keeping both versions";
+    } else {
+        return "Error: Invalid resolution. Use: local, remote, or both\n";
+    }
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, strategy);
+        sqlite3_bind_int(stmt, 2, conflictId);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Conflict resolved - " + msg + "\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to resolve conflict\n";
+}
+
+std::string IPCHandler::handleBlockPeerCommand(const std::string& args) {
+    if (args.empty()) {
+        return "Error: No peer ID provided. Usage: BLOCK_PEER <peer_id>\n";
+    }
+    
+    if (!storage_) {
+        return "Error: Storage not initialized\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    
+    // Create blocked_peers table if not exists
+    const char* createSql = "CREATE TABLE IF NOT EXISTS blocked_peers (peer_id TEXT PRIMARY KEY, blocked_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
+    sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
+    
+    // Add to blocked list
+    const char* sql = "INSERT OR REPLACE INTO blocked_peers (peer_id) VALUES (?)";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            
+            // Also remove from peers table
+            const char* delSql = "DELETE FROM peers WHERE peer_id = ?";
+            sqlite3_stmt* delStmt;
+            if (sqlite3_prepare_v2(db, delSql, -1, &delStmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(delStmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(delStmt);
+                sqlite3_finalize(delStmt);
+            }
+            
+            return "Success: Peer blocked: " + args + "\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to block peer\n";
+}
+
+std::string IPCHandler::handleUnblockPeerCommand(const std::string& args) {
+    if (args.empty()) {
+        return "Error: No peer ID provided. Usage: UNBLOCK_PEER <peer_id>\n";
+    }
+    
+    if (!storage_) {
+        return "Error: Storage not initialized\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    const char* sql = "DELETE FROM blocked_peers WHERE peer_id = ?";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Peer unblocked: " + args + "\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to unblock peer\n";
 }
 
 } // namespace SentinelFS

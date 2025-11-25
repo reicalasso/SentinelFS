@@ -87,6 +87,16 @@ private:
     std::string handleTransfersJsonCommand();
     std::string handleConfigJsonCommand();
     std::string handleSetConfigCommand(const std::string& args);
+    std::string handleConflictsJsonCommand();
+    std::string handleSyncQueueJsonCommand();
+    std::string handleExportConfigCommand();
+    std::string handleImportConfigCommand(const std::string& args);
+    std::string handleAddIgnoreCommand(const std::string& args);
+    std::string handleRemoveIgnoreCommand(const std::string& args);
+    std::string handleListIgnoreCommand();
+    std::string handleResolveConflictCommand(const std::string& args);
+    std::string handleBlockPeerCommand(const std::string& args);
+    std::string handleUnblockPeerCommand(const std::string& args);
     
     std::string socketPath_;
     int serverSocket_{-1};

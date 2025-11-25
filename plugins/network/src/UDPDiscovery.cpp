@@ -212,9 +212,11 @@ void UDPDiscovery::handleDiscoveryMessage(const std::string& message,
     
     logger.log(LogLevel::INFO, "Discovered peer " + peerId + " at " + senderIp + ":" + tcpPort, "UDPDiscovery");
     
-    // Publish discovery event
+    // Publish discovery event with sender IP included
+    // Format: SENTINEL_DISCOVERY|PEER_ID|TCP_PORT|SENDER_IP
     if (eventBus_) {
-        eventBus_->publish("PEER_DISCOVERED", message);
+        std::string enrichedMessage = message + "|" + senderIp;
+        eventBus_->publish("PEER_DISCOVERED", enrichedMessage);
     }
 }
 
