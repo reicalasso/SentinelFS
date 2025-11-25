@@ -9,6 +9,9 @@
 #include <openssl/sha.h>
 #include <iomanip>
 #include <sstream>
+#include <regex>
+#include <sqlite3.h>
+#include <fnmatch.h>
 
 namespace SentinelFS {
 
@@ -16,6 +19,47 @@ FileSyncHandler::FileSyncHandler(INetworkAPI* network, IStorageAPI* storage, con
     : network_(network), storage_(storage), watchDirectory_(watchDir) {
     auto& logger = Logger::instance();
     logger.debug("FileSyncHandler initialized for: " + watchDir, "FileSyncHandler");
+    loadIgnorePatterns();
+}
+
+void FileSyncHandler::loadIgnorePatterns() {
+    ignorePatterns_.clear();
+    if (!storage_) return;
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    if (!db) return;
+    
+    const char* sql = "SELECT pattern FROM ignore_patterns WHERE active = 1";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            const char* pattern = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            if (pattern) {
+                ignorePatterns_.push_back(pattern);
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    auto& logger = Logger::instance();
+    logger.debug("Loaded " + std::to_string(ignorePatterns_.size()) + " ignore patterns", "FileSyncHandler");
+}
+
+bool FileSyncHandler::shouldIgnore(const std::string& path) {
+    std::string filename = std::filesystem::path(path).filename().string();
+    
+    for (const auto& pattern : ignorePatterns_) {
+        // Use fnmatch for glob pattern matching
+        if (fnmatch(pattern.c_str(), filename.c_str(), FNM_PATHNAME) == 0) {
+            return true;
+        }
+        // Also check full path
+        if (fnmatch(pattern.c_str(), path.c_str(), FNM_PATHNAME) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string FileSyncHandler::calculateFileHash(const std::string& path) {
@@ -52,28 +96,34 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
         return;
     }
 
+    // Reload ignore patterns before scanning
+    loadIgnorePatterns();
+
     try {
         int count = 0;
+        int ignored = 0;
         for (const auto& entry : std::filesystem::recursive_directory_iterator(targetPath)) {
             if (entry.is_regular_file()) {
-                std::string path = entry.path().string();
-                std::string hash = calculateFileHash(path);
+                std::string filePath = entry.path().string();
+                
+                // Check ignore patterns
+                if (shouldIgnore(filePath)) {
+                    ignored++;
+                    continue;
+                }
+                
+                std::string hash = calculateFileHash(filePath);
                 long long size = std::filesystem::file_size(entry.path());
                 long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(
                     std::filesystem::last_write_time(entry.path()).time_since_epoch()
-                ).count(); // Simplified timestamp, platform dependent
-
-                // Persist to DB
-                // Convert absolute path to relative if needed, but storage expects full path for now?
-                // Let's stick to full path as per current design or relative to watch dir
-                // For simplicity and consistency with handleFileModified, using full path.
+                ).count();
                 
-                if (storage_->addFile(path, hash, timestamp, size)) {
+                if (storage_->addFile(filePath, hash, timestamp, size)) {
                     count++;
                 }
             }
         }
-        logger.info("Initial scan completed. Found " + std::to_string(count) + " files.", "FileSyncHandler");
+        logger.info("Scan completed. Found " + std::to_string(count) + " files, ignored " + std::to_string(ignored), "FileSyncHandler");
     } catch (const std::exception& e) {
         logger.error("Error during directory scan: " + std::string(e.what()), "FileSyncHandler");
     }
@@ -88,6 +138,12 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
     // Check if sync is enabled first
     if (!syncEnabled_) {
         logger.debug("Sync disabled, skipping update for: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // Check ignore patterns
+    if (shouldIgnore(fullPath)) {
+        logger.debug("File ignored by pattern: " + filename, "FileSyncHandler");
         return;
     }
     
@@ -126,8 +182,18 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         
         logger.info("Broadcasting update for " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "FileSyncHandler");
         
-        // Broadcast UPDATE_AVAILABLE to all peers with full path
-        std::string updateMsg = "UPDATE_AVAILABLE|" + fullPath;
+
+        
+        std::string relativePath = fullPath;
+        if (fullPath.find(watchDirectory_) == 0) {
+            relativePath = fullPath.substr(watchDirectory_.length());
+            if (!relativePath.empty() && relativePath[0] == '/') {
+                relativePath = relativePath.substr(1);
+            }
+        }
+        
+        // Broadcast UPDATE_AVAILABLE with relative path
+        std::string updateMsg = "UPDATE_AVAILABLE|" + relativePath + "|" + hash + "|" + std::to_string(size);
         std::vector<uint8_t> payload(updateMsg.begin(), updateMsg.end());
         
         int successCount = 0;

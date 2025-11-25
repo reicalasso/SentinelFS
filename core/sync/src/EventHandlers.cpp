@@ -278,6 +278,15 @@ void EventHandlers::handleDataReceived(const std::any& data) {
         else if (msg.find("DELTA_DATA|") == 0) {
             deltaProtocolHandler_->handleDeltaData(peerId, rawData);
         }
+        else if (msg.find("REQUEST_FILE|") == 0) {
+            deltaProtocolHandler_->handleFileRequest(peerId, rawData);
+        }
+        else if (msg.find("FILE_DATA|") == 0) {
+            deltaProtocolHandler_->handleFileData(peerId, rawData);
+        }
+        else if (msg.find("DELETE_FILE|") == 0) {
+            deltaProtocolHandler_->handleDeleteFile(peerId, rawData);
+        }
     } catch (const std::bad_any_cast&) {
         // Ignore
     } catch (const std::exception& e) {

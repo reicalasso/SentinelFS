@@ -297,11 +297,22 @@ std::string IPCHandler::processCommand(const std::string& command) {
             return "Error: Daemon core not initialized\n";
         }
         
+        // Sanitize path: remove file:// prefix and fix unicode slashes
+        std::string cleanPath = args;
+        if (cleanPath.find("file://") == 0) {
+            cleanPath = cleanPath.substr(7);
+        }
+        // Replace unicode fraction slash (⁄ U+2044) with regular slash
+        size_t pos = 0;
+        while ((pos = cleanPath.find("\xe2\x81\x84", pos)) != std::string::npos) {
+            cleanPath.replace(pos, 3, "/");
+        }
+        
         // Add the folder to watch list
-        if (daemonCore_->addWatchDirectory(args)) {
-            return "Success: Folder added to watch list: " + args + "\n";
+        if (daemonCore_->addWatchDirectory(cleanPath)) {
+            return "Success: Folder added to watch list: " + cleanPath + "\n";
         } else {
-            return "Error: Failed to add folder to watch list: " + args + "\n";
+            return "Error: Failed to add folder to watch list: " + cleanPath + "\n";
         }
     } else if (cmd == "REMOVE_WATCH") {
         if (args.empty()) {
@@ -312,15 +323,68 @@ std::string IPCHandler::processCommand(const std::string& command) {
             return "Error: Storage not initialized\n";
         }
         
+        // Sanitize path
+        std::string cleanPath = args;
+        if (cleanPath.find("file://") == 0) {
+            cleanPath = cleanPath.substr(7);
+        }
+        size_t pos = 0;
+        while ((pos = cleanPath.find("\xe2\x81\x84", pos)) != std::string::npos) {
+            cleanPath.replace(pos, 3, "/");
+        }
+        
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         sqlite3_stmt* stmt;
         
-        // First, delete all files that belong to this folder
-        std::string folderPrefix = args;
+        std::string folderPrefix = cleanPath;
         if (!folderPrefix.empty() && folderPrefix.back() != '/') {
             folderPrefix += '/';
         }
         
+        // Check if this is a file (not a folder) - delete just the file
+        if (std::filesystem::exists(cleanPath) && std::filesystem::is_regular_file(cleanPath)) {
+            // Delete the physical file
+            try {
+                std::filesystem::remove(cleanPath);
+            } catch (...) {}
+            
+            // Delete from database
+            const char* deleteFileSql = "DELETE FROM files WHERE path = ?";
+            if (sqlite3_prepare_v2(db, deleteFileSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(stmt, 1, cleanPath.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
+            return "Success: Removed file: " + cleanPath + "\n";
+        }
+        
+        // It's a folder - get list of files first, then delete them physically
+        std::vector<std::string> filesToDelete;
+        const char* selectFilesSql = "SELECT path FROM files WHERE path LIKE ?";
+        if (sqlite3_prepare_v2(db, selectFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            std::string pattern = folderPrefix + "%";
+            sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                if (path) {
+                    filesToDelete.push_back(path);
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Delete physical files
+        int deletedCount = 0;
+        for (const auto& filePath : filesToDelete) {
+            try {
+                if (std::filesystem::exists(filePath)) {
+                    std::filesystem::remove(filePath);
+                    deletedCount++;
+                }
+            } catch (...) {}
+        }
+        
+        // Delete files from database
         const char* deleteFilesSql = "DELETE FROM files WHERE path LIKE ?";
         if (sqlite3_prepare_v2(db, deleteFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
             std::string pattern = folderPrefix + "%";
@@ -329,19 +393,25 @@ std::string IPCHandler::processCommand(const std::string& command) {
             sqlite3_finalize(stmt);
         }
         
-        // Then, remove from watched folders
+        // Remove from watched folders
         const char* sql = "DELETE FROM watched_folders WHERE path = ?";
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 1, cleanPath.c_str(), -1, SQLITE_TRANSIENT);
             
             if (sqlite3_step(stmt) == SQLITE_DONE) {
                 sqlite3_finalize(stmt);
-                return "Success: Stopped watching: " + args + "\n";
+                
+                // Also stop filesystem watcher
+                if (filesystem_) {
+                    filesystem_->stopWatching(cleanPath);
+                }
+                
+                return "Success: Stopped watching and deleted " + std::to_string(deletedCount) + " files from: " + cleanPath + "\n";
             }
             sqlite3_finalize(stmt);
         }
         
-        return "Error: Failed to remove watch for: " + args + "\n";
+        return "Error: Failed to remove watch for: " + cleanPath + "\n";
     } else if (cmd == "DISCOVER") {
         if (!network_ || !daemonCore_) {
             return "Error: Network subsystem not ready.\n";
@@ -350,6 +420,106 @@ std::string IPCHandler::processCommand(const std::string& command) {
         const auto& cfg = daemonCore_->getConfig();
         network_->broadcastPresence(cfg.discoveryPort, cfg.tcpPort);
         return "Discovery broadcast sent.\n";
+    } else if (cmd == "LIST_IGNORE") {
+        // List ignore patterns
+        if (!storage_) {
+            return "Error: Storage not initialized\n";
+        }
+        
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        sqlite3_stmt* stmt;
+        const char* sql = "SELECT pattern, type FROM ignore_patterns WHERE active = 1";
+        
+        std::stringstream ss;
+        ss << "{\"patterns\":[";
+        bool first = true;
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* pattern = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                const char* type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                
+                ss << "{\"pattern\":\"" << (pattern ? pattern : "") << "\",";
+                ss << "\"type\":\"" << (type ? type : "glob") << "\"}";
+            }
+            sqlite3_finalize(stmt);
+        }
+        ss << "]}\n";
+        return ss.str();
+        
+    } else if (cmd == "ADD_IGNORE") {
+        // Add ignore pattern
+        if (args.empty()) {
+            return "Error: No pattern provided\n";
+        }
+        
+        if (!storage_) {
+            return "Error: Storage not initialized\n";
+        }
+        
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        sqlite3_stmt* stmt;
+        const char* sql = "INSERT OR REPLACE INTO ignore_patterns (pattern, type, active) VALUES (?, 'glob', 1)";
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+            
+            if (sqlite3_step(stmt) == SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return "Success: Added ignore pattern: " + args + "\n";
+            }
+            sqlite3_finalize(stmt);
+        }
+        return "Error: Failed to add ignore pattern\n";
+        
+    } else if (cmd == "REMOVE_IGNORE") {
+        // Remove ignore pattern
+        if (args.empty()) {
+            return "Error: No pattern provided\n";
+        }
+        
+        if (!storage_) {
+            return "Error: Storage not initialized\n";
+        }
+        
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        sqlite3_stmt* stmt;
+        const char* sql = "DELETE FROM ignore_patterns WHERE pattern = ?";
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+            
+            if (sqlite3_step(stmt) == SQLITE_DONE) {
+                sqlite3_finalize(stmt);
+                return "Success: Removed ignore pattern: " + args + "\n";
+            }
+            sqlite3_finalize(stmt);
+        }
+        return "Error: Failed to remove ignore pattern\n";
+        
+    } else if (cmd == "SET_ENCRYPTION") {
+        // Enable/disable encryption
+        bool enable = (args == "true" || args == "1" || args == "on");
+        if (network_) {
+            network_->setEncryptionEnabled(enable);
+            return enable ? "Encryption enabled.\n" : "Encryption disabled.\n";
+        }
+        return "Error: Network not initialized\n";
+        
+    } else if (cmd == "SET_SESSION_CODE") {
+        // Set session code
+        if (args.length() != 6) {
+            return "Error: Session code must be 6 characters\n";
+        }
+        if (network_) {
+            network_->setSessionCode(args);
+            return "Session code set: " + args + "\n";
+        }
+        return "Error: Network not initialized\n";
+        
     } else if (cmd == "GENERATE_CODE") {
         // Generate a random 6-character session code
         static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoiding confusing chars like 0/O, 1/I

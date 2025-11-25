@@ -15,6 +15,7 @@ class IStorageAPI;
  * 
  * Responsible for broadcasting file changes to peers.
  * Works with EventHandlers to prevent sync loops.
+ * Supports ignore patterns for filtering files.
  */
 class FileSyncHandler {
 public:
@@ -25,7 +26,7 @@ public:
      * @param fullPath Absolute path to modified file
      * 
      * Broadcasts UPDATE_AVAILABLE to all connected peers.
-     * Respects syncEnabled flag.
+     * Respects syncEnabled flag and ignore patterns.
      */
     void handleFileModified(const std::string& fullPath);
 
@@ -34,7 +35,7 @@ public:
      * @param path Optional directory path to scan. If empty, scans default watch directory.
      * 
      * Scans all files in the directory and adds/updates
-     * their metadata in the database.
+     * their metadata in the database. Respects ignore patterns.
      */
     void scanDirectory(const std::string& path = "");
 
@@ -48,14 +49,21 @@ public:
      * @brief Check if sync is currently enabled
      */
     bool isSyncEnabled() const { return syncEnabled_; }
+    
+    /**
+     * @brief Reload ignore patterns from database
+     */
+    void loadIgnorePatterns();
 
 private:
     std::string calculateFileHash(const std::string& path);
+    bool shouldIgnore(const std::string& path);
 
     INetworkAPI* network_;
     IStorageAPI* storage_;
     std::string watchDirectory_;
     std::atomic<bool> syncEnabled_{true};
+    std::vector<std::string> ignorePatterns_;
 };
 
 } // namespace SentinelFS

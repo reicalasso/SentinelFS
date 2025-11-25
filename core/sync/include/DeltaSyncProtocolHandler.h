@@ -55,6 +55,27 @@ public:
     void handleDeltaData(const std::string& peerId, const std::vector<uint8_t>& data);
 
     /**
+     * @brief Handle REQUEST_FILE message from peer (full file request)
+     * @param peerId Peer that sent the message
+     * @param data Raw message data containing file path
+     */
+    void handleFileRequest(const std::string& peerId, const std::vector<uint8_t>& data);
+
+    /**
+     * @brief Handle FILE_DATA message from peer (full file transfer)
+     * @param peerId Peer that sent the message
+     * @param data Raw message data containing file content
+     */
+    void handleFileData(const std::string& peerId, const std::vector<uint8_t>& data);
+
+    /**
+     * @brief Handle DELETE_FILE message from peer
+     * @param peerId Peer that sent the message
+     * @param data Raw message data containing file path
+     */
+    void handleDeleteFile(const std::string& peerId, const std::vector<uint8_t>& data);
+
+    /**
      * @brief Set callback for marking files as patched
      */
     void setMarkAsPatchedCallback(std::function<void(const std::string&)> callback) {
