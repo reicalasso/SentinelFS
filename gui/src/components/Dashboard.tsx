@@ -2,7 +2,7 @@ import { Activity, ArrowDown, ArrowUp, HardDrive, Shield, Wifi, Zap } from 'luci
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useState, useEffect } from 'react'
 
-export function Dashboard({ metrics, syncStatus, peersCount }: any) {
+export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
   const [trafficHistory, setTrafficHistory] = useState<any[]>([])
   const [lastMetrics, setLastMetrics] = useState<any>(null)
   
@@ -10,6 +10,7 @@ export function Dashboard({ metrics, syncStatus, peersCount }: any) {
   const totalUploadedMB = metrics?.totalUploaded ? (metrics.totalUploaded / (1024 * 1024)).toFixed(2) : '0'
   const totalDownloadedMB = metrics?.totalDownloaded ? (metrics.totalDownloaded / (1024 * 1024)).toFixed(2) : '0'
   const filesSynced = metrics?.filesSynced || 0
+  const recentActivity = activity || []
   
   // Track network traffic over time
   useEffect(() => {
@@ -125,30 +126,22 @@ export function Dashboard({ metrics, syncStatus, peersCount }: any) {
             Recent Activity
           </h3>
           <div className="flex-1 overflow-auto space-y-4 pr-2">
-            <ActivityItem 
-              type="sync"
-              file="project_report.pdf"
-              time="2 mins ago"
-              details="Synced from MacBook Pro"
-            />
-            <ActivityItem 
-              type="delete"
-              file="temp_cache_v2.db"
-              time="15 mins ago"
-              details="Deleted on Desktop"
-            />
-            <ActivityItem 
-              type="security"
-              file="System"
-              time="1 hour ago"
-              details="New peer connected: iPhone 13"
-            />
-             <ActivityItem 
-              type="sync"
-              file="main.cpp"
-              time="2 hours ago"
-              details="Updated via Delta Sync"
-            />
+            {recentActivity.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No recent activity</p>
+              </div>
+            ) : (
+              recentActivity.map((item: any, i: number) => (
+                <ActivityItem 
+                  key={i}
+                  type={item.type}
+                  file={item.file}
+                  time={item.time}
+                  details={item.details}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>

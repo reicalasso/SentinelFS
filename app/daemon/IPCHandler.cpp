@@ -212,6 +212,14 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleMetricsJsonCommand();
     } else if (cmd == "FILES_JSON") {
         return handleFilesJsonCommand();
+    } else if (cmd == "ACTIVITY_JSON") {
+        return handleActivityJsonCommand();
+    } else if (cmd == "TRANSFERS_JSON") {
+        return handleTransfersJsonCommand();
+    } else if (cmd == "CONFIG_JSON") {
+        return handleConfigJsonCommand();
+    } else if (cmd == "SET_CONFIG") {
+        return handleSetConfigCommand(args);
     } else if (cmd == "STATS") {
         return handleStatsCommand();
     } else if (cmd == "CONFLICTS") {
@@ -291,6 +299,13 @@ std::string IPCHandler::processCommand(const std::string& command) {
         }
         
         return "Error: Failed to remove watch for: " + args + "\n";
+    } else if (cmd == "DISCOVER") {
+        if (network_) {
+            // Start UDP discovery on port 3344
+            network_->startDiscovery(3344);
+            return "Discovery started.\n";
+        }
+        return "Error: Network plugin not initialized.\n";
     } else {
         std::stringstream ss;
         ss << "Unknown command: " << cmd << "\n";
@@ -504,7 +519,7 @@ std::string IPCHandler::handleStatusJsonCommand() {
 std::string IPCHandler::handlePeersJsonCommand() {
     std::stringstream ss;
     auto sortedPeers = storage_->getPeersByLatency();
-    ss << "[";
+    ss << "{\"peers\": [";
     for (size_t i = 0; i < sortedPeers.size(); ++i) {
         const auto& p = sortedPeers[i];
         ss << "{";
@@ -516,7 +531,7 @@ std::string IPCHandler::handlePeersJsonCommand() {
         ss << "}";
         if (i < sortedPeers.size() - 1) ss << ",";
     }
-    ss << "]\n";
+    ss << "]}\n";
     return ss.str();
 }
 
@@ -535,7 +550,7 @@ std::string IPCHandler::handleMetricsJsonCommand() {
 
 std::string IPCHandler::handleFilesJsonCommand() {
     std::stringstream ss;
-    ss << "[";
+    ss << "{\"files\": [";
     
     if (storage_) {
         // Get all files from the files table (synced files)
@@ -566,7 +581,7 @@ std::string IPCHandler::handleFilesJsonCommand() {
         }
         
         // If no files in database, scan watched folders
-        if (ss.str() == "[") {
+        if (ss.str() == "{\"files\": [") {
             // Get watched folders and scan them
             const char* folderSql = "SELECT path FROM watched_folders WHERE status = 'active'";
             sqlite3_stmt* folderStmt;
@@ -695,8 +710,196 @@ std::string IPCHandler::handleFilesJsonCommand() {
         }
     }
     
-    ss << "]\n";
+    ss << "]}\n";
     return ss.str();
+}
+
+std::string IPCHandler::handleActivityJsonCommand() {
+    if (!storage_) {
+        return "{\"activity\": []}";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    std::stringstream ss;
+    ss << "{\"activity\": [";
+    
+    // Query watched_folders for "Sync started" activity
+    const char* sql = "SELECT path, added_at FROM watched_folders WHERE status = 'active' ORDER BY added_at DESC LIMIT 5";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        bool first = true;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            if (!first) ss << ",";
+            first = false;
+            
+            const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            long long addedAt = sqlite3_column_int64(stmt, 1);
+            
+            std::string pathStr = path ? path : "";
+            std::filesystem::path p(pathStr);
+            std::string filename = p.filename().string();
+            if (filename.empty()) filename = pathStr;
+            
+            // Format time relative (simple approximation)
+            auto now = std::time(nullptr);
+            auto diff = now - addedAt;
+            std::string timeStr;
+            if (diff < 60) timeStr = "Just now";
+            else if (diff < 3600) timeStr = std::to_string(diff / 60) + " mins ago";
+            else if (diff < 86400) timeStr = std::to_string(diff / 3600) + " hours ago";
+            else timeStr = std::to_string(diff / 86400) + " days ago";
+            
+            ss << "{";
+            ss << "\"type\":\"sync\",";
+            ss << "\"file\":\"" << filename << "\",";
+            ss << "\"time\":\"" << timeStr << "\",";
+            ss << "\"details\":\"Folder watching started\"";
+            ss << "}";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleTransfersJsonCommand() {
+    if (!storage_) return "{\"transfers\": []}\n";
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    std::stringstream ss;
+    ss << "{\"transfers\": [";
+    
+    const char* sql = "SELECT file_path, peer_id, operation, status FROM sync_queue WHERE status != 'completed' ORDER BY timestamp DESC LIMIT 20";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        bool first = true;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            if (!first) ss << ",";
+            first = false;
+            
+            const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const char* peer = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* op = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            const char* status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            
+            std::string pathStr = path ? path : "";
+            std::filesystem::path p(pathStr);
+            std::string filename = p.filename().string();
+            if (filename.empty()) filename = pathStr;
+            
+            ss << "{";
+            ss << "\"name\":\"" << filename << "\",";
+            ss << "\"peer\":\"" << (peer ? peer : "Unknown") << "\",";
+            ss << "\"type\":\"" << (op ? op : "unknown") << "\",";
+            ss << "\"status\":\"" << (status ? status : "pending") << "\",";
+            ss << "\"progress\": 0,"; 
+            ss << "\"size\": \"-\","; 
+            ss << "\"speed\": \"-\"";
+            ss << "}";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleConfigJsonCommand() {
+    std::stringstream ss;
+    ss << "{";
+    
+    // Get current config from daemon
+    if (daemonCore_) {
+        const auto& config = daemonCore_->getConfig();
+        
+        ss << "\"tcpPort\":" << config.tcpPort << ",";
+        ss << "\"discoveryPort\":" << config.discoveryPort << ",";
+        ss << "\"metricsPort\":" << config.metricsPort << ",";
+        ss << "\"watchDirectory\":\"" << config.watchDirectory << "\",";
+        ss << "\"sessionCode\":\"" << (config.sessionCode.empty() ? "" : "******") << "\",";
+        ss << "\"encryptionEnabled\":" << (config.encryptionEnabled ? "true" : "false") << ",";
+        ss << "\"uploadLimit\":" << (config.uploadLimit / 1024) << ",";  // Convert to KB/s
+        ss << "\"downloadLimit\":" << (config.downloadLimit / 1024);  // Convert to KB/s
+    } else {
+        ss << "\"error\":\"Daemon not initialized\"";
+    }
+    
+    // Add network status
+    if (network_) {
+        ss << ",\"encryption\":" << (network_->isEncryptionEnabled() ? "true" : "false");
+        ss << ",\"hasSessionCode\":" << (!network_->getSessionCode().empty() ? "true" : "false");
+    }
+    
+    // Add sync status
+    if (daemonCore_) {
+        ss << ",\"syncEnabled\":" << (daemonCore_->isSyncEnabled() ? "true" : "false");
+    }
+    
+    ss << "}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleSetConfigCommand(const std::string& args) {
+    // Expected format: SET_CONFIG key=value
+    size_t eqPos = args.find('=');
+    if (eqPos == std::string::npos) {
+        return "Error: Invalid format. Use: SET_CONFIG key=value\n";
+    }
+    
+    std::string key = args.substr(0, eqPos);
+    std::string value = args.substr(eqPos + 1);
+    
+    // Trim whitespace
+    key.erase(0, key.find_first_not_of(" \t\r\n"));
+    key.erase(key.find_last_not_of(" \t\r\n") + 1);
+    value.erase(0, value.find_first_not_of(" \t\r\n"));
+    value.erase(value.find_last_not_of(" \t\r\n") + 1);
+    
+    try {
+        if (key == "uploadLimit") {
+            size_t kb = std::stoull(value);
+            if (network_) {
+                network_->setGlobalUploadLimit(kb * 1024);
+                return "Success: Upload limit set to " + value + " KB/s\n";
+            }
+        } else if (key == "downloadLimit") {
+            size_t kb = std::stoull(value);
+            if (network_) {
+                network_->setGlobalDownloadLimit(kb * 1024);
+                return "Success: Download limit set to " + value + " KB/s\n";
+            }
+        } else if (key == "sessionCode") {
+            if (network_) {
+                network_->setSessionCode(value);
+                return "Success: Session code updated\n";
+            }
+        } else if (key == "encryption") {
+            bool enable = (value == "true" || value == "1" || value == "enabled");
+            if (network_) {
+                network_->setEncryptionEnabled(enable);
+                return "Success: Encryption " + std::string(enable ? "enabled" : "disabled") + "\n";
+            }
+        } else if (key == "syncEnabled") {
+            bool enable = (value == "true" || value == "1" || value == "enabled");
+            if (daemonCore_) {
+                if (enable) {
+                    daemonCore_->resumeSync();
+                } else {
+                    daemonCore_->pauseSync();
+                }
+                return "Success: Sync " + std::string(enable ? "enabled" : "disabled") + "\n";
+            }
+        } else {
+            return "Error: Unknown config key: " + key + "\n";
+        }
+    } catch (const std::exception& e) {
+        return "Error: Invalid value for " + key + ": " + e.what() + "\n";
+    }
+    
+    return "Error: Failed to set config\n";
 }
 
 } // namespace SentinelFS

@@ -11,6 +11,7 @@ interface ElectronAPI {
   on: (channel: string, callback: (data: any) => void) => void
   off: (channel: string, callback: (data: any) => void) => void
   sendCommand: (command: string) => Promise<{ success: boolean; error?: string }>
+  selectFolder: () => Promise<string | null>
 }
 
 declare global {
@@ -32,10 +33,19 @@ export default function App() {
   const [peers, setPeers] = useState<any[]>([])
   const [syncStatus, setSyncStatus] = useState<any>(null)
   const [files, setFiles] = useState<any[]>([])
+  const [activity, setActivity] = useState<any[]>([])
+  const [transfers, setTransfers] = useState<any[]>([])
+  const [config, setConfig] = useState<any>(null)
   const [lastPeerCount, setLastPeerCount] = useState<number>(0)
 
   const handleLog = (log: string) => {
-    setLogs(prev => [...prev.slice(-99), log]) // Keep last 100 logs
+    // Check if log has timestamp [YYYY-MM-DD HH:MM:SS]
+    // Daemon sends ANSI colors sometimes, strip them for checking
+    const cleanLog = log.replace(/\u001b\[[0-9;]*m/g, '')
+    const hasTimestamp = /^\[\d{4}-\d{2}-\d{2}/.test(cleanLog)
+    
+    const formattedLog = hasTimestamp ? log : `[${new Date().toLocaleTimeString()}] ${log}`
+    setLogs(prev => [...prev.slice(-99), formattedLog]) // Keep last 100 logs
   }
 
   useEffect(() => {
@@ -58,6 +68,12 @@ export default function App() {
                 setSyncStatus(data.payload)
             } else if (data.type === 'FILES') {
                 setFiles(data.payload)
+            } else if (data.type === 'ACTIVITY') {
+                setActivity(data.payload)
+            } else if (data.type === 'TRANSFERS') {
+                setTransfers(data.payload)
+            } else if (data.type === 'CONFIG') {
+                setConfig(data.payload)
             }
         }
 
@@ -194,11 +210,11 @@ export default function App() {
 
         <main className="flex-1 overflow-auto p-8 scroll-smooth">
           <div className="max-w-6xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} />}
+            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
-            {activeTab === 'transfers' && <Transfers metrics={metrics} />}
-            {activeTab === 'settings' && <Settings />}
+            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} />}
+            {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <LogsView logs={logs} />}
           </div>
         </main>
@@ -239,7 +255,6 @@ function LogsView({ logs }: { logs: string[] }) {
                 ) : (
                     logs.map((log, i) => (
                         <div key={i} className="mb-1 break-all hover:bg-white/5 px-2 py-0.5 rounded transition-colors flex gap-2">
-                            <span className="text-blue-500 opacity-50 shrink-0">[{new Date().toLocaleTimeString()}]</span>
                             <span>{log}</span>
                         </div>
                     ))

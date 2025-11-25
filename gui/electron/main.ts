@@ -167,8 +167,18 @@ function connectToDaemon() {
                     win?.webContents.send('daemon-data', { type: 'STATUS', payload: json })
                 } else if (json.totalUploaded !== undefined) {
                     win?.webContents.send('daemon-data', { type: 'METRICS', payload: json })
+                } else if (json.files !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'FILES', payload: json.files })
+                } else if (json.peers !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'PEERS', payload: json.peers })
+                } else if (json.activity !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'ACTIVITY', payload: json.activity })
+                } else if (json.transfers !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'TRANSFERS', payload: json.transfers })
+                } else if (json.tcpPort !== undefined || json.uploadLimit !== undefined) {
+                    win?.webContents.send('daemon-data', { type: 'CONFIG', payload: json })
                 } else if (Array.isArray(json)) {
-                    // Distinguish between PEERS and FILES by checking first element
+                    // Fallback/Legacy: Distinguish between PEERS and FILES by checking first element
                     if (json.length > 0 && json[0].path !== undefined) {
                         win?.webContents.send('daemon-data', { type: 'FILES', payload: json })
                     } else {
@@ -208,16 +218,19 @@ let monitorInterval: NodeJS.Timeout | null = null
 function startMonitoring() {
     if (monitorInterval) clearInterval(monitorInterval)
     
-    // Poll daemon for status every 1 second
+    // Poll daemon for status every 2 seconds
     monitorInterval = setInterval(() => {
         if (daemonSocket && !daemonSocket.destroyed) {
-            // Send multiple commands in sequence
+            // Send multiple commands in sequence with proper spacing
             daemonSocket.write('STATUS_JSON\n')
-            setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 200)
-            setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 400)
-            setTimeout(() => daemonSocket?.write('FILES_JSON\n'), 600)
+            setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 150)
+            setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 300)
+            setTimeout(() => daemonSocket?.write('FILES_JSON\n'), 450)
+            setTimeout(() => daemonSocket?.write('ACTIVITY_JSON\n'), 600)
+            setTimeout(() => daemonSocket?.write('TRANSFERS_JSON\n'), 750)
+            setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 900)
         }
-    }, 1000)
+    }, 2000)
 }
 
 // Quit when all windows are closed, except on macOS.

@@ -83,6 +83,10 @@ private:
     std::string handlePeersJsonCommand();
     std::string handleMetricsJsonCommand();
     std::string handleFilesJsonCommand();
+    std::string handleActivityJsonCommand();
+    std::string handleTransfersJsonCommand();
+    std::string handleConfigJsonCommand();
+    std::string handleSetConfigCommand(const std::string& args);
     
     std::string socketPath_;
     int serverSocket_{-1};

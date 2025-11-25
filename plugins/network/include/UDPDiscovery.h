@@ -58,6 +58,7 @@ private:
     std::string localPeerId_;
     
     int discoverySocket_{-1};
+    int currentPort_{-1};
     std::atomic<bool> running_{false};
     std::thread discoveryThread_;
 };

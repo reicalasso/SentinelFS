@@ -1,4 +1,5 @@
-import { Laptop, Smartphone, MoreHorizontal, Globe, ShieldCheck, Ban, Scan } from 'lucide-react'
+import { Laptop, Smartphone, MoreHorizontal, Globe, ShieldCheck, Ban, Scan, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 const mockPeers = [
     { name: 'MacBook Pro M2', ip: '192.168.1.45', type: 'laptop', status: 'Connected', trusted: true, lastSeen: 'Now' },
@@ -8,6 +9,22 @@ const mockPeers = [
 ]
 
 export function Peers({ peers }: { peers?: any[] }) {
+  const [isDiscovering, setIsDiscovering] = useState(false)
+  const [discoverySettings, setDiscoverySettings] = useState({ udp: true, tcp: false })
+
+  const handleScan = async () => {
+    if (window.api) {
+      setIsDiscovering(true)
+      await window.api.sendCommand('DISCOVER')
+      // Reset discovering state after 3 seconds
+      setTimeout(() => setIsDiscovering(false), 3000)
+    }
+  }
+
+  const toggleSetting = (key: 'udp' | 'tcp') => {
+    setDiscoverySettings(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
   // Map backend peers to UI format or use mock if undefined/empty
   const displayPeers = (peers && peers.length > 0) ? peers.map(p => ({
       name: p.id ? `Device ${p.id.substring(0, 8)}` : 'Unknown Device',
@@ -25,9 +42,13 @@ export function Peers({ peers }: { peers?: any[] }) {
                 <h2 className="text-lg font-semibold">Network Mesh</h2>
                 <p className="text-sm text-muted-foreground">Manage connected devices and discovery settings</p>
             </div>
-            <button className="flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                <Scan className="w-4 h-4" />
-                Scan for Devices
+            <button 
+                onClick={handleScan}
+                disabled={isDiscovering}
+                className={`flex items-center gap-2 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDiscovering ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scan className="w-4 h-4" />}
+                {isDiscovering ? 'Scanning...' : 'Scan for Devices'}
             </button>
         </div>
 
@@ -98,8 +119,11 @@ export function Peers({ peers }: { peers?: any[] }) {
                     <div className="font-medium text-sm">Local Network Discovery (UDP)</div>
                     <div className="text-xs text-muted-foreground">Automatically find peers on the same Wi-Fi</div>
                 </div>
-                <div className="w-10 h-5 bg-green-600 rounded-full relative cursor-pointer">
-                    <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+                <div 
+                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${discoverySettings.udp ? 'bg-green-600' : 'bg-secondary'}`}
+                    onClick={() => toggleSetting('udp')}
+                >
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${discoverySettings.udp ? 'right-1' : 'left-1'}`}></div>
                 </div>
             </div>
             <div className="flex items-center justify-between py-3">
@@ -107,8 +131,11 @@ export function Peers({ peers }: { peers?: any[] }) {
                     <div className="font-medium text-sm">Global Relay (TCP)</div>
                     <div className="text-xs text-muted-foreground">Connect to peers over the internet when direct connection fails</div>
                 </div>
-                <div className="w-10 h-5 bg-secondary rounded-full relative cursor-pointer">
-                    <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+                <div 
+                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${discoverySettings.tcp ? 'bg-green-600' : 'bg-secondary'}`}
+                    onClick={() => toggleSetting('tcp')}
+                >
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${discoverySettings.tcp ? 'right-1' : 'left-1'}`}></div>
                 </div>
             </div>
         </div>

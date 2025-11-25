@@ -23,7 +23,19 @@ UDPDiscovery::~UDPDiscovery() {
 bool UDPDiscovery::startDiscovery(int port) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
-    
+
+    if (running_) {
+        if (currentPort_ == port) {
+            logger.log(LogLevel::DEBUG, "UDP discovery already running on port " + std::to_string(port), "UDPDiscovery");
+            return true;
+        }
+
+        logger.log(LogLevel::INFO,
+                   "Restarting UDP discovery on new port " + std::to_string(port),
+                   "UDPDiscovery");
+        stopDiscovery();
+    }
+
     logger.log(LogLevel::INFO, "Starting UDP discovery on port " + std::to_string(port), "UDPDiscovery");
     
     discoverySocket_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -65,6 +77,7 @@ bool UDPDiscovery::startDiscovery(int port) {
     }
 
     running_ = true;
+    currentPort_ = port;
     discoveryThread_ = std::thread(&UDPDiscovery::discoveryLoop, this);
     
     logger.log(LogLevel::INFO, "UDP discovery listening on port " + std::to_string(port), "UDPDiscovery");
@@ -84,6 +97,7 @@ void UDPDiscovery::stopDiscovery() {
         close(discoverySocket_);
         discoverySocket_ = -1;
     }
+    currentPort_ = -1;
     
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();

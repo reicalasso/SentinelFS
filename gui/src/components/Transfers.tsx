@@ -1,17 +1,6 @@
 import { ArrowDown, ArrowUp, CheckCircle2, Pause, Play, X, Download, Upload, Activity } from 'lucide-react'
 
-const activeTransfers = [
-    { file: 'Backup_2024.zip', size: '4.2 GB', progress: 45, speed: '12 MB/s', type: 'download', peer: 'MacBook Pro' },
-    { file: 'video_render_final.mov', size: '850 MB', progress: 78, speed: '8.5 MB/s', type: 'upload', peer: 'Ubuntu Server' },
-]
-
-const transferHistory = [
-    { file: 'notes.txt', size: '2 KB', time: '2 mins ago', status: 'Completed', type: 'download' },
-    { file: 'presentation.pptx', size: '14 MB', time: '15 mins ago', status: 'Completed', type: 'upload' },
-    { file: 'dataset_large.csv', size: '1.2 GB', time: '1 hour ago', status: 'Failed', type: 'download' },
-]
-
-export function Transfers({ metrics }: { metrics?: any }) {
+export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: any[] }) {
   const formatSize = (bytes: number) => {
     if (!bytes) return '0 B'
     if (bytes < 1024) return bytes + ' B'
@@ -23,6 +12,7 @@ export function Transfers({ metrics }: { metrics?: any }) {
   const totalUploaded = metrics?.totalUploaded || 0
   const totalDownloaded = metrics?.totalDownloaded || 0
   const filesSynced = metrics?.filesSynced || 0
+  const activeTransfers = transfers && transfers.length > 0 ? transfers : []
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -69,7 +59,12 @@ export function Transfers({ metrics }: { metrics?: any }) {
 
         {/* Active Transfers */}
         <div className="space-y-4">
-            {activeTransfers.map((transfer, i) => (
+            {activeTransfers.length === 0 && (
+                <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground">
+                    <p>No active transfers</p>
+                </div>
+            )}
+            {activeTransfers.map((transfer: any, i: number) => (
                 <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
@@ -114,25 +109,8 @@ export function Transfers({ metrics }: { metrics?: any }) {
         {/* History */}
         <div>
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4 mt-8">Recent History</h3>
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="divide-y divide-border">
-                    {transferHistory.map((item, i) => (
-                        <div key={i} className="p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                {item.status === 'Completed' ? (
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                ) : (
-                                    <X className="w-4 h-4 text-red-500" />
-                                )}
-                                <div>
-                                    <div className="font-medium text-sm">{item.file}</div>
-                                    <div className="text-xs text-muted-foreground">{item.size} • {item.type}</div>
-                                </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">{item.time}</div>
-                        </div>
-                    ))}
-                </div>
+            <div className="bg-card border border-border rounded-xl overflow-hidden text-center text-muted-foreground p-6">
+                <p>No recent transfer history</p>
             </div>
         </div>
     </div>

@@ -10,6 +10,8 @@ const mockFolders = [
 
 export function Files({ files }: { files?: any[] }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterType, setFilterType] = useState('All Types')
   
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
@@ -75,18 +77,34 @@ export function Files({ files }: { files?: any[] }) {
   }
   
   // Organize files by parent folder
-  const displayFiles = (files && files.length > 0) ? files : []
-  const rootItems = displayFiles.filter((f: any) => !f.parent)
+  const isFiltering = searchQuery.length > 0 || filterType !== 'All Types'
+  
+  const filteredFiles = (files || []).filter((f: any) => {
+    const name = f.path.split('/').pop() || f.path
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = filterType === 'All Types' 
+        ? true 
+        : filterType === 'Folders' ? f.isFolder 
+        : !f.isFolder
+    return matchesSearch && matchesType
+  })
+
+  const displayFiles = isFiltering ? filteredFiles : (files && files.length > 0) ? files : []
+  // If filtering, show all matches as root items. If not, show only actual roots.
+  const rootItems = isFiltering ? displayFiles : displayFiles.filter((f: any) => !f.parent)
+  
   const childrenMap = new Map<string, any[]>()
   
-  displayFiles.forEach((f: any) => {
-    if (f.parent) {
-      if (!childrenMap.has(f.parent)) {
-        childrenMap.set(f.parent, [])
+  if (!isFiltering) {
+    displayFiles.forEach((f: any) => {
+      if (f.parent) {
+        if (!childrenMap.has(f.parent)) {
+          childrenMap.set(f.parent, [])
+        }
+        childrenMap.get(f.parent)!.push(f)
       }
-      childrenMap.get(f.parent)!.push(f)
-    }
-  })
+    })
+  }
   
   const hasRealData = files && files.length > 0
   return (
@@ -112,10 +130,16 @@ export function Files({ files }: { files?: any[] }) {
             <input 
                 type="text" 
                 placeholder="Search files..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-secondary/50 border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
             />
         </div>
-        <select className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-sm outline-none">
+        <select 
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="bg-secondary/50 border border-border rounded-lg px-4 py-2 text-sm outline-none"
+        >
             <option>All Types</option>
             <option>Folders</option>
             <option>Files</option>
@@ -141,19 +165,22 @@ export function Files({ files }: { files?: any[] }) {
                 const itemName = item.path.split('/').pop() || item.path
                 const isExpanded = expandedFolders.has(item.path)
                 const children = childrenMap.get(item.path) || []
+                const canExpand = !isFiltering && item.isFolder
                 
                 return (
                     <div key={i}>
                         {/* Root item (folder or file) */}
                         <div 
-                            className="grid grid-cols-12 gap-4 p-4 hover:bg-secondary/30 transition-colors items-center group cursor-pointer"
-                            onClick={() => item.isFolder && toggleFolder(item.path)}
+                            className={`grid grid-cols-12 gap-4 p-4 hover:bg-secondary/30 transition-colors items-center group ${canExpand ? 'cursor-pointer' : ''}`}
+                            onClick={() => canExpand && toggleFolder(item.path)}
                         >
                             <div className="col-span-5 flex items-center gap-3">
-                                {item.isFolder && (
+                                {canExpand ? (
                                     <button className="p-1 hover:bg-secondary rounded">
                                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                     </button>
+                                ) : (
+                                    <div className="w-6"></div> // Spacer
                                 )}
                                 <div className={`p-2 rounded-lg ${item.isFolder ? 'bg-blue-500/10 text-blue-500' : 'bg-purple-500/10 text-purple-500'}`}>
                                     {item.isFolder ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
@@ -173,18 +200,20 @@ export function Files({ files }: { files?: any[] }) {
                                 }`}>
                                     {item.syncStatus}
                                 </span>
-                                <button 
-                                    onClick={(e) => handleRemoveWatch(item.path, e)}
-                                    className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                    title="Stop watching"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                {!isFiltering && !item.parent && (
+                                    <button 
+                                        onClick={(e) => handleRemoveWatch(item.path, e)}
+                                        className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Stop watching"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         
                         {/* Children (shown when expanded) */}
-                        {item.isFolder && isExpanded && children.map((child: any, j: number) => {
+                        {canExpand && isExpanded && children.map((child: any, j: number) => {
                             const childName = child.path.split('/').pop() || child.path
                             const isChildExpanded = expandedFolders.has(child.path)
                             const grandchildren = childrenMap.get(child.path) || []

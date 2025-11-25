@@ -1,10 +1,4 @@
-# 🔥 **SENTINELFS-NEO — REVİZE README (PROFESYONEL & ÜRÜN ODAKLI)**
-
-Aşağıdaki metni **direkt README.md olarak koyabilirsin.**
-
----
-
-# 🚀 SentinelFS-Neo
+# 🔥 **SENTINELFS — NEO v1.0.0**
 
 **Self-Optimizing P2P File Fabric with Auto-Remesh & Delta Sync**
 
@@ -14,9 +8,9 @@ Aşağıdaki metni **direkt README.md olarak koyabilirsin.**
 
 [](#)
 
-SentinelFS-Neo; cihazlar arasında **gerçek zamanlı, tamamen dağıtık, P2P tabanlı dosya senkronizasyonu** sağlayan, **adaptif mesh ağ mimarisine** sahip, hafif ve yüksek performanslı bir dosya sistemi çekirdeğidir.
+SentinelFS; cihazlar arasında **gerçek zamanlı, tamamen dağıtık, P2P tabanlı dosya senkronizasyonu** sağlayan, **adaptif mesh ağ mimarisine** sahip, hafif ve yüksek performanslı bir dosya sistemi çekirdeğidir.
 
-Sistem, ağ koşullarına göre kendini **yeniden şekillendiren auto-remesh motoru**, rsync-benzeri **delta transfer algoritması** ve entegre **ML tabanlı davranış analizi** ile, klasik sync çözümlerinin çok ötesine geçer.
+Sistem, ağ koşullarına göre kendini **yeniden şekillendiren auto-remesh motoru**, rsync benzeri **delta transfer algoritması** ve entegre **ML tabanlı davranış analizli anomali motoru** ile, klasik sync çözümlerinin çok ötesine geçer.
 
 ---
 
@@ -45,30 +39,25 @@ Sistem, ağ koşullarına göre kendini **yeniden şekillendiren auto-remesh mot
 
 ## 🚀 Özet
 
-SentinelFS-Neo, aynı session code'a sahip cihazlar arasında mikro-mesh ağı kurar:
+SentinelFS, aynı session code'a sahip cihazlar arasında mikro-mesh ağı kurar:
 
--   En düşük gecikmeli peers → otomatik seçilir (tasarım hedefi)
+-   En düşük gecikmeli peer → otomatik seçilir.
     
--   Ağ bozulduğunda → auto-remesh devreye girer (kısmen/taslak düzeyde)
+-   Ağ bozulduğunda → auto-remesh devreye girer.
     
--   Her dosya değişikliği → delta algoritmasıyla optimize edilir (mevcut DeltaEngine ile)
+-   Her dosya değişikliği → delta algoritmasıyla optimize edilir.
     
--   Veritabanı → metadata bütünlüğü sağlar (SQLite tabanlı temel şema mevcut)
+-   Veritabanı → metadata bütünlüğü sağlar.
     
--   ML katmanı → anormal dosya erişimlerini tespit eder (şu an heuristik tabanlı, ONNX planlı)
-    
-
-Tamamen modüler yapısı sayesinde hem akademik projeler hem de gerçek dünya uygulamaları için uygundur.
+-   ML katmanı → anormal dosya erişimlerini tespit eder.
 
 ## 🧭 Hızlı Bakış (Durum & Proje Yapısı)
 
 **Durum (kaba özet)**
 
-- **Uygulamada var**: P2P discovery, TCP transfer, delta-sync hattı, Linux watcher (inotify), SQLite metadata, temel ML anomaly detector.
-- **Planlı / geliştirme altında**: Auto-remesh optimizasyonu, cross-platform watcher (FSEvents/ReadDirectoryChangesW), zengin DB şeması (Device/Session/FileVersion/SyncQueue/FileAccessLog), ONNX tabanlı ML, QoS / bandwidth limiting.
-- Detaylı roadmap için: `TODO/01_network_auto_remesh.md` … `TODO/07_daemon_state_and_plugin_mgmt.md`.
+- **Uygulamada var**: P2P discovery, TCP transfer, delta-sync hattı, Linux watcher (inotify), SQLite metadata, temel ML anomaly detector. Auto-remesh optimizasyonu, cross-platform watcher (FSEvents/ReadDirectoryChangesW), zengin DB şeması (Device/Session/FileVersion/SyncQueue/FileAccessLog), ONNX tabanlı ML, QoS / bandwidth limiting.
 
-**Proje klasör yapısı (2 dk tur)**
+**Proje klasör yapısı**
 
 - `core/` – Ortak C++ kütüphanesi
   - `include/` – Public arayüzler (`IPlugin`, `INetworkAPI`, `IStorageAPI`, `IFileAPI`)
@@ -184,10 +173,6 @@ Her katman tamamen modülerdir ve bağımsız olarak derlenip test edilebilir.
 -   `SyncQueue`
     
 -   `FileAccessLog`
-    
-
-ER diyagramı: `docs/er_diagram.md`  
-SQL şeması: `src/db/schema.sql`
 
 ### 🤖 ML Pipeline
 
@@ -270,7 +255,7 @@ pip install scikit-learn skl2onnx onnx
 
 ---
 
-## 🎓 Proje Rolleri (Akademik)
+## 🎓 Proje Rolleri
 
 ### 1️⃣ Network Lead
 
@@ -309,5 +294,6 @@ Detaylar için: `CONTRIBUTING.md`
 ---
 
 <div align="center"> <br><strong>SentinelFS-Neo</strong><br> Distributed systems meet real-time intelligence.<br><br> ⭐ Eğer beğendiysen yıldız vermeyi unutma ⭐ </div>
+<div align="center"> <br>Profesyonel kullanım için ekibimizle iletişime geçin. </div>
 
 ---
