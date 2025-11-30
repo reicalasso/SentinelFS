@@ -44,20 +44,24 @@ export default function App() {
 
   const addToast = useCallback((message: string) => {
     setToasts(prev => [...prev.slice(-4), message])
+    // Auto-remove toast after 5 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t !== message))
+    }, 5000)
   }, [])
 
   const clearToasts = useCallback(() => {
     setToasts([])
   }, [])
 
-  const handleLog = (log: string) => {
+  const handleLog = useCallback((log: string) => {
     const cleanLog = log.replace(/\u001b\[[0-9;]*m/g, '')
     const hasTimestamp = /^\[\d{4}-\d{2}-\d{2}/.test(cleanLog)
     const formattedLog = hasTimestamp ? log : `[${new Date().toLocaleTimeString()}] ${log}`
     if (lastLogRef.current === formattedLog) return
     lastLogRef.current = formattedLog
     setLogs(prev => [...prev.slice(-99), formattedLog])
-  }
+  }, [])
 
   const handleStatus = useCallback((newStatus: any) => {
     setStatus(newStatus)
@@ -98,7 +102,7 @@ export default function App() {
       window.api.off('daemon-log', handleLog)
       window.api.off('daemon-data', handleData)
     }
-  }, [handleStatus, handleData])
+  }, [handleStatus, handleLog, handleData])
 
   const sendCommand = async (cmd: string) => {
     if (window.api) {

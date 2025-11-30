@@ -347,24 +347,24 @@ Zaten implement edilmiş ✅, ancak toast timeout eksik.
 | 6 | 🟠 P2 | Large file OOM | DeltaEngine.cpp | 2 saat | [x] ✅ |
 | 7 | 🟠 P2 | Metrics lock | EventBus.cpp | 30 dk | [x] ✅ |
 | 8 | 🟠 P2 | Thread pool batch | DeltaEngine.cpp | 1 saat | [x] ✅ |
-| 9 | 🟡 P3 | Constants file | Tüm proje | 1 saat | [ ] |
-| 10 | 🟡 P3 | RAII socket | TCPHandler.cpp | 30 dk | [ ] |
-| 11 | 🟡 P3 | Error handling | Tüm proje | 2 saat | [ ] |
+| 9 | 🟡 P3 | Constants file | Tüm proje | 1 saat | [x] ✅ |
+| 10 | 🟡 P3 | RAII socket | TCPHandler.cpp | 30 dk | [x] ✅ |
+| 11 | 🟡 P3 | Error handling | Tüm proje | 2 saat | [x] ✅ |
 | 12 | 🔵 P4 | Offline queue | Yeni | 4 saat | [ ] |
 | 13 | 🔵 P4 | Health endpoint | Yeni | 1 saat | [ ] |
 | 14 | 🔵 P4 | Integration tests | tests/ | 4 saat | [ ] |
 | 15 | 🔵 P4 | CI/CD | .github/ | 2 saat | [ ] |
-| 16 | 🟡 P3 | useCallback | App.tsx | 15 dk | [ ] |
-| 17 | 🟡 P3 | Toast timeout | App.tsx | 10 dk | [ ] |
+| 16 | 🟡 P3 | useCallback | App.tsx | 15 dk | [x] ✅ |
+| 17 | 🟡 P3 | Toast timeout | App.tsx | 10 dk | [x] ✅ |
 
 ---
 
 ## 📈 İLERLEME TAKİBİ
 
 - **Toplam Sorun:** 17
-- **Tamamlanan:** 8 ✅
+- **Tamamlanan:** 13 ✅
 - **Devam Eden:** 0
-- **Bekleyen:** 9
+- **Bekleyen:** 4 (P4 - Yeni Özellikler)
 
 **Tahmini Toplam Süre:** ~20 saat
 
@@ -383,6 +383,11 @@ Zaten implement edilmiş ✅, ancak toast timeout eksik.
 | 2025-12-01 | P2 #6: Streaming delta apply for large files (DeltaEngine.cpp) |
 | 2025-12-01 | P2 #7: Atomic metrics counters (EventBus) |
 | 2025-12-01 | P2 #8: Batch processing for signature calculation (DeltaEngine.cpp) |
+| 2025-12-01 | P3 #9: Constants.h - Centralized configuration constants |
+| 2025-12-01 | P3 #10: SocketGuard.h - RAII socket wrapper |
+| 2025-12-01 | P3 #11: Result.h - Consistent error handling types |
+| 2025-12-01 | P3 #16: useCallback for handleLog (App.tsx) |
+| 2025-12-01 | P3 #17: Toast auto-remove timeout (App.tsx) |
 
 ---
 
