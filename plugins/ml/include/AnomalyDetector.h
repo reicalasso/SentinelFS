@@ -43,6 +43,16 @@ public:
      */
     size_t getActivityCount() const { return recentActivity_.size(); }
 
+    /**
+     * @brief Get current anomaly score (0.0 = normal, 1.0 = critical)
+     */
+    double getAnomalyScore() const;
+
+    /**
+     * @brief Get last anomaly type (empty if none)
+     */
+    const std::string& getLastAnomalyType() const { return lastAnomalyType_; }
+
 private:
     std::vector<FileActivity> recentActivity_;
     AlertCallback alertCallback_;
@@ -60,6 +70,9 @@ private:
      * @brief Check for ransomware-like behavior
      */
     void checkForRansomware();
+
+    std::string lastAnomalyType_;
+    double currentScore_{0.0};
 };
 
 } // namespace SentinelFS

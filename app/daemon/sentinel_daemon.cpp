@@ -193,7 +193,8 @@ int main(int argc, char* argv[]) {
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
         daemon.getFilesystemPlugin(),
-        &daemon
+        &daemon,
+        &autoRemesh
     );
     
     // Connect sync enable/disable to event handlers

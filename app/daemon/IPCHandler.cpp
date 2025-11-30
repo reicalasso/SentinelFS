@@ -3,6 +3,7 @@
 #include "SessionCode.h"
 #include "MetricsCollector.h"
 #include "PluginManager.h"
+#include "AutoRemeshManager.h"
 #include "../../plugins/storage/include/SQLiteHandler.h"
 #include <iostream>
 #include <sstream>
@@ -14,6 +15,7 @@
 #include <sys/un.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sqlite3.h>
 #include <ctime>
 #include <filesystem>
@@ -26,12 +28,14 @@ IPCHandler::IPCHandler(const std::string& socketPath,
                        INetworkAPI* network,
                        IStorageAPI* storage,
                        IFileAPI* filesystem,
-                       DaemonCore* daemonCore)
+                       DaemonCore* daemonCore,
+                       AutoRemeshManager* autoRemesh)
     : socketPath_(socketPath)
     , network_(network)
     , storage_(storage)
     , filesystem_(filesystem)
     , daemonCore_(daemonCore)
+    , autoRemesh_(autoRemesh)
 {
 }
 
@@ -759,7 +763,45 @@ std::string IPCHandler::handleStatusJsonCommand() {
     ss << "\"syncStatus\": \"" << (daemonCore_ && daemonCore_->isSyncEnabled() ? "ENABLED" : "PAUSED") << "\",";
     ss << "\"encryption\": " << (network_->isEncryptionEnabled() ? "true" : "false") << ",";
     ss << "\"sessionCode\": \"" << network_->getSessionCode() << "\",";
-    ss << "\"peerCount\": " << storage_->getAllPeers().size();
+    ss << "\"peerCount\": " << storage_->getAllPeers().size() << ",";
+    
+    // Anomaly report
+    auto anomaly = getAnomalyReport();
+    ss << "\"anomaly\": {";
+    ss << "\"score\": " << anomaly.score << ",";
+    ss << "\"lastType\": \"" << anomaly.lastType << "\",";
+    ss << "\"lastDetectedAt\": " << anomaly.lastDetectedAt;
+    ss << "},";
+    
+    // Peer health reports with degradation flags
+    auto peerHealth = computePeerHealthReports();
+    ss << "\"peerHealth\": [";
+    for (size_t i = 0; i < peerHealth.size(); ++i) {
+        const auto& ph = peerHealth[i];
+        ss << "{";
+        ss << "\"peerId\": \"" << ph.peerId << "\",";
+        ss << "\"avgRttMs\": " << ph.avgRttMs << ",";
+        ss << "\"jitterMs\": " << ph.jitterMs << ",";
+        ss << "\"packetLossPercent\": " << ph.packetLossPercent << ",";
+        ss << "\"degraded\": " << (ph.degraded ? "true" : "false");
+        ss << "}";
+        if (i < peerHealth.size() - 1) ss << ",";
+    }
+    ss << "],";
+    
+    // Health summary
+    auto health = computeHealthSummary();
+    ss << "\"health\": {";
+    ss << "\"diskTotalBytes\": " << health.diskTotalBytes << ",";
+    ss << "\"diskFreeBytes\": " << health.diskFreeBytes << ",";
+    ss << "\"diskUsagePercent\": " << health.diskUsagePercent << ",";
+    ss << "\"dbConnected\": " << (health.dbConnected ? "true" : "false") << ",";
+    ss << "\"dbSizeBytes\": " << health.dbSizeBytes << ",";
+    ss << "\"activeWatcherCount\": " << health.activeWatcherCount << ",";
+    ss << "\"healthy\": " << (health.healthy ? "true" : "false") << ",";
+    ss << "\"statusMessage\": \"" << health.statusMessage << "\"";
+    ss << "}";
+    
     ss << "}\n";
     return ss.str();
 }
@@ -1453,6 +1495,140 @@ std::string IPCHandler::handleUnblockPeerCommand(const std::string& args) {
     }
     
     return "Error: Failed to unblock peer\n";
+}
+
+HealthSummary IPCHandler::computeHealthSummary() const {
+    HealthSummary summary;
+    
+    // Disk usage - use root filesystem as fallback
+    std::string watchDir = "/";
+    if (daemonCore_) {
+        std::string configDir = daemonCore_->getConfig().watchDirectory;
+        // Expand tilde if present
+        if (!configDir.empty() && configDir[0] == '~') {
+            const char* home = std::getenv("HOME");
+            if (home) {
+                watchDir = std::string(home) + configDir.substr(1);
+            }
+        } else if (!configDir.empty()) {
+            watchDir = configDir;
+        }
+    }
+    
+    struct statvfs statBuf;
+    if (statvfs(watchDir.c_str(), &statBuf) == 0) {
+        summary.diskTotalBytes = statBuf.f_blocks * statBuf.f_frsize;
+        summary.diskFreeBytes = statBuf.f_bavail * statBuf.f_frsize;
+        if (summary.diskTotalBytes > 0) {
+            summary.diskUsagePercent = 100.0 * (1.0 - static_cast<double>(summary.diskFreeBytes) / summary.diskTotalBytes);
+        }
+    }
+    
+    // Database status
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        summary.dbConnected = (db != nullptr);
+        
+        if (db) {
+            // Get DB file size via pragma database_list
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db, "PRAGMA database_list", -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* dbPathRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+                    if (dbPathRaw) {
+                        std::string dbPathStr = dbPathRaw;
+                        sqlite3_finalize(stmt);
+                        stmt = nullptr;
+                        std::error_code ec;
+                        auto size = std::filesystem::file_size(dbPathStr, ec);
+                        if (!ec) {
+                            summary.dbSizeBytes = static_cast<int64_t>(size);
+                        }
+                    }
+                }
+                if (stmt) {
+                    sqlite3_finalize(stmt);
+                }
+            }
+        }
+    }
+    
+    // Watcher count - count active watched folders from DB
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        if (db) {
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM watched_folders WHERE status = 'active'", -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    summary.activeWatcherCount = sqlite3_column_int(stmt, 0);
+                }
+                sqlite3_finalize(stmt);
+            }
+        }
+    }
+    
+    // Overall health assessment
+    summary.healthy = true;
+    summary.statusMessage = "OK";
+    
+    if (summary.diskUsagePercent > 90.0) {
+        summary.healthy = false;
+        summary.statusMessage = "Disk usage critical";
+    } else if (!summary.dbConnected) {
+        summary.healthy = false;
+        summary.statusMessage = "Database disconnected";
+    } else if (summary.activeWatcherCount == 0) {
+        summary.statusMessage = "No active watchers";
+    }
+    
+    return summary;
+}
+
+std::vector<PeerHealthReport> IPCHandler::computePeerHealthReports() const {
+    std::vector<PeerHealthReport> reports;
+    
+    if (!autoRemesh_) {
+        return reports;
+    }
+    
+    auto metrics = autoRemesh_->snapshotMetrics();
+    reports.reserve(metrics.size());
+    
+    for (const auto& m : metrics) {
+        PeerHealthReport report;
+        report.peerId = m.peerId;
+        report.avgRttMs = m.avgRttMs;
+        report.jitterMs = m.jitterMs;
+        report.packetLossPercent = m.packetLossPercent;
+        
+        // Check degradation thresholds
+        report.degraded = (m.jitterMs > healthThresholds_.jitterThresholdMs) ||
+                          (m.packetLossPercent > healthThresholds_.packetLossThresholdPercent) ||
+                          (m.avgRttMs > healthThresholds_.rttThresholdMs);
+        
+        reports.push_back(std::move(report));
+    }
+    
+    return reports;
+}
+
+AnomalyReport IPCHandler::getAnomalyReport() const {
+    AnomalyReport report;
+    
+    // Get anomaly data from MetricsCollector security metrics
+    auto& metrics = MetricsCollector::instance();
+    auto secMetrics = metrics.getSecurityMetrics();
+    
+    // Use anomalies detected count as a proxy for score
+    // In a full implementation, this would query the ML plugin directly
+    if (secMetrics.anomaliesDetected > 0) {
+        // Simple score: cap at 1.0, scale by recent anomaly count
+        report.score = std::min(1.0, static_cast<double>(secMetrics.anomaliesDetected) / 10.0);
+        report.lastType = "ANOMALY_DETECTED";
+        report.lastDetectedAt = std::time(nullptr);
+    }
+    
+    return report;
 }
 
 } // namespace SentinelFS

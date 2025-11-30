@@ -1,4 +1,4 @@
-import { Activity, ArrowDown, ArrowUp, HardDrive, Shield, Wifi, Zap, Network } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, HardDrive, Shield, Wifi, Zap, Network, AlertTriangle, Database, Eye } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useState, useEffect } from 'react'
 
@@ -10,6 +10,12 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
   const totalUploadedMB = metrics?.totalUploaded ? (metrics.totalUploaded / (1024 * 1024)).toFixed(2) : '0'
   const totalDownloadedMB = metrics?.totalDownloaded ? (metrics.totalDownloaded / (1024 * 1024)).toFixed(2) : '0'
   const recentActivity = activity || []
+  
+  // Health data from syncStatus
+  const health = syncStatus?.health
+  const anomaly = syncStatus?.anomaly
+  const peerHealth = syncStatus?.peerHealth || []
+  const degradedPeers = peerHealth.filter((p: any) => p.degraded).length
   
   // Track network traffic over time
   useEffect(() => {
@@ -184,6 +190,49 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           </div>
         </div>
       </div>
+
+      {/* Health Summary Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <HealthCard
+          title="System Health"
+          icon={<Shield className="w-5 h-5" />}
+          status={health?.healthy ? 'success' : 'warning'}
+          value={health?.statusMessage || 'Unknown'}
+          sub={health ? `${health.activeWatcherCount} active watchers` : 'Loading...'}
+        />
+        <HealthCard
+          title="Disk Usage"
+          icon={<HardDrive className="w-5 h-5" />}
+          status={health?.diskUsagePercent > 90 ? 'error' : health?.diskUsagePercent > 75 ? 'warning' : 'success'}
+          value={health ? `${health.diskUsagePercent.toFixed(1)}%` : '--'}
+          sub={health ? `${(health.diskFreeBytes / (1024 * 1024 * 1024)).toFixed(1)} GB free` : 'Loading...'}
+        />
+        <HealthCard
+          title="Database"
+          icon={<Database className="w-5 h-5" />}
+          status={health?.dbConnected ? 'success' : 'error'}
+          value={health?.dbConnected ? 'Connected' : 'Disconnected'}
+          sub={health ? `${(health.dbSizeBytes / 1024).toFixed(0)} KB` : 'Loading...'}
+        />
+        <HealthCard
+          title="Anomaly Detection"
+          icon={<AlertTriangle className="w-5 h-5" />}
+          status={anomaly?.score > 0.5 ? 'error' : anomaly?.score > 0 ? 'warning' : 'success'}
+          value={anomaly?.score > 0 ? `Score: ${(anomaly.score * 100).toFixed(0)}%` : 'Normal'}
+          sub={anomaly?.lastType || 'No anomalies detected'}
+        />
+      </div>
+
+      {/* Degraded Peers Warning */}
+      {degradedPeers > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500" />
+          <div>
+            <div className="font-medium text-amber-500">{degradedPeers} Degraded Peer{degradedPeers > 1 ? 's' : ''}</div>
+            <div className="text-sm text-muted-foreground">High jitter or packet loss detected. Check network conditions.</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -216,6 +265,32 @@ function StatCard({ title, value, sub, icon, status, trend }: any) {
             {sub}
         </p>
       </div>
+    </div>
+  )
+}
+
+function HealthCard({ title, icon, status, value, sub }: any) {
+  const statusColors = {
+    success: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    warning: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+    error: 'text-red-500 bg-red-500/10 border-red-500/20',
+  }
+  const iconColors = {
+    success: 'text-emerald-500',
+    warning: 'text-amber-500',
+    error: 'text-red-500',
+  }
+  
+  return (
+    <div className={`bg-card/50 backdrop-blur-sm border rounded-xl p-4 shadow-sm ${statusColors[status as keyof typeof statusColors] || 'border-border/50'}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className={iconColors[status as keyof typeof iconColors] || 'text-muted-foreground'}>
+          {icon}
+        </div>
+        <span className="text-sm font-medium text-muted-foreground">{title}</span>
+      </div>
+      <div className="text-lg font-semibold">{value}</div>
+      <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   )
 }

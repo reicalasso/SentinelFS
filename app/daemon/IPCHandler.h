@@ -8,8 +8,12 @@
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
+#include "HealthReport.h"
 
-namespace SentinelFS { class DaemonCore; }
+namespace SentinelFS {
+    class DaemonCore;
+    class AutoRemeshManager;
+}
 
 namespace SentinelFS {
 
@@ -32,7 +36,8 @@ public:
                INetworkAPI* network,
                IStorageAPI* storage,
                IFileAPI* filesystem,
-               DaemonCore* daemonCore = nullptr);
+               DaemonCore* daemonCore = nullptr,
+               AutoRemeshManager* autoRemesh = nullptr);
     
     ~IPCHandler();
     
@@ -112,6 +117,17 @@ private:
     
     // Callbacks
     std::function<void(bool)> syncEnabledCallback_;
+    
+    // Auto-remesh manager for peer health metrics
+    AutoRemeshManager* autoRemesh_;
+    
+    // Health thresholds
+    HealthThresholds healthThresholds_;
+    
+    // Helper methods for health reporting
+    HealthSummary computeHealthSummary() const;
+    std::vector<PeerHealthReport> computePeerHealthReports() const;
+    AnomalyReport getAnomalyReport() const;
 };
 
 } // namespace SentinelFS
