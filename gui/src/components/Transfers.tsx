@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, CheckCircle2, Pause, Play, X, Download, Upload, Activity } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Pause, Play, X, Download, Upload, Activity, ArrowRightLeft } from 'lucide-react'
 
 export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: any[] }) {
   const formatSize = (bytes: number) => {
@@ -15,43 +15,49 @@ export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: a
   const activeTransfers = transfers && transfers.length > 0 ? transfers : []
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
         <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Transfer Activity</h2>
+            <div>
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <ArrowRightLeft className="w-5 h-5 text-primary" />
+                    Transfer Activity
+                </h2>
+                <p className="text-sm text-muted-foreground">Monitor file sync progress and history</p>
+            </div>
         </div>
 
         {/* Transfer Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500/10">
-                        <Download className="w-5 h-5 text-green-500" />
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-emerald-500/20 transition-colors group">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors text-emerald-500">
+                        <Download className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-muted-foreground">Total Downloaded</p>
-                        <p className="text-xl font-semibold">{formatSize(totalDownloaded)}</p>
+                        <p className="text-sm text-muted-foreground font-medium">Total Downloaded</p>
+                        <p className="text-2xl font-bold tracking-tight">{formatSize(totalDownloaded)}</p>
                     </div>
                 </div>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                        <Upload className="w-5 h-5 text-blue-500" />
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-blue-500/20 transition-colors group">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors text-blue-500">
+                        <Upload className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-muted-foreground">Total Uploaded</p>
-                        <p className="text-xl font-semibold">{formatSize(totalUploaded)}</p>
+                        <p className="text-sm text-muted-foreground font-medium">Total Uploaded</p>
+                        <p className="text-2xl font-bold tracking-tight">{formatSize(totalUploaded)}</p>
                     </div>
                 </div>
             </div>
-            <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/10">
-                        <Activity className="w-5 h-5 text-purple-500" />
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-violet-500/20 transition-colors group">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors text-violet-500">
+                        <Activity className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-sm text-muted-foreground">Files Synced</p>
-                        <p className="text-xl font-semibold">{filesSynced}</p>
+                        <p className="text-sm text-muted-foreground font-medium">Files Synced</p>
+                        <p className="text-2xl font-bold tracking-tight">{filesSynced}</p>
                     </div>
                 </div>
             </div>
@@ -59,16 +65,20 @@ export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: a
 
         {/* Active Transfers */}
         <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Active Transfers</h3>
             {activeTransfers.length === 0 && (
-                <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground">
-                    <p>No active transfers</p>
+                <div className="bg-card/30 border border-dashed border-border/50 rounded-xl p-8 text-center text-muted-foreground flex flex-col items-center">
+                    <div className="bg-secondary/50 p-3 rounded-full mb-3">
+                        <CheckCircle2 className="w-6 h-6 opacity-50" />
+                    </div>
+                    <p>All files are up to date</p>
                 </div>
             )}
             {activeTransfers.map((transfer: any, i: number) => (
                 <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${transfer.type === 'download' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            <div className={`p-2 rounded-lg ${transfer.type === 'download' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                 {transfer.type === 'download' ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
                             </div>
                             <div>
@@ -98,7 +108,7 @@ export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: a
                     {/* Progress Bar */}
                     <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                         <div 
-                            className={`h-full rounded-full transition-all duration-500 ${transfer.type === 'download' ? 'bg-green-500' : 'bg-blue-500'}`} 
+                            className={`h-full rounded-full transition-all duration-500 ${transfer.type === 'download' ? 'bg-emerald-500' : 'bg-blue-500'}`} 
                             style={{ width: `${transfer.progress}%` }}
                         ></div>
                     </div>
@@ -109,8 +119,8 @@ export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: a
         {/* History */}
         <div>
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4 mt-8">Recent History</h3>
-            <div className="bg-card border border-border rounded-xl overflow-hidden text-center text-muted-foreground p-6">
-                <p>No recent transfer history</p>
+            <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden text-center text-muted-foreground p-6">
+                <p className="text-sm opacity-70">No recent transfer history</p>
             </div>
         </div>
     </div>

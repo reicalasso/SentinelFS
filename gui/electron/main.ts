@@ -19,6 +19,8 @@ let win: BrowserWindow | null
 let daemonSocket: net.Socket | null = null
 let daemonProcess: ChildProcess | null = null
 const RECONNECT_INTERVAL = 5000
+let lastDaemonLog = ''
+let lastDaemonLogAt = 0
 
 // Dynamic socket path based on XDG or fallback
 // Must match PathUtils::getSocketPath() in C++ daemon
@@ -192,11 +194,21 @@ function connectToDaemon() {
                 }
             } else {
                 // Plain text log
-                win?.webContents.send('daemon-log', line)
+                const now = Date.now()
+                if (line !== lastDaemonLog || now - lastDaemonLogAt > 500) {
+                    lastDaemonLog = line
+                    lastDaemonLogAt = now
+                    win?.webContents.send('daemon-log', line)
+                }
             }
         } catch (e) {
             // Not JSON, treat as log
-            win?.webContents.send('daemon-log', line)
+            const now = Date.now()
+            if (line !== lastDaemonLog || now - lastDaemonLogAt > 500) {
+                lastDaemonLog = line
+                lastDaemonLogAt = now
+                win?.webContents.send('daemon-log', line)
+            }
         }
     }
   })

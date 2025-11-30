@@ -107,18 +107,18 @@ export function Settings({ config }: SettingsProps) {
   
   const handleAddPeer = async () => {
     if (!peerIp || !peerPort) {
-      addNotification('error', 'Please enter both IP address and port')
+      addNotification('error', 'Validation Error', 'Please enter both IP address and port')
       return
     }
     
     if (window.api) {
       const res = await window.api.sendCommand(`ADD_PEER ${peerIp}:${peerPort}`)
-      if (res.includes('Success')) {
-        addNotification('success', `Connecting to ${peerIp}:${peerPort}`)
+      if (res.success) {
+        addNotification('success', 'Peer Added', `Connecting to ${peerIp}:${peerPort}`)
         setPeerIp('')
         setPeerPort('8080')
       } else {
-        addNotification('error', res.replace('Error: ', ''))
+        addNotification('error', 'Connection Failed', res.error || 'Unknown error')
       }
     }
   }

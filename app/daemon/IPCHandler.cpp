@@ -433,16 +433,36 @@ std::string IPCHandler::processCommand(const std::string& command) {
             return "Error: Storage not initialized\n";
         }
         
+        // Normalize pattern: if it's an absolute path inside watch directory, make it relative
+        std::string pattern = args;
+        if (daemonCore_) {
+            std::string watchDir = daemonCore_->getConfig().watchDirectory;
+            // Ensure watchDir has consistent slash
+            if (watchDir.back() != '/') watchDir += '/';
+            
+            // Check if pattern starts with watchDir
+            if (pattern.find(watchDir) == 0) {
+                pattern = pattern.substr(watchDir.length());
+            } else if (pattern.find("file://" + watchDir) == 0) {
+                pattern = pattern.substr(7 + watchDir.length());
+            }
+            
+            // Remove leading slash if present
+            if (!pattern.empty() && pattern[0] == '/') {
+                pattern = pattern.substr(1);
+            }
+        }
+        
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         sqlite3_stmt* stmt;
         const char* sql = "INSERT OR REPLACE INTO ignore_patterns (pattern, type, active) VALUES (?, 'glob', 1)";
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
             
             if (sqlite3_step(stmt) == SQLITE_DONE) {
                 sqlite3_finalize(stmt);
-                return "Success: Added ignore pattern: " + args + "\n";
+                return "Success: Added ignore pattern: " + pattern + "\n";
             }
             sqlite3_finalize(stmt);
         }

@@ -46,17 +46,44 @@ void FileSyncHandler::loadIgnorePatterns() {
     logger.debug("Loaded " + std::to_string(ignorePatterns_.size()) + " ignore patterns", "FileSyncHandler");
 }
 
-bool FileSyncHandler::shouldIgnore(const std::string& path) {
-    std::string filename = std::filesystem::path(path).filename().string();
+bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
+    // Calculate relative path
+    std::string relativePath = absolutePath;
+    if (absolutePath.find(watchDirectory_) == 0) {
+        relativePath = absolutePath.substr(watchDirectory_.length());
+        if (!relativePath.empty() && relativePath[0] == '/') {
+            relativePath = relativePath.substr(1);
+        }
+    }
+    
+    std::string filename = std::filesystem::path(absolutePath).filename().string();
     
     for (const auto& pattern : ignorePatterns_) {
-        // Use fnmatch for glob pattern matching
-        if (fnmatch(pattern.c_str(), filename.c_str(), FNM_PATHNAME) == 0) {
+        // 1. Check exact filename match (e.g. "*.log")
+        // Using 0 instead of FNM_PATHNAME allows * to match across directories for simple globs
+        if (fnmatch(pattern.c_str(), filename.c_str(), 0) == 0) {
             return true;
         }
-        // Also check full path
-        if (fnmatch(pattern.c_str(), path.c_str(), FNM_PATHNAME) == 0) {
+        
+        // 2. Check relative path match (e.g. "src/temp/*")
+        if (fnmatch(pattern.c_str(), relativePath.c_str(), 0) == 0) {
             return true;
+        }
+        
+        // 3. Check directory patterns (ending with /)
+        if (pattern.back() == '/') {
+            std::string dirPattern = pattern.substr(0, pattern.length() - 1);
+            
+            // Check if this IS the ignored directory
+            if (filename == dirPattern) return true;
+            
+            // Check if relative path starts with this directory
+            if (relativePath.find(pattern) == 0) return true;
+            
+            // Check if it's a component in the path (e.g. "src/node_modules/foo")
+            // We want to match "/node_modules/" inside the path
+            std::string component = "/" + dirPattern + "/";
+            if (("/" + relativePath).find(component) != std::string::npos) return true;
         }
     }
     return false;
@@ -111,23 +138,33 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
     try {
         int count = 0;
         int ignored = 0;
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(targetPath)) {
-            if (entry.is_regular_file()) {
-                std::string filePath = entry.path().string();
-                
-                // Check ignore patterns
-                if (shouldIgnore(filePath)) {
-                    ignored++;
-                    continue;
+        
+        // Use iterator directly to control recursion
+        for (auto it = std::filesystem::recursive_directory_iterator(targetPath); 
+             it != std::filesystem::recursive_directory_iterator(); 
+             ++it) {
+            
+            std::string currentPath = it->path().string();
+            
+            // Check ignore BEFORE processing file or entering directory
+            if (shouldIgnore(currentPath)) {
+                ignored++;
+                if (it->is_directory()) {
+                    // Don't scan inside ignored directories (like node_modules)
+                    it.disable_recursion_pending();
+                    logger.debug("Ignoring directory and its children: " + currentPath, "FileSyncHandler");
                 }
-                
-                std::string hash = calculateFileHash(filePath);
-                long long size = std::filesystem::file_size(entry.path());
+                continue;
+            }
+            
+            if (it->is_regular_file()) {
+                std::string hash = calculateFileHash(currentPath);
+                long long size = std::filesystem::file_size(it->path());
                 long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(
-                    std::filesystem::last_write_time(entry.path()).time_since_epoch()
+                    std::filesystem::last_write_time(it->path()).time_since_epoch()
                 ).count();
                 
-                if (storage_->addFile(filePath, hash, timestamp, size)) {
+                if (storage_->addFile(currentPath, hash, timestamp, size)) {
                     count++;
                 }
             }
