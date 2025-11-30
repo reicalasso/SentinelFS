@@ -9,6 +9,8 @@
 #include <memory>
 #include <atomic>
 #include <string>
+#include <mutex>
+#include <condition_variable>
 
 namespace SentinelFS {
 
@@ -87,6 +89,18 @@ public:
      * @return true if successfully added
      */
     bool addWatchDirectory(const std::string& path);
+
+    struct InitializationStatus {
+        enum class Result {
+            Success,
+            PlugInLoadFailure,
+            NetworkFailure,
+            WatcherFailure,
+        } result = Result::Success;
+        std::string message;
+    };
+
+    const InitializationStatus& getInitializationStatus() const { return initStatus_; }
     
     /**
      * @brief Get plugins with proper naming for new interface
@@ -107,6 +121,10 @@ private:
     
     std::atomic<bool> running_{false};
     std::atomic<bool> syncEnabled_{true};
+
+    std::mutex runMutex_;
+    std::condition_variable runCv_;
+    InitializationStatus initStatus_;
     
     bool loadPlugins();
     void setupEventHandlers();

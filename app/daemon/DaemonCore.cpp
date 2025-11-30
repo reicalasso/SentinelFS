@@ -101,6 +101,8 @@ bool DaemonCore::initialize() {
         logger.info("UDP discovery started on port " + std::to_string(config_.discoveryPort), "DaemonCore");
     } catch (const std::exception& e) {
         logger.error("Failed to start network services: " + std::string(e.what()), "DaemonCore");
+        initStatus_.result = InitializationStatus::Result::NetworkFailure;
+        initStatus_.message = std::string("Network startup failed: ") + e.what();
         return false;
     }
     
@@ -140,6 +142,8 @@ bool DaemonCore::initialize() {
 
     } catch (const std::exception& e) {
         logger.error("Failed to start filesystem watcher: " + std::string(e.what()), "DaemonCore");
+        initStatus_.result = InitializationStatus::Result::WatcherFailure;
+        initStatus_.message = std::string("Filesystem watcher failed: ") + e.what();
         return false;
     }
     
@@ -157,19 +161,19 @@ void DaemonCore::run() {
     running_ = true;
     
     logger.info("Daemon running. Press Ctrl+C to stop.", "DaemonCore");
-    std::cout << "\nDaemon running. Press Ctrl+C to stop." << std::endl;
     
     // Main loop - keep alive and handle signals
+    std::unique_lock<std::mutex> lock(runMutex_);
     while (running_ && !signalReceived) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        runCv_.wait_for(lock, std::chrono::seconds(1));
     }
-    
+
     // Log which signal was received (safe now, outside signal handler)
     if (signalReceived) {
         int sigNum = receivedSignalNum.load();
         logger.info("Received signal " + std::to_string(sigNum) + ", initiating shutdown", "DaemonCore");
     }
-    
+
     shutdown();
 }
 
@@ -224,8 +228,8 @@ bool DaemonCore::loadPlugins() {
     // Check if plugin directory exists
     if (!std::filesystem::exists(pluginDir)) {
         logger.error("Plugin directory does not exist: " + pluginDir, "DaemonCore");
-        std::cerr << "Plugin directory not found: " << pluginDir << std::endl;
-        std::cerr << "Tip: Set SENTINELFS_PLUGIN_DIR environment variable or run from build directory" << std::endl;
+        initStatus_.result = InitializationStatus::Result::PlugInLoadFailure;
+        initStatus_.message = "Plugin directory not found: " + pluginDir + ". Set SENTINELFS_PLUGIN_DIR or run from build dir.";
         return false;
     }
 
@@ -333,43 +337,46 @@ bool DaemonCore::loadPlugins() {
     // Verify critical plugins loaded
     if (!storage_ || !network_ || !filesystem_) {
         logger.critical("Failed to load one or more critical plugins", "DaemonCore");
-        
-        std::cerr << "\nPlugin Status:" << std::endl;
+        std::vector<std::string> missing;
         if (!storage_) {
             logger.error("Storage plugin failed to load", "DaemonCore");
-            std::cerr << "  ✗ Storage: FAILED at \"" << pluginDir << "/storage/libstorage_plugin.so\"" << std::endl;
+            missing.push_back("storage/libstorage_plugin.so");
         } else {
             logger.debug("Storage plugin loaded", "DaemonCore");
-            std::cerr << "  ✓ Storage: OK" << std::endl;
         }
-        
         if (!network_) {
             logger.error("Network plugin failed to load", "DaemonCore");
-            std::cerr << "  ✗ Network: FAILED at \"" << pluginDir << "/network/libnetwork_plugin.so\"" << std::endl;
+            missing.push_back("network/libnetwork_plugin.so");
         } else {
             logger.debug("Network plugin loaded", "DaemonCore");
-            std::cerr << "  ✓ Network: OK" << std::endl;
         }
-        
         if (!filesystem_) {
             logger.error("Filesystem plugin failed to load", "DaemonCore");
-            std::cerr << "  ✗ Filesystem: FAILED at \"" << pluginDir << "/filesystem/libfilesystem_plugin.so\"" << std::endl;
+            missing.push_back("filesystem/libfilesystem_plugin.so");
         } else {
             logger.debug("Filesystem plugin loaded", "DaemonCore");
-            std::cerr << "  ✓ Filesystem: OK" << std::endl;
         }
-        
         if (!mlPlugin_) {
             logger.warn("ML plugin failed to load (optional)", "DaemonCore");
-            std::cerr << "  ⚠ ML: OPTIONAL - not loaded" << std::endl;
         } else {
             logger.debug("ML plugin loaded", "DaemonCore");
-            std::cerr << "  ✓ ML: OK" << std::endl;
         }
-        
+        initStatus_.result = InitializationStatus::Result::PlugInLoadFailure;
+        initStatus_.message = "Missing critical plugins: " + [&]() {
+            std::string list;
+            for (size_t i = 0; i < missing.size(); ++i) {
+                list += missing[i];
+                if (i + 1 < missing.size()) {
+                    list += ", ";
+                }
+            }
+            return list;
+        }();
         return false;
     }
     
+    initStatus_.result = InitializationStatus::Result::Success;
+    initStatus_.message.clear();
     logger.info("All critical plugins loaded successfully", "DaemonCore");
     if (mlPlugin_) {
         logger.info("ML plugin (anomaly detection) loaded", "DaemonCore");
