@@ -3,6 +3,7 @@
 #include "MetricsCollector.h"
 #include <iostream>
 #include <cstdlib>
+#include <filesystem>
 
 namespace SentinelFS {
 
@@ -24,7 +25,7 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
         }
     }
 
-    // Ensure directory exists using system command (fallback for filesystem issues)
+    // Ensure directory exists using std::filesystem (safe, no shell injection risk)
     std::string dirPath;
     size_t lastSlash = resolvedPath.find_last_of('/');
     if (lastSlash != std::string::npos) {
@@ -32,10 +33,10 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
     }
 
     if (!dirPath.empty()) {
-        std::string command = "mkdir -p \"" + dirPath + "\"";
-        int res = std::system(command.c_str());
-        if (res != 0) {
-             logger.log(LogLevel::ERROR, "Failed to create database directory: " + dirPath, "SQLiteHandler");
+        std::error_code ec;
+        std::filesystem::create_directories(dirPath, ec);
+        if (ec) {
+            logger.log(LogLevel::ERROR, "Failed to create database directory: " + dirPath + " (" + ec.message() + ")", "SQLiteHandler");
         }
     }
 
