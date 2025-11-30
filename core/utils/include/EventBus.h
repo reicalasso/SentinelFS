@@ -6,6 +6,7 @@
 #include <any>
 #include <utility>
 #include <mutex>
+#include <shared_mutex>
 
 namespace SentinelFS {
 
@@ -19,6 +20,14 @@ namespace SentinelFS {
             int priority;
             EventFilter filter;
         };
+
+        struct Metrics {
+            size_t published = 0;
+            size_t filtered = 0;
+            size_t failed = 0;
+        };
+
+        using MetricsCallback = std::function<void(const std::string&, const Metrics&)>;
 
         /**
          * @brief Subscribe to an event.
@@ -42,9 +51,11 @@ namespace SentinelFS {
          */
         void publishBatch(const std::vector<std::pair<std::string, std::any>>& events);
 
-    private:
-        std::unordered_map<std::string, std::vector<Subscription>> subscribers_;
-        mutable std::mutex mutex_;
+        std::unordered_map<std::string, std::shared_ptr<std::vector<Subscription>>> subscribers_;
+        mutable std::shared_mutex mutex_;
+        mutable std::mutex metricsMutex_;
+        std::unordered_map<std::string, Metrics> metrics_;
+        MetricsCallback metricsCallback_;
     };
 
 }

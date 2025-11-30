@@ -8,35 +8,61 @@ namespace SentinelFS {
                              EventCallback callback,
                              int priority,
                              EventFilter filter) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto& subs = subscribers_[eventName];
-
+        std::unique_lock<std::shared_mutex> lock(mutex_);
+        auto& subsPtr = subscribers_[eventName];
+        if (!subsPtr) {
+            subsPtr = std::make_shared<std::vector<Subscription>>();
+        }
+        auto subsCopy = std::make_shared<std::vector<Subscription>>(*subsPtr);
         Subscription subscription{std::move(callback), priority, std::move(filter)};
-        auto insertPos = subs.begin();
-        for (; insertPos != subs.end(); ++insertPos) {
+
+        auto insertPos = subsCopy->begin();
+        for (; insertPos != subsCopy->end(); ++insertPos) {
             if (priority > insertPos->priority) {
                 break;
             }
         }
-        subs.insert(insertPos, std::move(subscription));
+        subsCopy->insert(insertPos, std::move(subscription));
+        subsPtr.swap(subsCopy);
     }
 
     void EventBus::publish(const std::string& eventName, const std::any& data) {
-        std::vector<Subscription> targets;
+        std::shared_ptr<std::vector<Subscription>> snapshot;
         {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::shared_lock<std::shared_mutex> lock(mutex_);
             auto it = subscribers_.find(eventName);
-            if (it == subscribers_.end()) {
+            if (it == subscribers_.end() || !it->second) {
                 return;
             }
-            targets = it->second;
+            snapshot = it->second;
         }
 
-        for (auto& sub : targets) {
+        Metrics metrics;
+        bool recordedMetrics = false;
+
+        for (const auto& sub : *snapshot) {
+            ++metrics.published;
             if (sub.filter && !sub.filter(data)) {
+                ++metrics.filtered;
                 continue;
             }
-            sub.callback(data);
+            try {
+                sub.callback(data);
+            } catch (const std::exception& e) {
+                ++metrics.failed;
+                Logger::instance().warn("EventBus callback threw: " + std::string(e.what()), "EventBus");
+            }
+            recordedMetrics = true;
+        }
+        if (recordedMetrics) {
+            std::lock_guard<std::mutex> metricsLock(metricsMutex_);
+            auto& stored = metrics_[eventName];
+            stored.published += metrics.published;
+            stored.filtered += metrics.filtered;
+            stored.failed += metrics.failed;
+            if (metricsCallback_) {
+                metricsCallback_(eventName, stored);
+            }
         }
     }
 
