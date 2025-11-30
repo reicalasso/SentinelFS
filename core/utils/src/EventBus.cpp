@@ -1,5 +1,8 @@
 #include "EventBus.h"
+#include "Logger.h"
 
+#include <memory>
+#include <optional>
 #include <utility>
 
 namespace SentinelFS {
@@ -70,6 +73,20 @@ namespace SentinelFS {
         for (const auto& event : events) {
             publish(event.first, event.second);
         }
+    }
+
+    void EventBus::setMetricsCallback(MetricsCallback callback) {
+        std::lock_guard<std::mutex> lock(metricsMutex_);
+        metricsCallback_ = std::move(callback);
+    }
+
+    std::optional<EventBus::Metrics> EventBus::getMetrics(const std::string& eventName) const {
+        std::lock_guard<std::mutex> lock(metricsMutex_);
+        auto it = metrics_.find(eventName);
+        if (it == metrics_.end()) {
+            return std::nullopt;
+        }
+        return it->second;
     }
 
 }

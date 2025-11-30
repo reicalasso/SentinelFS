@@ -6,6 +6,8 @@
 #include <any>
 #include <utility>
 #include <mutex>
+#include <memory>
+#include <optional>
 #include <shared_mutex>
 
 namespace SentinelFS {
@@ -51,6 +53,10 @@ namespace SentinelFS {
          */
         void publishBatch(const std::vector<std::pair<std::string, std::any>>& events);
 
+        void setMetricsCallback(MetricsCallback callback);
+        std::optional<Metrics> getMetrics(const std::string& eventName) const;
+
+    private:
         std::unordered_map<std::string, std::shared_ptr<std::vector<Subscription>>> subscribers_;
         mutable std::shared_mutex mutex_;
         mutable std::mutex metricsMutex_;
