@@ -19,6 +19,65 @@ DeltaSyncProtocolHandler::DeltaSyncProtocolHandler(INetworkAPI* network, IStorag
     : network_(network), storage_(storage), filesystem_(filesystem), watchDirectory_(watchDir) {
     auto& logger = Logger::instance();
     logger.debug("DeltaSyncProtocolHandler initialized for: " + watchDir, "DeltaSyncProtocol");
+    startCleanupThread();
+}
+
+DeltaSyncProtocolHandler::~DeltaSyncProtocolHandler() {
+    stopCleanupThread();
+}
+
+void DeltaSyncProtocolHandler::startCleanupThread() {
+    cleanupRunning_ = true;
+    cleanupThread_ = std::thread([this]() {
+        auto& logger = Logger::instance();
+        logger.debug("Pending chunks cleanup thread started", "DeltaSyncProtocol");
+        
+        while (cleanupRunning_) {
+            // Sleep in small intervals to allow quick shutdown
+            for (int i = 0; i < CLEANUP_INTERVAL_SECONDS && cleanupRunning_; ++i) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            
+            if (cleanupRunning_) {
+                cleanupStaleChunks();
+            }
+        }
+        
+        logger.debug("Pending chunks cleanup thread stopped", "DeltaSyncProtocol");
+    });
+}
+
+void DeltaSyncProtocolHandler::stopCleanupThread() {
+    cleanupRunning_ = false;
+    if (cleanupThread_.joinable()) {
+        cleanupThread_.join();
+    }
+}
+
+void DeltaSyncProtocolHandler::cleanupStaleChunks() {
+    auto& logger = Logger::instance();
+    auto now = std::chrono::steady_clock::now();
+    
+    std::lock_guard<std::mutex> lock(pendingMutex_);
+    
+    size_t cleanedCount = 0;
+    for (auto it = pendingDeltas_.begin(); it != pendingDeltas_.end();) {
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            now - it->second.lastActivity).count();
+        
+        if (elapsed > CHUNK_TIMEOUT_SECONDS) {
+            logger.warn("Cleaning up stale pending chunks for: " + it->first + 
+                       " (idle for " + std::to_string(elapsed) + "s)", "DeltaSyncProtocol");
+            it = pendingDeltas_.erase(it);
+            ++cleanedCount;
+        } else {
+            ++it;
+        }
+    }
+    
+    if (cleanedCount > 0) {
+        logger.info("Cleaned up " + std::to_string(cleanedCount) + " stale pending chunk entries", "DeltaSyncProtocol");
+    }
 }
 
 void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId, 
@@ -255,38 +314,47 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
                 }
 
                 std::string key = peerId + "|" + relativePath;
-                auto& pending = pendingDeltas_[key];
-
-                if (pending.totalChunks != totalChunks || pending.chunks.size() != totalChunks) {
-                    pending.totalChunks = totalChunks;
-                    pending.receivedChunks = 0;
-                    pending.chunks.assign(totalChunks, {});
-                }
-
-                if (chunkId >= pending.totalChunks) {
-                    logger.error("Delta chunkId out of range for " + filename, "DeltaSyncProtocol");
-                    return;
-                }
-
-                std::vector<uint8_t> chunk(rawData.begin() + thirdPipe + 1, rawData.end());
-                if (pending.chunks[chunkId].empty()) {
-                    pending.chunks[chunkId] = std::move(chunk);
-                    pending.receivedChunks++;
-                }
-
-                if (pending.receivedChunks < pending.totalChunks) {
-                    // Wait for more chunks
-                    return;
-                }
-
-                // All chunks received: reassemble full DELTA_DATA message and recurse once.
                 std::vector<uint8_t> fullDelta;
-                for (std::uint32_t i = 0; i < pending.totalChunks; ++i) {
-                    const auto& c = pending.chunks[i];
-                    fullDelta.insert(fullDelta.end(), c.begin(), c.end());
-                }
+                bool allChunksReceived = false;
+                
+                {
+                    std::lock_guard<std::mutex> lock(pendingMutex_);
+                    auto& pending = pendingDeltas_[key];
 
-                pendingDeltas_.erase(key);
+                    if (pending.totalChunks != totalChunks || pending.chunks.size() != totalChunks) {
+                        pending.totalChunks = totalChunks;
+                        pending.receivedChunks = 0;
+                        pending.chunks.assign(totalChunks, {});
+                    }
+                    
+                    // Update last activity timestamp
+                    pending.lastActivity = std::chrono::steady_clock::now();
+
+                    if (chunkId >= pending.totalChunks) {
+                        logger.error("Delta chunkId out of range for " + filename, "DeltaSyncProtocol");
+                        return;
+                    }
+
+                    std::vector<uint8_t> chunk(rawData.begin() + thirdPipe + 1, rawData.end());
+                    if (pending.chunks[chunkId].empty()) {
+                        pending.chunks[chunkId] = std::move(chunk);
+                        pending.receivedChunks++;
+                    }
+
+                    if (pending.receivedChunks < pending.totalChunks) {
+                        // Wait for more chunks
+                        return;
+                    }
+
+                    // All chunks received: reassemble full DELTA_DATA message
+                    allChunksReceived = true;
+                    for (std::uint32_t i = 0; i < pending.totalChunks; ++i) {
+                        const auto& c = pending.chunks[i];
+                        fullDelta.insert(fullDelta.end(), c.begin(), c.end());
+                    }
+
+                    pendingDeltas_.erase(key);
+                }
 
                 std::string header = "DELTA_DATA|" + relativePath + "|";
                 std::vector<uint8_t> fullRaw(header.begin(), header.end());
@@ -476,35 +544,42 @@ void DeltaSyncProtocolHandler::handleFileData(const std::string& peerId,
         std::uint32_t totalChunks = static_cast<std::uint32_t>(std::stoul(chunkInfo.substr(slashPos + 1)));
         
         std::string key = peerId + "|FILE|" + relativePath;
-        auto& pending = pendingDeltas_[key];
-        
-        if (pending.totalChunks != totalChunks || pending.chunks.size() != totalChunks) {
-            pending.totalChunks = totalChunks;
-            pending.receivedChunks = 0;
-            pending.chunks.assign(totalChunks, {});
-        }
-        
-        if (chunkId >= pending.totalChunks) {
-            logger.error("File chunk ID out of range", "DeltaSyncProtocol");
-            return;
-        }
-        
-        std::vector<uint8_t> chunk(rawData.begin() + thirdPipe + 1, rawData.end());
-        if (pending.chunks[chunkId].empty()) {
-            pending.chunks[chunkId] = std::move(chunk);
-            pending.receivedChunks++;
-        }
-        
-        if (pending.receivedChunks < pending.totalChunks) {
-            return; // Wait for more chunks
-        }
-        
-        // All chunks received - reassemble file
         std::vector<uint8_t> fullFile;
-        for (const auto& c : pending.chunks) {
-            fullFile.insert(fullFile.end(), c.begin(), c.end());
+        
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            auto& pending = pendingDeltas_[key];
+            
+            if (pending.totalChunks != totalChunks || pending.chunks.size() != totalChunks) {
+                pending.totalChunks = totalChunks;
+                pending.receivedChunks = 0;
+                pending.chunks.assign(totalChunks, {});
+            }
+            
+            // Update last activity timestamp
+            pending.lastActivity = std::chrono::steady_clock::now();
+            
+            if (chunkId >= pending.totalChunks) {
+                logger.error("File chunk ID out of range", "DeltaSyncProtocol");
+                return;
+            }
+            
+            std::vector<uint8_t> chunk(rawData.begin() + thirdPipe + 1, rawData.end());
+            if (pending.chunks[chunkId].empty()) {
+                pending.chunks[chunkId] = std::move(chunk);
+                pending.receivedChunks++;
+            }
+            
+            if (pending.receivedChunks < pending.totalChunks) {
+                return; // Wait for more chunks
+            }
+            
+            // All chunks received - reassemble file
+            for (const auto& c : pending.chunks) {
+                fullFile.insert(fullFile.end(), c.begin(), c.end());
+            }
+            pendingDeltas_.erase(key);
         }
-        pendingDeltas_.erase(key);
         
         // Mark as patched before writing
         if (markAsPatchedCallback_) {

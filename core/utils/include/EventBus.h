@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <shared_mutex>
+#include <atomic>
 
 namespace SentinelFS {
 
@@ -24,9 +25,22 @@ namespace SentinelFS {
         };
 
         struct Metrics {
-            size_t published = 0;
-            size_t filtered = 0;
-            size_t failed = 0;
+            std::atomic<size_t> published{0};
+            std::atomic<size_t> filtered{0};
+            std::atomic<size_t> failed{0};
+            
+            // Copy constructor for returning metrics
+            Metrics() = default;
+            Metrics(const Metrics& other) 
+                : published(other.published.load())
+                , filtered(other.filtered.load())
+                , failed(other.failed.load()) {}
+            Metrics& operator=(const Metrics& other) {
+                published = other.published.load();
+                filtered = other.filtered.load();
+                failed = other.failed.load();
+                return *this;
+            }
         };
 
         using MetricsCallback = std::function<void(const std::string&, const Metrics&)>;

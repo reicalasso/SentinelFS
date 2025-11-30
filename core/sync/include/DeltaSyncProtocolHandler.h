@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
+#include <chrono>
+#include <mutex>
+#include <thread>
+#include <atomic>
 
 namespace SentinelFS {
 
@@ -26,6 +30,8 @@ class DeltaSyncProtocolHandler {
 public:
     DeltaSyncProtocolHandler(INetworkAPI* network, IStorageAPI* storage, 
                             IFileAPI* filesystem, const std::string& watchDir);
+    
+    ~DeltaSyncProtocolHandler();
 
     /**
      * @brief Handle UPDATE_AVAILABLE message from peer
@@ -83,6 +89,10 @@ public:
     }
 
 private:
+    void cleanupStaleChunks();
+    void startCleanupThread();
+    void stopCleanupThread();
+    
     INetworkAPI* network_;
     IStorageAPI* storage_;
     IFileAPI* filesystem_;
@@ -93,9 +103,17 @@ private:
         std::uint32_t totalChunks{0};
         std::uint32_t receivedChunks{0};
         std::vector<std::vector<uint8_t>> chunks;
+        std::chrono::steady_clock::time_point lastActivity;  // For timeout cleanup
     };
 
+    mutable std::mutex pendingMutex_;
     std::unordered_map<std::string, PendingDeltaChunks> pendingDeltas_;
+    
+    // Cleanup thread for stale pending chunks
+    std::thread cleanupThread_;
+    std::atomic<bool> cleanupRunning_{false};
+    static constexpr int CHUNK_TIMEOUT_SECONDS = 300;  // 5 minutes
+    static constexpr int CLEANUP_INTERVAL_SECONDS = 60;  // Check every minute
 };
 
 } // namespace SentinelFS

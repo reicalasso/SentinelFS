@@ -72,6 +72,7 @@ void TCPHandler::stopListening() {
     if (!listening_) return;
     
     logger_.log(LogLevel::INFO, "Stopping TCP server", "TCPHandler");
+    shuttingDown_ = true;
     listening_ = false;
     
     if (serverSocket_ >= 0) {
@@ -84,15 +85,41 @@ void TCPHandler::stopListening() {
         listenThread_.join();
     }
     
-    // Close all connections
-    std::lock_guard<std::mutex> lock(connectionMutex_);
-    size_t count = connections_.size();
-    for (auto& pair : connections_) {
-        close(pair.second);
+    // Close all connections to unblock read threads
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> lock(connectionMutex_);
+        count = connections_.size();
+        for (auto& pair : connections_) {
+            ::shutdown(pair.second, SHUT_RDWR);
+            close(pair.second);
+        }
+        connections_.clear();
     }
-    connections_.clear();
+    
+    // Wait for all read threads to finish
+    {
+        std::lock_guard<std::mutex> lock(threadMutex_);
+        for (auto& pair : readThreads_) {
+            if (pair.second.joinable()) {
+                pair.second.join();
+            }
+        }
+        readThreads_.clear();
+    }
     
     logger_.log(LogLevel::INFO, "TCP server stopped, closed " + std::to_string(count) + " connections", "TCPHandler");
+}
+
+void TCPHandler::cleanupThread(const std::string& peerId) {
+    std::lock_guard<std::mutex> lock(threadMutex_);
+    auto it = readThreads_.find(peerId);
+    if (it != readThreads_.end()) {
+        if (it->second.joinable()) {
+            it->second.detach();  // Detach completed thread
+        }
+        readThreads_.erase(it);
+    }
 }
 
 void TCPHandler::listenLoop() {
@@ -120,6 +147,7 @@ void TCPHandler::listenLoop() {
             logger_.log(LogLevel::INFO, "New connection from " + clientIp, "TCPHandler");
             metrics_.incrementConnections();
             
+            // Handle client in a new thread - handshake will add to readThreads_
             std::thread(&TCPHandler::handleClient, this, clientSocket).detach();
         }
     }
@@ -151,8 +179,16 @@ void TCPHandler::handleClient(int clientSocket) {
         eventBus_->publish("PEER_CONNECTED", result.peerId);
     }
     
-    // Start reading from this peer
-    std::thread(&TCPHandler::readLoop, this, clientSocket, result.peerId).detach();
+    // Start reading from this peer - track thread for graceful shutdown
+    {
+        std::lock_guard<std::mutex> lock(threadMutex_);
+        // Clean up any existing thread for this peer
+        auto it = readThreads_.find(result.peerId);
+        if (it != readThreads_.end() && it->second.joinable()) {
+            it->second.detach();
+        }
+        readThreads_[result.peerId] = std::thread(&TCPHandler::readLoop, this, clientSocket, result.peerId);
+    }
 }
 
 bool TCPHandler::connectToPeer(const std::string& address, int port) {
@@ -210,8 +246,15 @@ bool TCPHandler::connectToPeer(const std::string& address, int port) {
         eventBus_->publish("PEER_CONNECTED", result.peerId);
     }
     
-    // Start reading from this peer
-    std::thread(&TCPHandler::readLoop, this, sock, result.peerId).detach();
+    // Start reading from this peer - track thread for graceful shutdown
+    {
+        std::lock_guard<std::mutex> lock(threadMutex_);
+        auto it = readThreads_.find(result.peerId);
+        if (it != readThreads_.end() && it->second.joinable()) {
+            it->second.detach();
+        }
+        readThreads_[result.peerId] = std::thread(&TCPHandler::readLoop, this, sock, result.peerId);
+    }
     
     return true;
 }

@@ -67,35 +67,63 @@ namespace SentinelFS {
             return signatures;
         }
 
+        // Batch processing: read multiple blocks before submitting to thread pool
+        // This reduces task scheduling overhead
+        constexpr size_t BATCH_SIZE = 16;  // Process 16 blocks per task
+        
         ThreadPool pool(0); // Use hardware concurrency by default
         std::vector<std::future<void>> futures;
         std::mutex sigMutex;
 
-        std::vector<uint8_t> buffer(BLOCK_SIZE);
+        std::vector<std::pair<uint32_t, std::vector<uint8_t>>> batch;
+        batch.reserve(BATCH_SIZE);
         uint32_t index = 0;
 
+        auto processBatch = [&futures, &pool, &signatures, &sigMutex](
+                std::vector<std::pair<uint32_t, std::vector<uint8_t>>>&& batchToProcess) {
+            if (batchToProcess.empty()) return;
+            
+            futures.push_back(pool.enqueue([batch = std::move(batchToProcess), &signatures, &sigMutex]() {
+                std::vector<BlockSignature> batchSigs;
+                batchSigs.reserve(batch.size());
+                
+                for (const auto& item : batch) {
+                    BlockSignature sig;
+                    sig.index = item.first;
+                    sig.adler32 = DeltaEngine::calculateAdler32(item.second.data(), item.second.size());
+                    sig.sha256 = DeltaEngine::calculateSHA256(item.second.data(), item.second.size());
+                    batchSigs.push_back(std::move(sig));
+                }
+                
+                // Add batch results to shared vector
+                std::lock_guard<std::mutex> lock(sigMutex);
+                signatures.insert(signatures.end(), 
+                                std::make_move_iterator(batchSigs.begin()),
+                                std::make_move_iterator(batchSigs.end()));
+            }));
+        };
+
+        std::vector<uint8_t> buffer(BLOCK_SIZE);
         while (file) {
             file.read(reinterpret_cast<char*>(buffer.data()), BLOCK_SIZE);
             size_t bytesRead = static_cast<size_t>(file.gcount());
 
             if (bytesRead == 0) break;
 
-            std::vector<uint8_t> block(bytesRead);
-            std::copy(buffer.begin(), buffer.begin() + bytesRead, block.begin());
+            std::vector<uint8_t> block(buffer.begin(), buffer.begin() + bytesRead);
+            batch.emplace_back(index++, std::move(block));
 
-            uint32_t currentIndex = index++;
-
-            futures.push_back(pool.enqueue([block = std::move(block), currentIndex, &signatures, &sigMutex]() {
-                BlockSignature sig;
-                sig.index = currentIndex;
-                sig.adler32 = DeltaEngine::calculateAdler32(block.data(), block.size());
-                sig.sha256 = DeltaEngine::calculateSHA256(block.data(), block.size());
-
-                std::lock_guard<std::mutex> lock(sigMutex);
-                signatures.push_back(std::move(sig));
-            }));
+            if (batch.size() >= BATCH_SIZE) {
+                processBatch(std::move(batch));
+                batch.clear();
+                batch.reserve(BATCH_SIZE);
+            }
         }
 
+        // Process remaining blocks
+        processBatch(std::move(batch));
+
+        // Wait for all tasks to complete
         for (auto& fut : futures) {
             fut.wait();
         }
@@ -237,26 +265,67 @@ namespace SentinelFS {
             return {};
         }
 
-        // Read old file
-        std::vector<uint8_t> oldData((std::istreambuf_iterator<char>(oldFile)), std::istreambuf_iterator<char>());
+        // Get file size to estimate output size and check for large files
+        oldFile.seekg(0, std::ios::end);
+        std::streamsize fileSize = oldFile.tellg();
+        oldFile.seekg(0, std::ios::beg);
+        
+        // For very large files (>100MB), use streaming approach
+        constexpr std::streamsize LARGE_FILE_THRESHOLD = 100 * 1024 * 1024;
+        
         std::vector<uint8_t> newData;
+        
+        if (fileSize > LARGE_FILE_THRESHOLD) {
+            // Streaming approach for large files - read blocks on demand
+            logger.log(LogLevel::INFO, "Using streaming delta apply for large file (" + 
+                      std::to_string(fileSize / (1024 * 1024)) + " MB)", "DeltaEngine");
+            
+            // Reserve estimated size
+            newData.reserve(static_cast<size_t>(fileSize));
+            
+            for (const auto& delta : deltas) {
+                if (delta.isLiteral) {
+                    newData.insert(newData.end(), delta.literalData.begin(), delta.literalData.end());
+                } else {
+                    // Seek and read block on demand
+                    std::streamoff offset = static_cast<std::streamoff>(delta.blockIndex) * BLOCK_SIZE;
+                    if (offset >= fileSize) {
+                        logger.log(LogLevel::ERROR, "Block index out of bounds: " + std::to_string(delta.blockIndex), "DeltaEngine");
+                        continue;
+                    }
+                    
+                    oldFile.seekg(offset);
+                    size_t len = BLOCK_SIZE;
+                    if (offset + static_cast<std::streamoff>(len) > fileSize) {
+                        len = static_cast<size_t>(fileSize - offset);
+                    }
+                    
+                    std::vector<uint8_t> block(len);
+                    oldFile.read(reinterpret_cast<char*>(block.data()), static_cast<std::streamsize>(len));
+                    newData.insert(newData.end(), block.begin(), block.end());
+                }
+            }
+        } else {
+            // Original approach for smaller files - read entire file into memory
+            std::vector<uint8_t> oldData(static_cast<size_t>(fileSize));
+            oldFile.read(reinterpret_cast<char*>(oldData.data()), fileSize);
 
-        for (const auto& delta : deltas) {
-            if (delta.isLiteral) {
-                newData.insert(newData.end(), delta.literalData.begin(), delta.literalData.end());
-            } else {
-                // Copy block from old file
-                size_t offset = delta.blockIndex * BLOCK_SIZE;
-                if (offset >= oldData.size()) {
-                    auto& logger = Logger::instance();
-                    logger.log(LogLevel::ERROR, "Block index out of bounds: " + std::to_string(delta.blockIndex), "DeltaEngine");
-                    continue;
+            for (const auto& delta : deltas) {
+                if (delta.isLiteral) {
+                    newData.insert(newData.end(), delta.literalData.begin(), delta.literalData.end());
+                } else {
+                    // Copy block from old file
+                    size_t offset = delta.blockIndex * BLOCK_SIZE;
+                    if (offset >= oldData.size()) {
+                        logger.log(LogLevel::ERROR, "Block index out of bounds: " + std::to_string(delta.blockIndex), "DeltaEngine");
+                        continue;
+                    }
+                    size_t len = BLOCK_SIZE;
+                    if (offset + len > oldData.size()) {
+                        len = oldData.size() - offset;
+                    }
+                    newData.insert(newData.end(), oldData.begin() + offset, oldData.begin() + offset + len);
                 }
-                size_t len = BLOCK_SIZE;
-                if (offset + len > oldData.size()) {
-                    len = oldData.size() - offset;
-                }
-                newData.insert(newData.end(), oldData.begin() + offset, oldData.begin() + offset + len);
             }
         }
 

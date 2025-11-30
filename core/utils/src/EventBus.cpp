@@ -40,32 +40,35 @@ namespace SentinelFS {
             snapshot = it->second;
         }
 
-        Metrics metrics;
-        bool recordedMetrics = false;
+        // Get or create metrics entry (lock-free after initial creation)
+        Metrics* storedMetrics = nullptr;
+        {
+            std::lock_guard<std::mutex> metricsLock(metricsMutex_);
+            storedMetrics = &metrics_[eventName];
+        }
 
         for (const auto& sub : *snapshot) {
-            ++metrics.published;
+            storedMetrics->published.fetch_add(1, std::memory_order_relaxed);
             if (sub.filter && !sub.filter(data)) {
-                ++metrics.filtered;
+                storedMetrics->filtered.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
             try {
                 sub.callback(data);
             } catch (const std::exception& e) {
-                ++metrics.failed;
+                storedMetrics->failed.fetch_add(1, std::memory_order_relaxed);
                 Logger::instance().warn("EventBus callback threw: " + std::string(e.what()), "EventBus");
             }
-            recordedMetrics = true;
         }
-        if (recordedMetrics) {
+        
+        // Invoke callback outside of any lock
+        MetricsCallback cb;
+        {
             std::lock_guard<std::mutex> metricsLock(metricsMutex_);
-            auto& stored = metrics_[eventName];
-            stored.published += metrics.published;
-            stored.filtered += metrics.filtered;
-            stored.failed += metrics.failed;
-            if (metricsCallback_) {
-                metricsCallback_(eventName, stored);
-            }
+            cb = metricsCallback_;
+        }
+        if (cb) {
+            cb(eventName, *storedMetrics);
         }
     }
 

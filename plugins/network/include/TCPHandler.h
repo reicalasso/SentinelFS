@@ -116,10 +116,17 @@ private:
     
     int serverSocket_{-1};
     std::atomic<bool> listening_{false};
+    std::atomic<bool> shuttingDown_{false};
     std::thread listenThread_;
     
     mutable std::mutex connectionMutex_;
     std::map<std::string, int> connections_;  // peerId -> socket
+    
+    // Track active read threads for graceful shutdown
+    mutable std::mutex threadMutex_;
+    std::map<std::string, std::thread> readThreads_;  // peerId -> thread
+    
+    void cleanupThread(const std::string& peerId);
 };
 
 } // namespace SentinelFS
