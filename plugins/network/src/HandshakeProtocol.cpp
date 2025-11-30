@@ -322,6 +322,27 @@ bool HandshakeProtocol::sendMessage(int socket, const std::string& message) {
 std::string HandshakeProtocol::receiveMessage(int socket, size_t maxSize) {
     auto& logger = Logger::instance();
     
+    // Use select() with timeout to prevent blocking indefinitely
+    // This protects against malicious peers that never complete handshake
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(socket, &readfds);
+    
+    struct timeval tv;
+    tv.tv_sec = HANDSHAKE_TIMEOUT_SEC;
+    tv.tv_usec = 0;
+    
+    int ready = select(socket + 1, &readfds, nullptr, nullptr, &tv);
+    if (ready <= 0) {
+        if (ready == 0) {
+            logger.log(LogLevel::WARN, "Handshake timeout after " + 
+                std::to_string(HANDSHAKE_TIMEOUT_SEC) + " seconds", "HandshakeProtocol");
+        } else {
+            logger.log(LogLevel::ERROR, "select() failed: " + std::string(strerror(errno)), "HandshakeProtocol");
+        }
+        return "";
+    }
+    
     char buffer[maxSize];
     ssize_t len = recv(socket, buffer, maxSize - 1, 0);
     

@@ -13,13 +13,14 @@
 namespace SentinelFS {
 
 namespace {
-    // Signal-safe: only atomic operations, no I/O
-    std::atomic<bool> signalReceived{false};
-    std::atomic<int> receivedSignalNum{0};
+    // Signal-safe: use volatile sig_atomic_t for guaranteed async-signal-safety
+    // std::atomic is technically not guaranteed async-signal-safe in C++17
+    volatile sig_atomic_t signalReceived = 0;
+    volatile sig_atomic_t receivedSignalNum = 0;
     
     void signalHandler(int signal) {
         receivedSignalNum = signal;
-        signalReceived = true;
+        signalReceived = 1;
     }
     
     // Expand tilde in path to home directory
@@ -170,7 +171,7 @@ void DaemonCore::run() {
 
     // Log which signal was received (safe now, outside signal handler)
     if (signalReceived) {
-        int sigNum = receivedSignalNum.load();
+        int sigNum = receivedSignalNum;  // volatile sig_atomic_t - direct read is safe
         logger.info("Received signal " + std::to_string(sigNum) + ", initiating shutdown", "DaemonCore");
     }
 

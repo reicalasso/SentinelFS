@@ -92,6 +92,7 @@ private:
     bool encryptionEnabled_;
     
     static constexpr const char* PROTOCOL_VERSION = "1.0";
+    static constexpr int HANDSHAKE_TIMEOUT_SEC = 10;  // Timeout for handshake messages
 };
 
 } // namespace SentinelFS

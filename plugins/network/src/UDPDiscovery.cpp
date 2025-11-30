@@ -113,9 +113,21 @@ void UDPDiscovery::stopDiscovery() {
     logger.log(LogLevel::INFO, "UDP discovery stopped", "UDPDiscovery");
 }
 
-void UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
+bool UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
+    
+    // Rate limiting with exponential backoff to prevent broadcast amplification
+    auto now = std::chrono::steady_clock::now();
+    int backoffMs = calculateBackoffMs();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastBroadcast_).count();
+    
+    if (elapsed < backoffMs) {
+        logger.log(LogLevel::DEBUG, 
+            "Broadcast rate limited (wait " + std::to_string(backoffMs - elapsed) + "ms)", 
+            "UDPDiscovery");
+        return false;
+    }
     
     logger.log(LogLevel::DEBUG, "Broadcasting presence on port " + std::to_string(discoveryPort), "UDPDiscovery");
     
@@ -123,7 +135,7 @@ void UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
     if (sock < 0) {
         logger.log(LogLevel::ERROR, "Failed to create broadcast socket: " + std::string(strerror(errno)), "UDPDiscovery");
         metrics.incrementSyncErrors();
-        return;
+        return false;
     }
 
     // Enable broadcast
@@ -148,12 +160,43 @@ void UDPDiscovery::broadcastPresence(int discoveryPort, int tcpPort) {
     if (sent < 0) {
         logger.log(LogLevel::ERROR, "Failed to broadcast presence: " + std::string(strerror(errno)), "UDPDiscovery");
         metrics.incrementSyncErrors();
-    } else {
-        logger.log(LogLevel::INFO, "Broadcast sent: " + msg + " to port " + std::to_string(discoveryPort), "UDPDiscovery");
-        metrics.incrementBytesSent(sent);
+        close(sock);
+        return false;
+    }
+    
+    logger.log(LogLevel::DEBUG, "Broadcast sent: " + msg + " to port " + std::to_string(discoveryPort), "UDPDiscovery");
+    metrics.incrementBytesSent(sent);
+    
+    // Update rate limiting state
+    lastBroadcast_ = now;
+    consecutiveBroadcasts_++;
+    if (consecutiveBroadcasts_ > MAX_CONSECUTIVE) {
+        consecutiveBroadcasts_ = MAX_CONSECUTIVE;
     }
     
     close(sock);
+    return true;
+}
+
+void UDPDiscovery::resetBackoff() {
+    consecutiveBroadcasts_ = 0;
+}
+
+int UDPDiscovery::calculateBackoffMs() const {
+    // Exponential backoff with jitter
+    int backoff = BASE_INTERVAL_MS;
+    int consecutive = consecutiveBroadcasts_.load();
+    
+    if (consecutive > 0) {
+        // Double the interval for each consecutive broadcast, up to max
+        backoff = std::min(BASE_INTERVAL_MS * (1 << std::min(consecutive, 6)), MAX_INTERVAL_MS);
+    }
+    
+    // Add random jitter (0-25% of backoff)
+    std::uniform_int_distribution<int> jitter(0, backoff / 4);
+    backoff += jitter(rng_);
+    
+    return backoff;
 }
 
 void UDPDiscovery::discoveryLoop() {

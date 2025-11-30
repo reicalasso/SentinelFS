@@ -49,9 +49,14 @@ bool IPCHandler::start() {
     // Remove old socket if exists
     unlink(socketPath_.c_str());
     
+    // Set restrictive umask BEFORE creating socket to prevent permission race
+    // This ensures the socket file is created with restricted permissions from the start
+    mode_t oldMask = umask(S_IRWXO);  // Block all permissions for "others"
+    
     // Create Unix domain socket
     serverSocket_ = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverSocket_ < 0) {
+        umask(oldMask);  // Restore umask
         std::cerr << "IPC: Cannot create socket" << std::endl;
         return false;
     }
@@ -62,18 +67,20 @@ bool IPCHandler::start() {
     strncpy(addr.sun_path, socketPath_.c_str(), sizeof(addr.sun_path) - 1);
     
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        umask(oldMask);  // Restore umask
         std::cerr << "IPC: Cannot bind socket" << std::endl;
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
     }
 
-    // Restrict socket permissions to owner/group only
-    if (fchmod(serverSocket_, S_IRUSR | S_IWUSR | S_IRGRP) < 0) {
-        std::cerr << "IPC: Failed to set socket permissions" << std::endl;
-        close(serverSocket_);
-        serverSocket_ = -1;
-        return false;
+    // Restore original umask
+    umask(oldMask);
+
+    // Additionally set explicit permissions on socket file for defense in depth
+    if (chmod(socketPath_.c_str(), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+        std::cerr << "IPC: Warning - Failed to set socket file permissions" << std::endl;
+        // Continue anyway - umask should have protected us
     }
     
     if (listen(serverSocket_, 5) < 0) {
@@ -291,8 +298,10 @@ std::string IPCHandler::processCommand(const std::string& command) {
             } else {
                 return "Failed to resolve conflict " + std::to_string(conflictId) + ".\n";
             }
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
             return "Invalid conflict ID.\n";
+        } catch (const std::out_of_range&) {
+            return "Conflict ID out of range.\n";
         }
     } else if (cmd == "ADD_FOLDER") {
         if (args.empty()) {
@@ -631,8 +640,10 @@ std::string IPCHandler::handleConnectCommand(const std::string& args) {
     int port;
     try {
         port = std::stoi(args.substr(colonPos + 1));
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
         return "Invalid port number.\n";
+    } catch (const std::out_of_range&) {
+        return "Port number out of range.\n";
     }
     
     if (network_->connectToPeer(ip, port)) {
@@ -653,8 +664,10 @@ std::string IPCHandler::handleAddPeerCommand(const std::string& args) {
     int port;
     try {
         port = std::stoi(args.substr(colonPos + 1));
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
         return "Error: Invalid port number.\n";
+    } catch (const std::out_of_range&) {
+        return "Error: Port number out of range.\n";
     }
     
     if (!network_) {
@@ -692,8 +705,10 @@ std::string IPCHandler::handleUploadLimitCommand(const std::string& args) {
         std::ostringstream ss;
         ss << "Global upload limit set to " << kb << " KB/s.\n";
         return ss.str();
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
         return "Invalid upload limit. Usage: UPLOAD-LIMIT <KB/s>\n";
+    } catch (const std::out_of_range&) {
+        return "Upload limit value out of range.\n";
     }
 }
 
@@ -721,8 +736,10 @@ std::string IPCHandler::handleDownloadLimitCommand(const std::string& args) {
         std::ostringstream ss;
         ss << "Global download limit set to " << kb << " KB/s.\n";
         return ss.str();
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
         return "Invalid download limit. Usage: DOWNLOAD-LIMIT <KB/s>\n";
+    } catch (const std::out_of_range&) {
+        return "Download limit value out of range.\n";
     }
 }
 

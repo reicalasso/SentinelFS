@@ -80,7 +80,9 @@ namespace SentinelFS {
         if (val.empty()) return defaultValue;
         try {
             return std::stoi(val);
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
+            return defaultValue;
+        } catch (const std::out_of_range&) {
             return defaultValue;
         }
     }
@@ -94,7 +96,9 @@ namespace SentinelFS {
         if (val.empty()) return defaultValue;
         try {
             return static_cast<size_t>(std::stoull(val));
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
+            return defaultValue;
+        } catch (const std::out_of_range&) {
             return defaultValue;
         }
     }
@@ -125,7 +129,9 @@ namespace SentinelFS {
         if (val.empty()) return defaultValue;
         try {
             return std::stod(val);
-        } catch (...) {
+        } catch (const std::invalid_argument&) {
+            return defaultValue;
+        } catch (const std::out_of_range&) {
             return defaultValue;
         }
     }
