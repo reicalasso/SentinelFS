@@ -315,7 +315,6 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
 
                 std::string key = peerId + "|" + relativePath;
                 std::vector<uint8_t> fullDelta;
-                bool allChunksReceived = false;
                 
                 {
                     std::lock_guard<std::mutex> lock(pendingMutex_);
@@ -347,7 +346,6 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
                     }
 
                     // All chunks received: reassemble full DELTA_DATA message
-                    allChunksReceived = true;
                     for (std::uint32_t i = 0; i < pending.totalChunks; ++i) {
                         const auto& c = pending.chunks[i];
                         fullDelta.insert(fullDelta.end(), c.begin(), c.end());
