@@ -35,6 +35,7 @@ set(CORE_SOURCES
     sync/src/FileSyncHandler.cpp
     sync/src/DeltaSyncProtocolHandler.cpp
     sync/src/DeltaSerialization.cpp
+    sync/src/OfflineQueue.cpp
 
     # Utils sources
     utils/src/Logger.cpp
@@ -44,6 +45,7 @@ set(CORE_SOURCES
     utils/src/PluginManager.cpp
     utils/src/MetricsCollector.cpp
     utils/src/ThreadPool.cpp
+    utils/src/HealthEndpoint.cpp
     src/PathUtils.cpp
 )
 
