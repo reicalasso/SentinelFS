@@ -132,7 +132,7 @@ export default function App() {
           <div className="space-y-1">
             <h3 className="px-3 text-[10px] font-bold uppercase text-muted-foreground/50 tracking-wider mb-2">Main</h3>
             <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-            <SidebarItem icon={<Folder />} label="My Files" active={activeTab === 'files'} onClick={() => setActiveTab('files')} />
+            <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => setActiveTab('files')} />
             <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => setActiveTab('peers')} badge={peers.length > 0 ? peers.length : undefined} />
             <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => setActiveTab('transfers')} />
           </div>

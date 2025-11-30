@@ -52,8 +52,8 @@ export function Files({ files }: { files?: any[] }) {
   }
 
   // Reconstruct the file tree from flat list
-  const fileTree = useMemo(() => {
-      if (!files) return []
+  const { tree: fileTree, flatList: flatItems } = useMemo(() => {
+      if (!files) return { tree: [], flatList: [] }
 
       const map = new Map<string, any>()
       
@@ -125,15 +125,36 @@ export function Files({ files }: { files?: any[] }) {
           }
       })
 
-      // Return only the top-level roots (watched folders)
-      return Array.from(map.values()).filter(f => f.isFolder && !f.parent && files.some(rf => rf.path === f.path && rf.isFolder && !rf.parent))
+      const roots = Array.from(map.values()).filter(f => f.isFolder && !f.parent && files.some(rf => rf.path === f.path && rf.isFolder && !rf.parent))
+
+      const computeFolderSize = (node: any): number => {
+          if (!node.children || node.children.length === 0) {
+              node.size = node.size ?? 0
+              return node.size
+          }
+
+          let total = node.isFolder ? 0 : (node.size ?? 0)
+          node.children.forEach((child: any) => {
+              total += computeFolderSize(child)
+          })
+
+          node.size = total
+          return node.size
+      }
+
+      roots.forEach(root => computeFolderSize(root))
+
+      return {
+          tree: roots,
+          flatList: Array.from(map.values())
+      }
   }, [files])
 
   // Filter handling
   const isFiltering = searchQuery.length > 0 || filterType !== 'All Types'
   
   // If filtering, we flatten the structure again to show matches
-  const displayItems = isFiltering ? (files || []).filter((f: any) => {
+  const displayItems = isFiltering ? (flatItems || []).filter((f: any) => {
       const name = f.path.split('/').pop() || f.path
       const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesType = filterType === 'All Types' 
@@ -143,7 +164,7 @@ export function Files({ files }: { files?: any[] }) {
       return matchesSearch && matchesType
   }) : fileTree
 
-  const hasRealData = files && files.length > 0
+  const hasRealData = fileTree && fileTree.length > 0
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
@@ -151,7 +172,7 @@ export function Files({ files }: { files?: any[] }) {
         <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
                 <FolderOpen className="w-5 h-5 text-primary" />
-                Synced Folders
+                SYNC Files
             </h2>
             <p className="text-sm text-muted-foreground">Manage your synchronized directories and files</p>
         </div>
@@ -259,7 +280,7 @@ function FileTreeItem({ item, level, expandedFolders, toggleFolder, formatSize, 
                 </div>
                 
                 <div className="col-span-2 font-mono text-muted-foreground text-xs">
-                    {item.isFolder ? '-' : formatSize(item.size)}
+                    {item.size !== undefined && item.size !== null ? formatSize(item.size) : (item.isFolder ? '—' : '—')}
                 </div>
                 
                 <div className="col-span-2">
