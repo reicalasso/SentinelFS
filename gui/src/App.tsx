@@ -1,10 +1,11 @@
-import { useState, useEffect, cloneElement, useRef } from 'react'
+import { useState, useEffect, useCallback, cloneElement, useRef } from 'react'
 import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Menu, Command } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
 import { Files } from './components/Files'
 import { Transfers } from './components/Transfers'
+import { ToastList } from './components/ToastList'
 
 // Define the API interface exposed from preload
 interface ElectronAPI {
@@ -37,8 +38,17 @@ export default function App() {
   const [transfers, setTransfers] = useState<any[]>([])
   const [config, setConfig] = useState<any>(null)
   const [lastPeerCount, setLastPeerCount] = useState<number>(0)
+  const [toasts, setToasts] = useState<string[]>([])
 
   const lastLogRef = useRef<string | null>(null)
+
+  const addToast = useCallback((message: string) => {
+    setToasts(prev => [...prev.slice(-4), message])
+  }, [])
+
+  const clearToasts = useCallback(() => {
+    setToasts([])
+  }, [])
 
   const handleLog = (log: string) => {
     const cleanLog = log.replace(/\u001b\[[0-9;]*m/g, '')
@@ -49,44 +59,54 @@ export default function App() {
     setLogs(prev => [...prev.slice(-99), formattedLog])
   }
 
+  const handleStatus = useCallback((newStatus: any) => {
+    setStatus(newStatus)
+  }, [])
+
+  const handleData = useCallback((data: any) => {
+    if (data.type === 'METRICS') {
+      setMetrics(data.payload)
+    } else if (data.type === 'PEERS') {
+      if (data.payload.length > 0) {
+        setPeers(data.payload)
+        setLastPeerCount(data.payload.length)
+      } else if (lastPeerCount === 0) {
+        setPeers([])
+      }
+    } else if (data.type === 'STATUS') {
+      setSyncStatus(data.payload)
+    } else if (data.type === 'FILES') {
+      setFiles(data.payload)
+    } else if (data.type === 'ACTIVITY') {
+      setActivity(data.payload)
+    } else if (data.type === 'TRANSFERS') {
+      setTransfers(data.payload)
+    } else if (data.type === 'CONFIG') {
+      setConfig(data.payload)
+    }
+  }, [lastPeerCount])
+
   useEffect(() => {
     if (!window.api) return
-
-    const handleStatus = (newStatus: any) => setStatus(newStatus)
-    
-    const handleData = (data: any) => {
-      if (data.type === 'METRICS') setMetrics(data.payload)
-      else if (data.type === 'PEERS') {
-        if (data.payload.length > 0) {
-          setPeers(data.payload)
-          setLastPeerCount(data.payload.length)
-        } else if (lastPeerCount === 0) {
-          setPeers([])
-        }
-      } else if (data.type === 'STATUS') setSyncStatus(data.payload)
-      else if (data.type === 'FILES') setFiles(data.payload)
-      else if (data.type === 'ACTIVITY') setActivity(data.payload)
-      else if (data.type === 'TRANSFERS') setTransfers(data.payload)
-      else if (data.type === 'CONFIG') setConfig(data.payload)
-    }
 
     window.api.on('daemon-status', handleStatus)
     window.api.on('daemon-log', handleLog)
     window.api.on('daemon-data', handleData)
 
-    // Clean up listeners to avoid duplicate logs (especially under React StrictMode)
     return () => {
       window.api.off('daemon-status', handleStatus)
       window.api.off('daemon-log', handleLog)
       window.api.off('daemon-data', handleData)
     }
-  }, [])
+  }, [handleStatus, handleData])
 
   const sendCommand = async (cmd: string) => {
     if (window.api) {
         const res = await window.api.sendCommand(cmd)
         if (!res.success) {
-            handleLog(`ERROR: Failed to send command ${cmd}: ${res.error}`)
+            const message = `Command ${cmd} failed: ${res.error ?? 'unknown'}`
+            handleLog(`ERROR: ${message}`)
+            addToast(message)
         }
     } else {
         console.log(`[Mock Command] ${cmd}`)
@@ -166,6 +186,7 @@ export default function App() {
         </div>
       </div>
 
+      <ToastList toasts={toasts} onClear={clearToasts} />
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Glass Header */}
