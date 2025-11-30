@@ -55,6 +55,7 @@ namespace SentinelFS {
         bool isVersionCompatible(const std::string& current,
                                  const std::string& required) const;
         static std::vector<int> tokenizeVersion(const std::string& version);
+        std::vector<std::string> resolveUnloadOrder() const;
 
         PluginLoader loader_;
         std::unordered_map<std::string, Descriptor> registry_;

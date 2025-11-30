@@ -2,7 +2,7 @@
 #include "Logger.h"
 
 #include <sstream>
-#include <iostream>
+#include <functional>
 
 namespace SentinelFS {
 
@@ -31,12 +31,12 @@ namespace SentinelFS {
         }
 
         if (!isRegistered(name)) {
-            std::cerr << "PluginManager: Plugin '" << name << "' not registered" << std::endl;
+            Logger::instance().error("PluginManager: Plugin '" + name + "' not registered", "PluginManager");
             return nullptr;
         }
 
         if (visiting.count(name)) {
-            std::cerr << "PluginManager: Detected circular dependency involving '" << name << "'" << std::endl;
+            Logger::instance().error("PluginManager: Detected circular dependency involving '" + name + "'", "PluginManager");
             return nullptr;
         }
 
@@ -46,12 +46,12 @@ namespace SentinelFS {
         if (loadDependencies) {
             for (const auto& dep : descriptor.dependencies) {
                 if (!isRegistered(dep)) {
-                    std::cerr << "PluginManager: Dependency '" << dep << "' for plugin '" << name << "' not registered" << std::endl;
+                    Logger::instance().error("PluginManager: Dependency '" + dep + "' for plugin '" + name + "' not registered", "PluginManager");
                     visiting.erase(name);
                     return nullptr;
                 }
                 if (!loadInternal(dep, eventBus, loadDependencies, visiting)) {
-                    std::cerr << "PluginManager: Failed to load dependency '" << dep << "' for plugin '" << name << "'" << std::endl;
+                    Logger::instance().error("PluginManager: Failed to load dependency '" + dep + "' for plugin '" + name + "'", "PluginManager");
                     visiting.erase(name);
                     return nullptr;
                 }
@@ -60,7 +60,7 @@ namespace SentinelFS {
 
         auto plugin = loader_.loadPlugin(descriptor.path, eventBus);
         if (!plugin) {
-            std::cerr << "PluginManager: Failed to load plugin '" << name << "' from " << descriptor.path << std::endl;
+            Logger::instance().error("PluginManager: Failed to load plugin '" + name + "' from " + descriptor.path, "PluginManager");
             statuses_[name] = descriptor.optional ? PluginStatus::OPTIONAL_NOT_LOADED : PluginStatus::FAILED;
             visiting.erase(name);
             return nullptr;
@@ -68,8 +68,8 @@ namespace SentinelFS {
 
         if (!descriptor.minVersion.empty()) {
             if (!isVersionCompatible(plugin->getVersion(), descriptor.minVersion)) {
-                std::cerr << "PluginManager: Plugin '" << name << "' version " << plugin->getVersion()
-                          << " does not satisfy minimum " << descriptor.minVersion << std::endl;
+                Logger::instance().error("PluginManager: Plugin '" + name + "' version " + plugin->getVersion()
+                                        + " does not satisfy minimum " + descriptor.minVersion, "PluginManager");
                 loader_.unloadPlugin(plugin->getName());
                 visiting.erase(name);
                 return nullptr;
@@ -127,22 +127,16 @@ namespace SentinelFS {
     }
 
     void PluginManager::unloadAll() {
-        // Collect plugin names first, then drop manager-held instances
-        std::vector<std::string> pluginNames;
-        pluginNames.reserve(instances_.size());
-
-        for (const auto& entry : instances_) {
-            if (entry.second) {
-                pluginNames.push_back(entry.second->getName());
+        auto order = resolveUnloadOrder();
+        for (auto it = order.rbegin(); it != order.rend(); ++it) {
+            auto instIt = instances_.find(*it);
+            if (instIt == instances_.end() || !instIt->second) {
+                continue;
             }
+            loader_.unloadPlugin(instIt->second->getName());
         }
-
-        // Release our shared_ptrs before asking loader_ to unload
         instances_.clear();
-
-        for (const auto& name : pluginNames) {
-            loader_.unloadPlugin(name);
-        }
+        statuses_.clear();
     }
 
     bool PluginManager::isVersionCompatible(const std::string& current,
@@ -172,11 +166,46 @@ namespace SentinelFS {
         while (std::getline(ss, segment, '.')) {
             try {
                 tokens.push_back(std::stoi(segment));
-            } catch (...) {
+            } catch (const std::exception& e) {
+                Logger::instance().warn("PluginManager: Non-numeric version segment '" + segment + "' in '" + version + "'", "PluginManager");
                 tokens.push_back(0);
             }
         }
         return tokens;
+    }
+
+    std::vector<std::string> PluginManager::resolveUnloadOrder() const {
+        std::vector<std::string> order;
+        std::unordered_set<std::string> visited;
+        std::unordered_set<std::string> visiting;
+
+        auto visit = [&](auto&& self, const std::string& node) -> bool {
+            if (visited.count(node)) {
+                return true;
+            }
+            if (visiting.count(node)) {
+                Logger::instance().warn("PluginManager: Cycle detected while resolving unload order for '" + node + "'", "PluginManager");
+                return false;
+            }
+            visiting.insert(node);
+            auto it = registry_.find(node);
+            if (it != registry_.end()) {
+                for (const auto& dep : it->second.dependencies) {
+                    if (!self(self, dep)) {
+                        return false;
+                    }
+                }
+            }
+            visiting.erase(node);
+            visited.insert(node);
+            order.push_back(node);
+            return true;
+        };
+
+        for (const auto& entry : registry_) {
+            visit(visit, entry.first);
+        }
+        return order;
     }
 
 } // namespace SentinelFS
