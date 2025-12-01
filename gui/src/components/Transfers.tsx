@@ -1,6 +1,6 @@
-import { ArrowDown, ArrowUp, CheckCircle2, Pause, Play, X, Download, Upload, Activity, ArrowRightLeft } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Pause, Play, X, Download, Upload, Activity, ArrowRightLeft, Clock } from 'lucide-react'
 
-export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: any[] }) {
+export function Transfers({ metrics, transfers, history }: { metrics?: any, transfers?: any[], history?: any[] }) {
   const formatSize = (bytes: number) => {
     if (!bytes) return '0 B'
     if (bytes < 1024) return bytes + ' B'
@@ -119,9 +119,44 @@ export function Transfers({ metrics, transfers }: { metrics?: any, transfers?: a
         {/* History */}
         <div>
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4 mt-8">Recent History</h3>
-            <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden text-center text-muted-foreground p-6">
-                <p className="text-sm opacity-70">No recent transfer history</p>
-            </div>
+            {(!history || history.length === 0) ? (
+                <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden text-center text-muted-foreground p-6">
+                    <p className="text-sm opacity-70">No recent transfer history</p>
+                </div>
+            ) : (
+                <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl overflow-hidden">
+                    <div className="divide-y divide-border/30">
+                        {history.map((item: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-lg ${
+                                        item.type === 'download' || item.type === 'pull' 
+                                            ? 'bg-emerald-500/10 text-emerald-500' 
+                                            : item.type === 'delete' 
+                                            ? 'bg-red-500/10 text-red-500'
+                                            : 'bg-blue-500/10 text-blue-500'
+                                    }`}>
+                                        {item.type === 'download' || item.type === 'pull' 
+                                            ? <ArrowDown className="w-4 h-4" /> 
+                                            : item.type === 'delete'
+                                            ? <X className="w-4 h-4" />
+                                            : <ArrowUp className="w-4 h-4" />
+                                        }
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-sm">{item.file}</div>
+                                        <div className="text-xs text-muted-foreground capitalize">{item.type}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{item.time}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     </div>
   )

@@ -1,1 +1,0 @@
-SENTINELFS_PLUGIN_DIR=/home/rei/sentinelFS-demo/SentinelFS/build/plugins ./app/daemon/sentinel_daemon

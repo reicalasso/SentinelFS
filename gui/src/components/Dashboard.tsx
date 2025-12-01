@@ -5,10 +5,21 @@ import { useState, useEffect } from 'react'
 export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
   const [trafficHistory, setTrafficHistory] = useState<any[]>([])
   const [lastMetrics, setLastMetrics] = useState<any>(null)
+  const [peakUpload, setPeakUpload] = useState(0)
+  const [peakDownload, setPeakDownload] = useState(0)
+  
+  // Format bytes helper
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 B'
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+  }
   
   // Format metrics from daemon
-  const totalUploadedMB = metrics?.totalUploaded ? (metrics.totalUploaded / (1024 * 1024)).toFixed(2) : '0'
-  const totalDownloadedMB = metrics?.totalDownloaded ? (metrics.totalDownloaded / (1024 * 1024)).toFixed(2) : '0'
+  const totalUploaded = metrics?.totalUploaded || 0
+  const totalDownloaded = metrics?.totalDownloaded || 0
   const recentActivity = activity || []
   
   // Health data from syncStatus
@@ -24,21 +35,32 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
     const now = new Date()
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
     
-    // Calculate delta (KB/s)
+    // Calculate delta (bytes/s then convert to appropriate unit)
     let uploadRate = 0
     let downloadRate = 0
     
     if (lastMetrics) {
       const timeDiff = 2 // seconds (polling interval)
-      uploadRate = Math.round((metrics.totalUploaded - lastMetrics.totalUploaded) / 1024 / timeDiff)
-      downloadRate = Math.round((metrics.totalDownloaded - lastMetrics.totalDownloaded) / 1024 / timeDiff)
+      uploadRate = Math.max(0, (metrics.totalUploaded - lastMetrics.totalUploaded) / timeDiff)
+      downloadRate = Math.max(0, (metrics.totalDownloaded - lastMetrics.totalDownloaded) / timeDiff)
+      
+      // Track peaks
+      if (uploadRate > peakUpload) setPeakUpload(uploadRate)
+      if (downloadRate > peakDownload) setPeakDownload(downloadRate)
     }
     
     setLastMetrics(metrics)
     
+    // Store as KB/s for chart
     setTrafficHistory(prev => {
-      const newHistory = [...prev, { time: timeStr, upload: uploadRate, download: downloadRate }]
-      // Keep last 20 data points
+      const newHistory = [...prev, { 
+        time: timeStr, 
+        upload: Math.round(uploadRate / 1024), 
+        download: Math.round(downloadRate / 1024),
+        uploadBytes: uploadRate,
+        downloadBytes: downloadRate
+      }]
+      // Keep last 30 data points
       return newHistory.slice(-30)
     })
   }, [metrics])
@@ -70,8 +92,8 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
         />
         <StatCard 
           title="Total Traffic" 
-          value={`${totalDownloadedMB} MB`} 
-          sub={`Up: ${totalUploadedMB} MB`}
+          value={formatBytes(totalDownloaded)} 
+          sub={`↑ ${formatBytes(totalUploaded)}`}
           icon={<HardDrive className="w-5 h-5 text-violet-500" />}
         />
       </div>
@@ -81,13 +103,13 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
         
         {/* Chart Section */}
         <div className="lg:col-span-2 bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-sm hover:border-border/80 transition-colors">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <Activity className="w-5 h-5 text-primary" />
                 Network Traffic
               </h3>
-              <p className="text-sm text-muted-foreground">Real-time bandwidth usage (KB/s)</p>
+              <p className="text-sm text-muted-foreground">Real-time bandwidth usage</p>
             </div>
             <div className="flex gap-4 text-xs font-medium">
               <div className="flex items-center gap-2 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20 text-blue-500">
@@ -101,7 +123,27 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
             </div>
           </div>
           
-          <div className="h-[320px] w-full">
+          {/* Traffic Summary */}
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="bg-background/50 rounded-lg p-3 border border-border/30">
+              <div className="text-xs text-muted-foreground mb-1">Total Downloaded</div>
+              <div className="text-lg font-semibold text-emerald-500">{formatBytes(totalDownloaded)}</div>
+            </div>
+            <div className="bg-background/50 rounded-lg p-3 border border-border/30">
+              <div className="text-xs text-muted-foreground mb-1">Total Uploaded</div>
+              <div className="text-lg font-semibold text-blue-500">{formatBytes(totalUploaded)}</div>
+            </div>
+            <div className="bg-background/50 rounded-lg p-3 border border-border/30">
+              <div className="text-xs text-muted-foreground mb-1">Peak Download</div>
+              <div className="text-lg font-semibold text-emerald-400">{formatBytes(peakDownload)}/s</div>
+            </div>
+            <div className="bg-background/50 rounded-lg p-3 border border-border/30">
+              <div className="text-xs text-muted-foreground mb-1">Peak Upload</div>
+              <div className="text-lg font-semibold text-blue-400">{formatBytes(peakUpload)}/s</div>
+            </div>
+          </div>
+          
+          <div className="h-[240px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trafficHistory.length > 0 ? trafficHistory : [{ time: 'Now', upload: 0, download: 0 }]}>
                 <defs>

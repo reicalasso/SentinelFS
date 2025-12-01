@@ -24,6 +24,14 @@
 
 namespace SentinelFS {
 
+// Helper function to format bytes
+static std::string formatBytes(uint64_t bytes) {
+    if (bytes < 1024) return std::to_string(bytes) + " B";
+    if (bytes < 1024 * 1024) return std::to_string(bytes / 1024) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return std::to_string(bytes / (1024 * 1024)) + " MB";
+    return std::to_string(bytes / (1024 * 1024 * 1024)) + " GB";
+}
+
 IPCHandler::IPCHandler(const std::string& socketPath,
                        INetworkAPI* network,
                        IStorageAPI* storage,
@@ -1010,49 +1018,85 @@ std::string IPCHandler::handleFilesJsonCommand() {
 }
 
 std::string IPCHandler::handleActivityJsonCommand() {
-    if (!storage_) {
-        return "{\"activity\": []}";
-    }
-    
-    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
     std::stringstream ss;
     ss << "{\"activity\": [";
+    bool first = true;
     
-    // Query watched_folders for "Sync started" activity
-    const char* sql = "SELECT path, added_at FROM watched_folders WHERE status = 'active' ORDER BY added_at DESC LIMIT 5";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        bool first = true;
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            if (!first) ss << ",";
-            first = false;
-            
-            const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            long long addedAt = sqlite3_column_int64(stmt, 1);
-            
-            std::string pathStr = path ? path : "";
-            std::filesystem::path p(pathStr);
-            std::string filename = p.filename().string();
-            if (filename.empty()) filename = pathStr;
-            
-            // Format time relative (simple approximation)
-            auto now = std::time(nullptr);
-            auto diff = now - addedAt;
-            std::string timeStr;
-            if (diff < 60) timeStr = "Just now";
-            else if (diff < 3600) timeStr = std::to_string(diff / 60) + " mins ago";
-            else if (diff < 86400) timeStr = std::to_string(diff / 3600) + " hours ago";
-            else timeStr = std::to_string(diff / 86400) + " days ago";
-            
-            ss << "{";
-            ss << "\"type\":\"sync\",";
-            ss << "\"file\":\"" << filename << "\",";
-            ss << "\"time\":\"" << timeStr << "\",";
-            ss << "\"details\":\"Folder watching started\"";
-            ss << "}";
+    // First, get recent file sync activities from files table
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        
+        // Get recently synced files
+        const char* filesSql = "SELECT path, timestamp, synced FROM files ORDER BY timestamp DESC LIMIT 10";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, filesSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                long long timestamp = sqlite3_column_int64(stmt, 1);
+                int synced = sqlite3_column_int(stmt, 2);
+                
+                std::string pathStr = path ? path : "";
+                std::filesystem::path p(pathStr);
+                std::string filename = p.filename().string();
+                if (filename.empty()) filename = pathStr;
+                
+                // Format time relative
+                auto now = std::time(nullptr);
+                auto diff = now - timestamp;
+                std::string timeStr;
+                if (diff < 60) timeStr = "Just now";
+                else if (diff < 3600) timeStr = std::to_string(diff / 60) + " mins ago";
+                else if (diff < 86400) timeStr = std::to_string(diff / 3600) + " hours ago";
+                else timeStr = std::to_string(diff / 86400) + " days ago";
+                
+                ss << "{";
+                ss << "\"type\":\"" << (synced ? "sync" : "modified") << "\",";
+                ss << "\"file\":\"" << filename << "\",";
+                ss << "\"time\":\"" << timeStr << "\",";
+                ss << "\"details\":\"" << (synced ? "File synced" : "File modified") << "\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
         }
-        sqlite3_finalize(stmt);
+        
+        // Also include watched folders
+        const char* foldersSql = "SELECT path, added_at FROM watched_folders WHERE status = 'active' ORDER BY added_at DESC LIMIT 3";
+        
+        if (sqlite3_prepare_v2(db, foldersSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                long long addedAt = sqlite3_column_int64(stmt, 1);
+                
+                std::string pathStr = path ? path : "";
+                std::filesystem::path p(pathStr);
+                std::string filename = p.filename().string();
+                if (filename.empty()) filename = pathStr;
+                
+                // Format time relative
+                auto now = std::time(nullptr);
+                auto diff = now - addedAt;
+                std::string timeStr;
+                if (diff < 60) timeStr = "Just now";
+                else if (diff < 3600) timeStr = std::to_string(diff / 60) + " mins ago";
+                else if (diff < 86400) timeStr = std::to_string(diff / 3600) + " hours ago";
+                else timeStr = std::to_string(diff / 86400) + " days ago";
+                
+                ss << "{";
+                ss << "\"type\":\"folder\",";
+                ss << "\"file\":\"" << filename << "\",";
+                ss << "\"time\":\"" << timeStr << "\",";
+                ss << "\"details\":\"Folder watching started\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
+        }
     }
     
     ss << "]}\n";
@@ -1060,42 +1104,165 @@ std::string IPCHandler::handleActivityJsonCommand() {
 }
 
 std::string IPCHandler::handleTransfersJsonCommand() {
-    if (!storage_) return "{\"transfers\": []}\n";
-    
-    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
     std::stringstream ss;
     ss << "{\"transfers\": [";
+    bool first = true;
     
-    const char* sql = "SELECT file_path, peer_id, operation, status FROM sync_queue WHERE status != 'completed' ORDER BY timestamp DESC LIMIT 20";
-    sqlite3_stmt* stmt;
+    // First, get active transfers from MetricsCollector (real-time)
+    auto& metrics = MetricsCollector::instance();
+    auto activeTransfers = metrics.getActiveTransfers();
     
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        bool first = true;
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            if (!first) ss << ",";
-            first = false;
-            
-            const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            const char* peer = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            const char* op = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            const char* status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            
-            std::string pathStr = path ? path : "";
-            std::filesystem::path p(pathStr);
-            std::string filename = p.filename().string();
-            if (filename.empty()) filename = pathStr;
-            
-            ss << "{";
-            ss << "\"name\":\"" << filename << "\",";
-            ss << "\"peer\":\"" << (peer ? peer : "Unknown") << "\",";
-            ss << "\"type\":\"" << (op ? op : "unknown") << "\",";
-            ss << "\"status\":\"" << (status ? status : "pending") << "\",";
-            ss << "\"progress\": 0,"; 
-            ss << "\"size\": \"-\","; 
-            ss << "\"speed\": \"-\"";
-            ss << "}";
+    for (const auto& transfer : activeTransfers) {
+        if (!first) ss << ",";
+        first = false;
+        
+        std::filesystem::path p(transfer.filePath);
+        std::string filename = p.filename().string();
+        if (filename.empty()) filename = transfer.filePath;
+        
+        ss << "{";
+        ss << "\"file\":\"" << filename << "\",";
+        ss << "\"peer\":\"" << transfer.peerId << "\",";
+        ss << "\"type\":\"" << (transfer.isUpload ? "upload" : "download") << "\",";
+        ss << "\"status\":\"active\",";
+        ss << "\"progress\":" << transfer.progress << ",";
+        ss << "\"size\":\"" << formatBytes(transfer.totalBytes) << "\",";
+        ss << "\"speed\":\"" << formatBytes(transfer.speedBps) << "/s\"";
+        ss << "}";
+    }
+    
+    // Then, get pending transfers from sync_queue (database)
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        const char* sql = "SELECT file_path, op_type, status FROM sync_queue WHERE status = 'pending' ORDER BY created_at DESC LIMIT 20";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                const char* op = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                const char* status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+                
+                std::string pathStr = path ? path : "";
+                std::filesystem::path p(pathStr);
+                std::string filename = p.filename().string();
+                if (filename.empty()) filename = pathStr;
+                
+                // Determine type from op_type
+                std::string type = "upload";
+                if (op) {
+                    std::string opStr(op);
+                    if (opStr == "download" || opStr == "pull") type = "download";
+                }
+                
+                ss << "{";
+                ss << "\"file\":\"" << filename << "\",";
+                ss << "\"peer\":\"Unknown\",";
+                ss << "\"type\":\"" << type << "\",";
+                ss << "\"status\":\"" << (status ? status : "pending") << "\",";
+                ss << "\"progress\":0,";
+                ss << "\"size\":\"-\",";
+                ss << "\"speed\":\"-\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
         }
-        sqlite3_finalize(stmt);
+    }
+    
+    ss << "], \"history\": [";
+    first = true;
+    
+    // Add transfer history from file_access_log, fallback to files table if empty
+    if (storage_) {
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        
+        // First try file_access_log
+        const char* historySql = "SELECT file_path, op_type, timestamp FROM file_access_log ORDER BY timestamp DESC LIMIT 20";
+        sqlite3_stmt* stmt;
+        bool hasAccessLog = false;
+        
+        if (sqlite3_prepare_v2(db, historySql, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                hasAccessLog = true;
+                if (!first) ss << ",";
+                first = false;
+                
+                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                const char* op = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                long long timestamp = sqlite3_column_int64(stmt, 2);
+                
+                std::string pathStr = path ? path : "";
+                std::filesystem::path p(pathStr);
+                std::string filename = p.filename().string();
+                if (filename.empty()) filename = pathStr;
+                
+                // Format time
+                auto now = std::time(nullptr);
+                auto diff = now - timestamp;
+                std::string timeStr;
+                if (diff < 60) timeStr = "Just now";
+                else if (diff < 3600) timeStr = std::to_string(diff / 60) + " mins ago";
+                else if (diff < 86400) timeStr = std::to_string(diff / 3600) + " hours ago";
+                else timeStr = std::to_string(diff / 86400) + " days ago";
+                
+                ss << "{";
+                ss << "\"file\":\"" << filename << "\",";
+                ss << "\"type\":\"" << (op ? op : "sync") << "\",";
+                ss << "\"time\":\"" << timeStr << "\"";
+                ss << "}";
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Fallback: if file_access_log is empty, show synced files from files table
+        if (!hasAccessLog) {
+            // Only show files with valid positive timestamps
+            const char* filesSql = "SELECT path, size, timestamp, synced FROM files WHERE synced = 1 AND timestamp > 0 ORDER BY timestamp DESC LIMIT 20";
+            if (sqlite3_prepare_v2(db, filesSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    if (!first) ss << ",";
+                    first = false;
+                    
+                    const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                    long long size = sqlite3_column_int64(stmt, 1);
+                    long long timestamp = sqlite3_column_int64(stmt, 2);
+                    
+                    std::string pathStr = path ? path : "";
+                    std::filesystem::path p(pathStr);
+                    std::string filename = p.filename().string();
+                    if (filename.empty()) filename = pathStr;
+                    
+                    // Format time - handle edge cases
+                    auto now = std::time(nullptr);
+                    auto diff = now - timestamp;
+                    std::string timeStr;
+                    if (diff < 0 || timestamp <= 0) {
+                        timeStr = "Unknown";
+                    } else if (diff < 60) {
+                        timeStr = "Just now";
+                    } else if (diff < 3600) {
+                        timeStr = std::to_string(diff / 60) + " mins ago";
+                    } else if (diff < 86400) {
+                        timeStr = std::to_string(diff / 3600) + " hours ago";
+                    } else if (diff < 2592000) { // 30 days
+                        timeStr = std::to_string(diff / 86400) + " days ago";
+                    } else {
+                        timeStr = "Over a month ago";
+                    }
+                    
+                    ss << "{";
+                    ss << "\"file\":\"" << filename << "\",";
+                    ss << "\"type\":\"sync\",";
+                    ss << "\"size\":\"" << formatBytes(size) << "\",";
+                    ss << "\"time\":\"" << timeStr << "\"";
+                    ss << "}";
+                }
+                sqlite3_finalize(stmt);
+            }
+        }
     }
     
     ss << "]}\n";

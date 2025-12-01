@@ -222,29 +222,44 @@ bool DaemonCore::loadPlugins() {
 
     // Get plugin directory from environment or use default
     const char* envPluginDir = std::getenv("SENTINELFS_PLUGIN_DIR");
-    std::string pluginDir = envPluginDir ? envPluginDir : "./plugins";
-    
-    logger.info("Loading plugins from: " + pluginDir, "DaemonCore");
-    
-    // Check if plugin directory exists
-    if (!std::filesystem::exists(pluginDir)) {
-        logger.error("Plugin directory does not exist: " + pluginDir, "DaemonCore");
+    std::filesystem::path desiredDir = envPluginDir ? std::filesystem::path(envPluginDir) : std::filesystem::path("./plugins");
+    std::filesystem::path defaultFallback = std::filesystem::path("./build/plugins");
+
+    if (!std::filesystem::exists(desiredDir) && std::filesystem::exists(defaultFallback)) {
+        logger.warn("Plugin directory " + desiredDir.string() + " not found; falling back to " + defaultFallback.string(), "DaemonCore");
+        desiredDir = defaultFallback;
+    }
+
+    if (!std::filesystem::exists(desiredDir)) {
+        logger.error("Plugin directory does not exist: " + desiredDir.string(), "DaemonCore");
         initStatus_.result = InitializationStatus::Result::PlugInLoadFailure;
-        initStatus_.message = "Plugin directory not found: " + pluginDir + ". Set SENTINELFS_PLUGIN_DIR or run from build dir.";
+        initStatus_.message = "Plugin directory not found: " + desiredDir.string() + ". Set SENTINELFS_PLUGIN_DIR or build plugins.";
         return false;
     }
+
+    std::string pluginDir = desiredDir.string();
+    logger.info("Loading plugins from: " + pluginDir, "DaemonCore");
 
     // Optional plugin manifest
     Config manifestConfig;
     bool manifestLoaded = false;
     std::string manifestPath;
-
+    std::vector<std::filesystem::path> manifestCandidates;
+    
     if (const char* envManifest = std::getenv("SENTINELFS_PLUGIN_MANIFEST")) {
-        manifestPath = envManifest;
-        manifestLoaded = manifestConfig.loadFromFile(manifestPath);
-    } else {
-        manifestPath = pluginDir + "/plugins.conf";
-        manifestLoaded = manifestConfig.loadFromFile(manifestPath);
+        manifestCandidates.emplace_back(envManifest);
+    }
+    manifestCandidates.emplace_back(desiredDir / "plugins.conf");
+    if (desiredDir != std::filesystem::path("./plugins")) {
+        manifestCandidates.emplace_back(std::filesystem::path("./plugins/plugins.conf"));
+    }
+
+    for (const auto& candidate : manifestCandidates) {
+        if (std::filesystem::exists(candidate) && manifestConfig.loadFromFile(candidate.string())) {
+            manifestLoaded = true;
+            manifestPath = candidate.string();
+            break;
+        }
     }
 
     if (manifestLoaded) {

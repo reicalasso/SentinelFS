@@ -41,6 +41,12 @@ export interface Transfer {
   direction: 'upload' | 'download'
 }
 
+export interface TransferHistoryItem {
+  file: string
+  type: string
+  time: string
+}
+
 export interface AppConfig {
   tcpPort?: number
   discoveryPort?: number
@@ -73,6 +79,7 @@ export interface AppState {
   files: SyncFile[]
   activity: ActivityItem[]
   transfers: Transfer[]
+  transferHistory: TransferHistoryItem[]
   config: AppConfig | null
   logs: string[]
   toasts: string[]
@@ -90,7 +97,7 @@ type AppAction =
   | { type: 'SET_SYNC_STATUS'; payload: any }
   | { type: 'SET_FILES'; payload: SyncFile[] }
   | { type: 'SET_ACTIVITY'; payload: ActivityItem[] }
-  | { type: 'SET_TRANSFERS'; payload: Transfer[] }
+  | { type: 'SET_TRANSFERS'; payload: { transfers: Transfer[], history: TransferHistoryItem[] } }
   | { type: 'SET_CONFIG'; payload: AppConfig }
   | { type: 'ADD_LOG'; payload: string }
   | { type: 'CLEAR_LOGS' }
@@ -112,6 +119,7 @@ const initialState: AppState = {
   files: [],
   activity: [],
   transfers: [],
+  transferHistory: [],
   config: null,
   logs: [],
   toasts: [],
@@ -139,7 +147,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_ACTIVITY':
       return { ...state, activity: action.payload }
     case 'SET_TRANSFERS':
-      return { ...state, transfers: action.payload }
+      return { ...state, transfers: action.payload.transfers, transferHistory: action.payload.history }
     case 'SET_CONFIG':
       return { ...state, config: action.payload }
     case 'ADD_LOG':
@@ -199,7 +207,7 @@ export function useAppState() {
     } else if (data.type === 'ACTIVITY') {
       dispatch({ type: 'SET_ACTIVITY', payload: data.payload })
     } else if (data.type === 'TRANSFERS') {
-      dispatch({ type: 'SET_TRANSFERS', payload: data.payload })
+      dispatch({ type: 'SET_TRANSFERS', payload: { transfers: data.payload, history: data.history || [] } })
     } else if (data.type === 'CONFIG') {
       dispatch({ type: 'SET_CONFIG', payload: data.payload })
     }

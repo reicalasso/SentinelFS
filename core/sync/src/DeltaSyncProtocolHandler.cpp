@@ -472,6 +472,9 @@ void DeltaSyncProtocolHandler::handleFileRequest(const std::string& peerId,
         std::uint32_t totalChunks = totalSize == 0 ? 1 : 
             static_cast<std::uint32_t>((totalSize + CHUNK_SIZE - 1) / CHUNK_SIZE);
         
+        // Start transfer tracking
+        std::string transferId = metrics.startTransfer(relativePath, peerId, true, totalSize);
+        
         for (std::uint32_t chunkId = 0; chunkId < totalChunks; ++chunkId) {
             std::size_t offset = static_cast<std::size_t>(chunkId) * CHUNK_SIZE;
             std::size_t len = std::min(CHUNK_SIZE, totalSize - offset);
@@ -488,15 +491,23 @@ void DeltaSyncProtocolHandler::handleFileRequest(const std::string& peerId,
             
             if (!network_->sendData(peerId, payload)) {
                 logger.error("Failed to send file chunk " + std::to_string(chunkId), "DeltaSyncProtocol");
-                metrics.incrementTransfersFailed();
+                metrics.completeTransfer(transferId, false);
                 return;
             }
             
             metrics.addBytesUploaded(payload.size());
+            metrics.updateTransferProgress(transferId, offset + len);
         }
         
         logger.info("Sent file " + filename + " (" + std::to_string(totalSize) + " bytes) to " + peerId, "DeltaSyncProtocol");
-        metrics.incrementTransfersCompleted();
+        metrics.completeTransfer(transferId, true);
+        
+        // Log file access to database for history tracking
+        if (storage_) {
+            auto now = std::chrono::system_clock::now();
+            auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            storage_->logFileAccess(localPath, "upload", peerId, timestamp);
+        }
         
     } catch (const std::exception& e) {
         logger.error("Error in handleFileRequest: " + std::string(e.what()), "DeltaSyncProtocol");
@@ -598,6 +609,13 @@ void DeltaSyncProtocolHandler::handleFileData(const std::string& peerId,
         metrics.incrementFilesSynced();
         metrics.addBytesDownloaded(fullFile.size());
         metrics.incrementTransfersCompleted();
+        
+        // Log file access to database for history tracking
+        if (storage_) {
+            auto now = std::chrono::system_clock::now();
+            auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            storage_->logFileAccess(localPath, "download", peerId, timestamp);
+        }
         
     } catch (const std::exception& e) {
         logger.error("Error in handleFileData: " + std::string(e.what()), "DeltaSyncProtocol");

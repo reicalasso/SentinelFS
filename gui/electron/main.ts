@@ -179,7 +179,12 @@ function connectToDaemon() {
                 } else if (json.activity !== undefined) {
                     win?.webContents.send('daemon-data', { type: 'ACTIVITY', payload: json.activity })
                 } else if (json.transfers !== undefined) {
-                    win?.webContents.send('daemon-data', { type: 'TRANSFERS', payload: json.transfers })
+                    // Send both transfers and history
+                    win?.webContents.send('daemon-data', { 
+                        type: 'TRANSFERS', 
+                        payload: json.transfers,
+                        history: json.history || []
+                    })
                 } else if (json.tcpPort !== undefined || json.uploadLimit !== undefined) {
                     win?.webContents.send('daemon-data', { type: 'CONFIG', payload: json })
                 } else if (Array.isArray(json)) {

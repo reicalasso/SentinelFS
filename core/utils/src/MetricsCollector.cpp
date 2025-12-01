@@ -273,4 +273,75 @@ namespace SentinelFS {
         avg = updated;
     }
 
+    std::string MetricsCollector::startTransfer(const std::string& filePath, const std::string& peerId, bool isUpload, uint64_t totalBytes) {
+        std::lock_guard<std::mutex> lock(transferMutex_);
+        
+        std::string transferId = "transfer_" + std::to_string(++transferIdCounter_);
+        
+        ActiveTransferInfo info;
+        info.transferId = transferId;
+        info.filePath = filePath;
+        info.peerId = peerId;
+        info.isUpload = isUpload;
+        info.totalBytes = totalBytes;
+        info.transferredBytes = 0;
+        info.speedBps = 0;
+        info.progress = 0;
+        info.startTime = std::chrono::steady_clock::now();
+        
+        activeTransfers_[transferId] = info;
+        
+        return transferId;
+    }
+
+    void MetricsCollector::updateTransferProgress(const std::string& transferId, uint64_t transferredBytes) {
+        std::lock_guard<std::mutex> lock(transferMutex_);
+        
+        auto it = activeTransfers_.find(transferId);
+        if (it == activeTransfers_.end()) return;
+        
+        auto& info = it->second;
+        info.transferredBytes = transferredBytes;
+        
+        // Calculate progress
+        if (info.totalBytes > 0) {
+            info.progress = static_cast<int>((transferredBytes * 100) / info.totalBytes);
+        }
+        
+        // Calculate speed
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - info.startTime).count();
+        if (elapsed > 0) {
+            info.speedBps = (transferredBytes * 1000) / static_cast<uint64_t>(elapsed);
+        }
+    }
+
+    void MetricsCollector::completeTransfer(const std::string& transferId, bool success) {
+        std::lock_guard<std::mutex> lock(transferMutex_);
+        
+        auto it = activeTransfers_.find(transferId);
+        if (it != activeTransfers_.end()) {
+            activeTransfers_.erase(it);
+        }
+        
+        if (success) {
+            incrementTransfersCompleted();
+        } else {
+            incrementTransfersFailed();
+        }
+    }
+
+    std::vector<ActiveTransferInfo> MetricsCollector::getActiveTransfers() const {
+        std::lock_guard<std::mutex> lock(transferMutex_);
+        
+        std::vector<ActiveTransferInfo> result;
+        result.reserve(activeTransfers_.size());
+        
+        for (const auto& pair : activeTransfers_) {
+            result.push_back(pair.second);
+        }
+        
+        return result;
+    }
+
 } // namespace SentinelFS

@@ -4,9 +4,23 @@
 #include <atomic>
 #include <mutex>
 #include <map>
+#include <vector>
 #include <chrono>
 
 namespace SentinelFS {
+
+    // Active transfer info for real-time tracking
+    struct ActiveTransferInfo {
+        std::string transferId;
+        std::string filePath;
+        std::string peerId;
+        bool isUpload;
+        uint64_t totalBytes;
+        uint64_t transferredBytes;
+        uint64_t speedBps;
+        int progress;  // 0-100
+        std::chrono::steady_clock::time_point startTime;
+    };
 
     // Snapshot structs for returning metrics (non-atomic)
     struct SyncMetricsSnapshot {
@@ -154,6 +168,12 @@ namespace SentinelFS {
 
         // Get uptime
         std::chrono::seconds getUptime() const;
+        
+        // Active transfer tracking
+        std::string startTransfer(const std::string& filePath, const std::string& peerId, bool isUpload, uint64_t totalBytes);
+        void updateTransferProgress(const std::string& transferId, uint64_t transferredBytes);
+        void completeTransfer(const std::string& transferId, bool success);
+        std::vector<ActiveTransferInfo> getActiveTransfers() const;
 
     private:
         MetricsCollector();
@@ -166,6 +186,11 @@ namespace SentinelFS {
 
         std::chrono::system_clock::time_point startTime_;
         mutable std::mutex mutex_;
+        
+        // Active transfers map
+        std::map<std::string, ActiveTransferInfo> activeTransfers_;
+        mutable std::mutex transferMutex_;
+        uint64_t transferIdCounter_{0};
 
         // Helper for moving averages
         void updateMovingAverage(std::atomic<uint64_t>& avg, uint64_t newValue);

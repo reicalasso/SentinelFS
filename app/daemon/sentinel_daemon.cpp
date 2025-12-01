@@ -76,7 +76,30 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         
-        if (arg == "--port" && i + 1 < argc) {
+        if (arg == "--config" && i + 1 < argc) {
+            // Load config file immediately to allow overriding defaults
+            // but arguments processed later will override file settings
+            std::string path = argv[++i];
+            if (fileConfig.loadFromFile(path, true)) {
+                std::cout << "Loaded configuration from " << path << std::endl;
+                
+                // Update config struct from file
+                config.tcpPort = fileConfig.getInt("tcp_port", config.tcpPort);
+                config.discoveryPort = fileConfig.getInt("discovery_port", config.discoveryPort);
+                config.watchDirectory = fileConfig.get("watch_directory", config.watchDirectory);
+                config.metricsPort = fileConfig.getInt("metrics_port", config.metricsPort);
+                config.sessionCode = fileConfig.get("session_code", config.sessionCode);
+                config.encryptionEnabled = fileConfig.getBool("encryption_enabled", config.encryptionEnabled);
+                
+                auto ul = fileConfig.getSize("upload_limit_kbps", 0);
+                auto dl = fileConfig.getSize("download_limit_kbps", 0);
+                if (ul > 0) config.uploadLimit = ul * 1024;
+                if (dl > 0) config.downloadLimit = dl * 1024;
+            } else {
+                std::cerr << "Failed to load config file: " << path << std::endl;
+            }
+        }
+        else if (arg == "--port" && i + 1 < argc) {
             config.tcpPort = std::stoi(argv[++i]);
         } 
         else if (arg == "--discovery" && i + 1 < argc) {

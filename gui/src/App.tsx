@@ -26,7 +26,7 @@ declare global {
 export default function App() {
   // Use centralized state management
   const { state, actions } = useAppState()
-  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, config, toasts, conflicts, showConflictModal: isConflictModalOpen } = state
+  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen } = state
   const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict } = actions
 
   useEffect(() => {
@@ -185,7 +185,7 @@ export default function App() {
             {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
-            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} />}
+            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} />}
             {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <LogsView logs={logs} onClear={clearLogs} />}
           </div>

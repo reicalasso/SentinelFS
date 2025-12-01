@@ -1,0 +1,10 @@
+{
+  "tcpPort": 8081,
+  "discoveryPort": 9999,
+  "watchDirectory": "/home/rei/peer1",
+  "uploadLimit": 0,
+  "downloadLimit": 0,
+  "encryption": false,
+  "syncEnabled": true,
+  "metricsPort": 9101
+}
