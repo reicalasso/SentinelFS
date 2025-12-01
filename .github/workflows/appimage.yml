@@ -3,8 +3,6 @@ name: Build AppImage
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -33,7 +31,7 @@ jobs:
 
       - name: Configure C++ build
         run: |
-          cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release -DSKIP_SYSTEM_INSTALL=ON
 
       - name: Build C++ components
         run: |
@@ -82,29 +80,4 @@ jobs:
             exit 1
           fi
 
-      - name: Create Release (on tag)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: gui/dist/*.AppImage
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Calculate checksums
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          cd gui/dist
-          for file in *.AppImage; do
-            sha256sum "$file" > "$file.sha256"
-          done
-
-      - name: Upload checksums
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: gui/dist/*.sha256
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

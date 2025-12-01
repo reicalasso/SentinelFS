@@ -42,7 +42,7 @@ if [ -d "$BUILD_DIR" ]; then
     rm -rf "$BUILD_DIR"
 fi
 
-cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DSKIP_SYSTEM_INSTALL=ON
 cmake --build "$BUILD_DIR" --parallel $(nproc)
 log_success "C++ components built successfully"
 

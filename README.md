@@ -103,8 +103,15 @@ The AppImage automatically:
 ### Build Daemon (Manual)
 
 ```bash
-cmake -S . -B build
+cmake -S . -B build -DSKIP_SYSTEM_INSTALL=ON
 cmake --build build --parallel
+```
+
+For system-wide installation (requires sudo):
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+sudo cmake --install build
 ```
 
 Do not forget to set the plugin directory before running:

@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
 
+# Option to skip system directory installations (useful for CI/CD)
+option(SKIP_SYSTEM_INSTALL "Skip installation to system directories" OFF)
+
 set(SENTINEL_CONFIG_INSTALL_DIR
     "${CMAKE_INSTALL_FULL_SYSCONFDIR}/sentinelfs"
     CACHE PATH "Directory for SentinelFS configuration files")
@@ -50,26 +53,31 @@ install(TARGETS ${SENTINEL_LIBS}
 install(DIRECTORY core/include/ DESTINATION include)
 
 # Install config template and ensure default config exists with secure perms
-install(FILES config/sentinel.conf
-        DESTINATION ${SENTINEL_CONFIG_INSTALL_DIR}
-        RENAME sentinel.conf.example
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ)
+if(NOT SKIP_SYSTEM_INSTALL)
+  install(FILES config/sentinel.conf
+          DESTINATION ${SENTINEL_CONFIG_INSTALL_DIR}
+          RENAME sentinel.conf.example
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ)
 
-set(_sentinel_default_conf "${CMAKE_CURRENT_SOURCE_DIR}/config/sentinel.conf")
-install(CODE "
-  file(MAKE_DIRECTORY \"$ENV{DESTDIR}${SENTINEL_CONFIG_INSTALL_DIR}\")
-  if(NOT EXISTS \"$ENV{DESTDIR}${SENTINEL_CONFIG_INSTALL_DIR}/sentinel.conf\")
-    file(INSTALL DESTINATION \"$ENV{DESTDIR}${SENTINEL_CONFIG_INSTALL_DIR}\"
-         TYPE FILE
-         FILES \"${_sentinel_default_conf}\"
-         RENAME sentinel.conf
-         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ)
-  endif()
-")
+  set(_sentinel_default_conf "${CMAKE_CURRENT_SOURCE_DIR}/config/sentinel.conf")
+  install(CODE "
+    file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/sentinelfs\")
+    set(_conf_file \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/sentinelfs/sentinel.conf\")
+    if(NOT EXISTS \"\${_conf_file}\")
+      file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/sentinelfs\"
+           TYPE FILE
+           FILES \"${_sentinel_default_conf}\"
+           RENAME sentinel.conf
+           PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ)
+    endif()
+  ")
 
-install(FILES ${SENTINEL_GENERATED_DIR}/sentinel_daemon.service
-        DESTINATION ${SENTINEL_SYSTEMD_DIR}
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+  install(FILES ${SENTINEL_GENERATED_DIR}/sentinel_daemon.service
+          DESTINATION ${SENTINEL_SYSTEMD_DIR}
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+else()
+  message(STATUS "Skipping system directory installations (SKIP_SYSTEM_INSTALL=ON)")
+endif()
 
 # CPack configuration for traditional packages
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

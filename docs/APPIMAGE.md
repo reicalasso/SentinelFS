@@ -40,12 +40,14 @@ Or using CMake:
 
 ```bash
 # Configure and build
-cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release -DSKIP_SYSTEM_INSTALL=ON
 cmake --build build_release --parallel
 
 # Build AppImage
 cmake --build build_release --target appimage
 ```
+
+**Note**: `-DSKIP_SYSTEM_INSTALL=ON` prevents installation to system directories, useful for building packages without root privileges.
 
 ### Output
 
