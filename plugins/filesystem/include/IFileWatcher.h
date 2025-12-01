@@ -17,6 +17,7 @@ namespace SentinelFS {
         WatchEventType type;
         std::string path;
         std::optional<std::string> newPath; // used for rename target when available
+        bool isDirectory = false;
     };
 
     /**

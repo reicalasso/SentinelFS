@@ -50,6 +50,18 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
 
     logger.log(LogLevel::INFO, "Database opened successfully", "SQLiteHandler");
 
+    // Enable WAL mode for better concurrency
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db_, "PRAGMA journal_mode=WAL;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to enable WAL mode: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+    } else {
+        logger.log(LogLevel::INFO, "WAL mode enabled", "SQLiteHandler");
+    }
+    
+    // Set busy timeout to 5000ms to handle contention
+    sqlite3_busy_timeout(db_, 5000);
+
     // Simple schema versioning using PRAGMA user_version
     int userVersion = 0;
     sqlite3_stmt* stmt = nullptr;

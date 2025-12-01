@@ -31,6 +31,14 @@ public:
     void handleFileModified(const std::string& fullPath);
 
     /**
+     * @brief Handle file deletion event
+     * @param fullPath Absolute path to deleted file
+     * 
+     * Removes file from database and broadcasts DELETE_FILE to peers.
+     */
+    void handleFileDeleted(const std::string& fullPath);
+
+    /**
      * @brief Perform scan of a directory
      * @param path Optional directory path to scan. If empty, scans default watch directory.
      * 
@@ -67,6 +75,12 @@ public:
      * @param fullPath Absolute path to modified file
      */
     void broadcastUpdate(const std::string& fullPath);
+
+    /**
+     * @brief Broadcast file deletion to peers (only when sync enabled)
+     * @param fullPath Absolute path to deleted file
+     */
+    void broadcastDelete(const std::string& fullPath);
 
 private:
     std::string calculateFileHash(const std::string& path);

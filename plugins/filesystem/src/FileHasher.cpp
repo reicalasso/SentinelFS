@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <iostream>
+#include <filesystem>
 
 namespace SentinelFS {
 
@@ -14,6 +15,12 @@ std::string FileHasher::calculateSHA256(const std::string& filePath) {
     
     logger.log(LogLevel::DEBUG, "Calculating SHA256 for: " + filePath, "FileHasher");
     
+    std::error_code ec;
+    if (std::filesystem::is_directory(filePath, ec)) {
+        logger.log(LogLevel::WARN, "Skipping SHA256 calculation for directory: " + filePath, "FileHasher");
+        return "";
+    }
+
     std::ifstream file(filePath, std::ios::binary);
     if (!file) {
         logger.log(LogLevel::ERROR, "Failed to open file for hashing: " + filePath, "FileHasher");

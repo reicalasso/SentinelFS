@@ -53,6 +53,10 @@ void EventHandlers::setupHandlers() {
     eventBus_.subscribe("FILE_MODIFIED", [this](const std::any& data) {
         handleFileModified(data);
     });
+
+    eventBus_.subscribe("FILE_DELETED", [this](const std::any& data) {
+        handleFileDeleted(data);
+    });
     
     eventBus_.subscribe("DATA_RECEIVED", [this](const std::any& data) {
         handleDataReceived(data);
@@ -272,6 +276,34 @@ void EventHandlers::handleFileModified(const std::any& data) {
         
     } catch (const std::exception& e) {
         Logger::instance().error(std::string("Error handling FILE_MODIFIED: ") + e.what(), "EventHandlers");
+    }
+}
+
+void EventHandlers::handleFileDeleted(const std::any& data) {
+    try {
+        auto& logger = Logger::instance();
+        
+        std::string fullPath = std::any_cast<std::string>(data);
+        std::string filename = std::filesystem::path(fullPath).filename().string();
+        
+        // Check ignore list (reuse same mutex/list for simplicity, though usually for patches)
+        {
+            std::lock_guard<std::mutex> lock(ignoreMutex_);
+            if (ignoreList_.count(filename)) {
+                auto now = std::chrono::steady_clock::now();
+                if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
+                    logger.debug("Ignoring deletion for " + filename + " (recently processed)", "EventHandlers");
+                    return;
+                }
+                ignoreList_.erase(filename);
+            }
+        }
+
+        // ALWAYS process file deletion (updates DB even when paused, broadcasts only when enabled)
+        fileSyncHandler_->handleFileDeleted(fullPath);
+        
+    } catch (const std::exception& e) {
+        Logger::instance().error(std::string("Error handling FILE_DELETED: ") + e.what(), "EventHandlers");
     }
 }
 

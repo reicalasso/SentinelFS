@@ -156,7 +156,7 @@ private:
             return;
         }
 
-        if (ev.type != WatchEventType::Delete) {
+        if (ev.type != WatchEventType::Delete && !ev.isDirectory) {
             std::string hash = FileHasher::calculateSHA256(ev.path);
             if (!hash.empty()) {
                 std::cout << "Hash: " << hash << std::endl;

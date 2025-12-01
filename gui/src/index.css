@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Pixellet TH Font */
+@font-face {
+  font-family: 'Pixellet TH';
+  src: url('/fonts/PixelletTH.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pixellet TH';
+  src: url('/fonts/PixelletTH-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Global Font Override - Force Pixellet TH everywhere */
+* {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Override for Recharts and other SVG text */
+svg text, svg tspan {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Override for any inline styles */
+[style*="font-family"] {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
 @layer base {
   /* Dark Theme (Default) - Vibrant Dark Blue */
   :root, .dark {
@@ -67,11 +99,26 @@
 }
 
 @layer base {
-  * {
+  *, *::before, *::after {
     @apply border-border;
+    font-family: 'Pixellet TH', system-ui, sans-serif !important;
   }
+  
+  html, body, #root {
+    font-family: 'Pixellet TH', system-ui, sans-serif !important;
+  }
+  
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Force font on all common elements */
+  h1, h2, h3, h4, h5, h6,
+  p, span, div, a, button,
+  input, textarea, select, option,
+  label, li, ul, ol, table, th, td,
+  code, pre, blockquote {
+    font-family: 'Pixellet TH', system-ui, sans-serif !important;
   }
   
   .dark body, body:not(.light) {
@@ -101,4 +148,33 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/40;
   }
+}
+
+/* Final Font Override - Maximum specificity */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video, button, input, select, textarea {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Recharts specific overrides */
+.recharts-text, .recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text, .recharts-tooltip-label,
+.recharts-tooltip-item-name, .recharts-tooltip-item-value {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Number and text in charts */
+.recharts-surface text {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
 }

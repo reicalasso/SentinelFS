@@ -177,6 +177,12 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
 
 bool FileSyncHandler::updateFileInDatabase(const std::string& fullPath) {
     auto& logger = Logger::instance();
+    
+    if (!storage_) {
+        logger.error("Storage plugin not available", "FileSyncHandler");
+        return false;
+    }
+
     std::string filename = std::filesystem::path(fullPath).filename().string();
     
     try {
@@ -213,6 +219,11 @@ void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
     
+    if (!storage_ || !network_) {
+        logger.error("Storage or Network plugin not available", "FileSyncHandler");
+        return;
+    }
+
     std::string filename = std::filesystem::path(fullPath).filename().string();
     
     try {
@@ -313,6 +324,13 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         logger.debug("File ignored by pattern: " + filename, "FileSyncHandler");
         return;
     }
+
+    // Handle directories separately
+    if (std::filesystem::is_directory(fullPath)) {
+        logger.info("Directory modified/created: " + filename + " - scanning for content", "FileSyncHandler");
+        scanDirectory(fullPath);
+        return;
+    }
     
     // ALWAYS update database (even when sync is paused)
     // This ensures GUI shows correct file information
@@ -331,6 +349,130 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
     
     // Broadcast to peers
     broadcastUpdate(fullPath);
+}
+
+void FileSyncHandler::broadcastDelete(const std::string& fullPath) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    if (!storage_ || !network_) {
+        logger.error("Storage or Network plugin not available", "FileSyncHandler");
+        return;
+    }
+
+    std::string filename = std::filesystem::path(fullPath).filename().string();
+    
+    try {
+        // Get connected peers
+        auto peers = storage_->getAllPeers();
+        
+        if (peers.empty()) {
+            logger.debug("No peers connected, skipping delete broadcast for: " + filename, "FileSyncHandler");
+            return;
+        }
+        
+        logger.info("🗑️ Broadcasting delete for " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "FileSyncHandler");
+        
+        // Calculate relative path
+        std::string relativePath = fullPath;
+        if (fullPath.find(watchDirectory_) == 0) {
+            relativePath = fullPath.substr(watchDirectory_.length());
+            if (!relativePath.empty() && relativePath[0] == '/') {
+                relativePath = relativePath.substr(1);
+            }
+        }
+        
+        // Broadcast DELETE_FILE with relative path
+        std::string deleteMsg = "DELETE_FILE|" + relativePath;
+        std::vector<uint8_t> payload(deleteMsg.begin(), deleteMsg.end());
+        
+        int successCount = 0;
+        int failCount = 0;
+        
+        for (const auto& peer : peers) {
+            try {
+                bool sent = network_->sendData(peer.id, payload);
+                if (sent) {
+                    successCount++;
+                    logger.debug("Sent delete notification to peer: " + peer.id, "FileSyncHandler");
+                } else {
+                    failCount++;
+                    logger.warn("Failed to send delete to peer: " + peer.id, "FileSyncHandler");
+                }
+            } catch (const std::exception& e) {
+                failCount++;
+                logger.error("Exception sending to peer " + peer.id + ": " + std::string(e.what()), "FileSyncHandler");
+            }
+        }
+        
+        if (failCount > 0) {
+            metrics.incrementSyncErrors();
+            logger.warn("Delete broadcast completed with " + std::to_string(failCount) + " failure(s)", "FileSyncHandler");
+        } else {
+            logger.debug("Delete broadcast successful to all peers", "FileSyncHandler");
+        }
+        
+    } catch (const std::exception& e) {
+        logger.error("Error broadcasting delete for " + filename + ": " + std::string(e.what()), "FileSyncHandler");
+        metrics.incrementSyncErrors();
+    }
+}
+
+void FileSyncHandler::handleFileDeleted(const std::string& fullPath) {
+    auto& logger = Logger::instance();
+    
+    if (!storage_) {
+        logger.error("Storage plugin not available", "FileSyncHandler");
+        return;
+    }
+
+    std::string filename = std::filesystem::path(fullPath).filename().string();
+    
+    // Check ignore patterns
+    if (shouldIgnore(fullPath)) {
+        logger.debug("File deletion ignored by pattern: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    logger.info("File deleted: " + filename + " - removing from database", "FileSyncHandler");
+
+    // Remove from database
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    if (!db) {
+        logger.error("Database connection is null", "FileSyncHandler");
+        return;
+    }
+
+    const char* deleteSql = "DELETE FROM files WHERE path = ?";
+    sqlite3_stmt* stmt;
+    
+    bool dbUpdated = false;
+    if (sqlite3_prepare_v2(db, deleteSql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            dbUpdated = true;
+            logger.debug("Removed file from database: " + filename, "FileSyncHandler");
+        } else {
+            logger.error("Failed to execute delete statement for: " + filename, "FileSyncHandler");
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        logger.error("Failed to prepare delete statement for: " + filename, "FileSyncHandler");
+    }
+    
+    if (!dbUpdated) {
+        logger.warn("Skipping broadcast - database deletion failed for: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // Only broadcast if sync is enabled
+    if (!syncEnabled_) {
+        logger.info("⏸️  Sync paused - database updated but delete broadcast skipped for: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    // Broadcast to peers
+    broadcastDelete(fullPath);
 }
 
 } // namespace SentinelFS

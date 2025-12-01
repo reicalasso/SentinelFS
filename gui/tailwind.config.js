@@ -5,6 +5,11 @@ module.exports = {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    fontFamily: {
+      sans: ['"Pixellet TH"', 'system-ui', 'sans-serif'],
+      mono: ['"Pixellet TH"', 'ui-monospace', 'monospace'],
+      serif: ['"Pixellet TH"', 'Georgia', 'serif'],
+    },
     extend: {
       colors: {
         background: "hsl(var(--background))",

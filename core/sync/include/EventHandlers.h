@@ -70,6 +70,7 @@ private:
     void handlePeerDisconnected(const std::any& data);
     void handleFileCreated(const std::any& data);
     void handleFileModified(const std::any& data);
+    void handleFileDeleted(const std::any& data);
     void handleDataReceived(const std::any& data);
     void handleAnomalyDetected(const std::any& data);
     

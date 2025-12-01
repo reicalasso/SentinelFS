@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <map>
+#include <mutex>
 #include <functional>
 #include "IFileWatcher.h"
 
@@ -40,6 +41,11 @@ public:
     bool addWatch(const std::string& path);
 
     /**
+     * @brief Add directory and all subdirectories to watch list recursively
+     */
+    void addWatchRecursive(const std::string& path);
+
+    /**
      * @brief Remove directory from watch list
      */
     bool removeWatch(const std::string& path);
@@ -49,12 +55,18 @@ private:
     std::thread watcherThread_;
     std::atomic<bool> running_{false};
     std::map<int, std::string> watchDescriptors_;
+    mutable std::mutex watchMutex_;  // Protects watchDescriptors_
     ChangeCallback callback_;
 
     /**
      * @brief Main monitoring loop
      */
     void monitorLoop();
+    
+    /**
+     * @brief Get directory path for watch descriptor (thread-safe)
+     */
+    std::string getWatchPath(int wd) const;
 };
 
 } // namespace SentinelFS
