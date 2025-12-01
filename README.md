@@ -80,7 +80,27 @@ SentinelFS/
 - OpenSSL 1.1+
 - Node.js 18+ and npm/yarn for GUI
 
-### Build Daemon
+### Quick Start: AppImage (Recommended for Linux)
+
+**Single portable file with GUI + Daemon + CLI - no installation required!**
+
+```bash
+# Build the AppImage
+./scripts/build_appimage.sh
+
+# Run it
+./SentinelFS-*.AppImage
+```
+
+The AppImage automatically:
+- Starts the daemon in the background
+- Launches the GUI
+- Includes all plugins and dependencies
+- Requires no root privileges
+
+📖 See [AppImage Guide](docs/APPIMAGE.md) for detailed instructions.
+
+### Build Daemon (Manual)
 
 ```bash
 cmake -S . -B build
@@ -109,7 +129,7 @@ npm install
 npm run dev
 ```
 
-In packaged mode, Electron grabs `sentinel_daemon` from `process.resourcesPath/bin`.
+In packaged mode (AppImage), Electron grabs `sentinel_daemon` from `process.resourcesPath/bin`.
 
 ---
 

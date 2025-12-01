@@ -71,8 +71,11 @@ install(FILES ${SENTINEL_GENERATED_DIR}/sentinel_daemon.service
         DESTINATION ${SENTINEL_SYSTEMD_DIR}
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
+# CPack configuration for traditional packages
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(CPACK_GENERATOR "DEB;RPM")
+    set(CPACK_GENERATOR "DEB;RPM;TGZ")
+else()
+    set(CPACK_GENERATOR "TGZ")
 endif()
 
 set(CPACK_PACKAGE_NAME "sentinelfs")
@@ -85,4 +88,15 @@ set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libssl3, libstdc++6")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache-2.0")
 set(CPACK_RPM_PACKAGE_REQUIRES "openssl")
+set(CPACK_SET_DESTDIR ON)
 include(CPack)
+
+# Custom target for building AppImage with GUI
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_custom_target(appimage
+        COMMAND ${CMAKE_COMMAND} -E echo "Building AppImage with GUI and daemon..."
+        COMMAND ${CMAKE_SOURCE_DIR}/scripts/build_appimage.sh
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Creating SentinelFS AppImage"
+    )
+endif()

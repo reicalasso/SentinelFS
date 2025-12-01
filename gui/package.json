@@ -38,7 +38,18 @@
     "productName": "SentinelFS",
     "linux": {
       "target": "AppImage",
-      "category": "Utility"
+      "category": "Utility",
+      "desktop": {
+        "Name": "SentinelFS",
+        "Comment": "Secure Distributed File System",
+        "Categories": "Utility;FileTools;Network;",
+        "StartupWMClass": "SentinelFS"
+      },
+      "executableName": "sentinelfs"
+    },
+    "appImage": {
+      "license": "LICENSE",
+      "synopsis": "Secure Delta-Sync File System with GUI and Daemon"
     },
     "extraResources": [
       {
@@ -46,10 +57,30 @@
         "to": "bin/sentinel_daemon"
       },
       {
+        "from": "../build_release/app/cli/sentinel_cli",
+        "to": "bin/sentinel_cli"
+      },
+      {
+        "from": "../build_release/core/libsentinel_core.a",
+        "to": "lib/libsentinel_core.a"
+      },
+      {
         "from": "../build_release/plugins",
         "to": "lib/plugins",
         "filter": ["**/*.so"]
+      },
+      {
+        "from": "../config/sentinel.conf",
+        "to": "config/sentinel.conf"
       }
-    ]
+    ],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    }
   }
 }
