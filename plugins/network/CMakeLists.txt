@@ -8,6 +8,7 @@ add_library(network_plugin SHARED
     src/HandshakeProtocol.cpp
     src/TCPHandler.cpp
     src/UDPDiscovery.cpp
+    src/TCPRelay.cpp
 )
 
 target_include_directories(network_plugin PUBLIC

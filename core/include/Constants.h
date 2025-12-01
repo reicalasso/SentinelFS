@@ -93,4 +93,23 @@ constexpr std::size_t MAX_PENDING_TRANSFERS = 1000;
 /// Ignore list entry timeout (seconds)
 constexpr int IGNORE_LIST_TIMEOUT_SEC = 5;
 
+// =============================================================================
+// Auto-Remesh Configuration
+// =============================================================================
+
+/// Peer metrics stale timeout (seconds)
+constexpr int PEER_STALE_TIMEOUT_SEC = 60;
+
+/// Minimum samples required for remesh decision
+constexpr std::size_t MIN_SAMPLES_FOR_DECISION = 3;
+
+/// Maximum active peer connections for remesh
+constexpr std::size_t MAX_ACTIVE_PEERS = 5;
+
+/// Jitter weight in peer scoring
+constexpr double JITTER_WEIGHT = 0.5;
+
+/// Packet loss weight in peer scoring
+constexpr double LOSS_WEIGHT = 2.0;
+
 } // namespace sfs::config

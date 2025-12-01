@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, cloneElement, useRef } from 'react'
-import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Menu, Command } from 'lucide-react'
+import { useEffect, cloneElement } from 'react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
 import { Files } from './components/Files'
 import { Transfers } from './components/Transfers'
 import { ToastList } from './components/ToastList'
+import { ConflictModal } from './components/ConflictModal'
+import { useAppState } from './hooks/useAppState'
 
 // Define the API interface exposed from preload
 interface ElectronAPI {
@@ -21,77 +23,16 @@ declare global {
   }
 }
 
-type Tab = 'dashboard' | 'files' | 'peers' | 'transfers' | 'settings' | 'logs'
-
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [status, setStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected')
-  const [logs, setLogs] = useState<string[]>([])
-  const [isPaused, setIsPaused] = useState(false)
-  
-  // App State
-  const [metrics, setMetrics] = useState<any>(null)
-  const [peers, setPeers] = useState<any[]>([])
-  const [syncStatus, setSyncStatus] = useState<any>(null)
-  const [files, setFiles] = useState<any[]>([])
-  const [activity, setActivity] = useState<any[]>([])
-  const [transfers, setTransfers] = useState<any[]>([])
-  const [config, setConfig] = useState<any>(null)
-  const [lastPeerCount, setLastPeerCount] = useState<number>(0)
-  const [toasts, setToasts] = useState<string[]>([])
-
-  const lastLogRef = useRef<string | null>(null)
-
-  const addToast = useCallback((message: string) => {
-    setToasts(prev => [...prev.slice(-4), message])
-    // Auto-remove toast after 5 seconds
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t !== message))
-    }, 5000)
-  }, [])
-
-  const clearToasts = useCallback(() => {
-    setToasts([])
-  }, [])
-
-  const handleLog = useCallback((log: string) => {
-    const cleanLog = log.replace(/\u001b\[[0-9;]*m/g, '')
-    const hasTimestamp = /^\[\d{4}-\d{2}-\d{2}/.test(cleanLog)
-    const formattedLog = hasTimestamp ? log : `[${new Date().toLocaleTimeString()}] ${log}`
-    if (lastLogRef.current === formattedLog) return
-    lastLogRef.current = formattedLog
-    setLogs(prev => [...prev.slice(-99), formattedLog])
-  }, [])
-
-  const handleStatus = useCallback((newStatus: any) => {
-    setStatus(newStatus)
-  }, [])
-
-  const handleData = useCallback((data: any) => {
-    if (data.type === 'METRICS') {
-      setMetrics(data.payload)
-    } else if (data.type === 'PEERS') {
-      if (data.payload.length > 0) {
-        setPeers(data.payload)
-        setLastPeerCount(data.payload.length)
-      } else if (lastPeerCount === 0) {
-        setPeers([])
-      }
-    } else if (data.type === 'STATUS') {
-      setSyncStatus(data.payload)
-    } else if (data.type === 'FILES') {
-      setFiles(data.payload)
-    } else if (data.type === 'ACTIVITY') {
-      setActivity(data.payload)
-    } else if (data.type === 'TRANSFERS') {
-      setTransfers(data.payload)
-    } else if (data.type === 'CONFIG') {
-      setConfig(data.payload)
-    }
-  }, [lastPeerCount])
+  // Use centralized state management
+  const { state, actions } = useAppState()
+  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, config, toasts, conflicts, showConflictModal: isConflictModalOpen } = state
+  const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict } = actions
 
   useEffect(() => {
     if (!window.api) return
+
+    const handleStatus = (newStatus: any) => setStatus(newStatus)
 
     window.api.on('daemon-status', handleStatus)
     window.api.on('daemon-log', handleLog)
@@ -102,7 +43,7 @@ export default function App() {
       window.api.off('daemon-log', handleLog)
       window.api.off('daemon-data', handleData)
     }
-  }, [handleStatus, handleLog, handleData])
+  }, [setStatus, handleLog, handleData])
 
   const sendCommand = async (cmd: string) => {
     if (window.api) {
@@ -120,16 +61,11 @@ export default function App() {
   const togglePause = () => {
     if (isPaused) {
         sendCommand('RESUME')
-        setIsPaused(false)
+        setPaused(false)
     } else {
         sendCommand('PAUSE')
-        setIsPaused(true)
+        setPaused(true)
     }
-  }
-
-  const clearLogs = () => {
-    setLogs([])
-    lastLogRef.current = null
   }
 
   return (
@@ -155,16 +91,16 @@ export default function App() {
         <div className="flex-1 px-4 py-2 space-y-8 overflow-y-auto no-scrollbar">
           <div className="space-y-1">
             <h3 className="px-3 text-[10px] font-bold uppercase text-muted-foreground/50 tracking-wider mb-2">Main</h3>
-            <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-            <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => setActiveTab('files')} />
-            <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => setActiveTab('peers')} badge={peers.length > 0 ? peers.length : undefined} />
-            <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => setActiveTab('transfers')} />
+            <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setTab('dashboard')} />
+            <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => setTab('files')} />
+            <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => setTab('peers')} badge={peers.length > 0 ? peers.length : undefined} />
+            <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => setTab('transfers')} />
           </div>
 
           <div className="space-y-1">
              <h3 className="px-3 text-[10px] font-bold uppercase text-muted-foreground/50 tracking-wider mb-2">System</h3>
-            <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
-            <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
+            <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => setTab('settings')} />
+            <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => setTab('logs')} />
           </div>
         </div>
 
@@ -191,6 +127,26 @@ export default function App() {
       </div>
 
       <ToastList toasts={toasts} onClear={clearToasts} />
+      
+      {/* Conflict Resolution Modal */}
+      <ConflictModal
+        conflicts={conflicts}
+        isOpen={isConflictModalOpen}
+        onClose={() => showConflictModal(false)}
+        onResolve={async (conflictId, resolution) => {
+          if (window.api) {
+            const cmd = `RESOLVE ${conflictId} ${resolution.toUpperCase()}`
+            const res = await window.api.sendCommand(cmd)
+            if (res.success) {
+              resolveConflict(conflictId)
+              addToast(`Conflict resolved: ${resolution}`)
+            } else {
+              addToast(`Failed to resolve conflict: ${res.error}`)
+            }
+          }
+        }}
+      />
+      
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* Glass Header */}

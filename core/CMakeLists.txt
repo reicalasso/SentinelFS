@@ -45,7 +45,8 @@ set(CORE_SOURCES
     utils/src/PluginManager.cpp
     utils/src/MetricsCollector.cpp
     utils/src/ThreadPool.cpp
-    utils/src/HealthEndpoint.cpp
+    # utils/src/HealthEndpoint.cpp  # Deprecated: Use MetricsServer instead
+    utils/src/Compression.cpp
     src/PathUtils.cpp
 )
 
@@ -62,7 +63,9 @@ target_include_directories(sentinel_core PUBLIC
     ${SQLite3_INCLUDE_DIRS}
 )
 
-target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto ${SQLite3_LIBRARIES})
+find_package(ZLIB REQUIRED)
+
+target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto ${SQLite3_LIBRARIES} ZLIB::ZLIB)
 
 # Export for parent CMakeLists
 set(SENTINEL_CORE_LIB sentinel_core PARENT_SCOPE)

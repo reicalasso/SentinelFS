@@ -30,6 +30,9 @@ EventHandlers::EventHandlers(EventBus& eventBus,
         std::lock_guard<std::mutex> lock(ignoreMutex_);
         ignoreList_[filename] = std::chrono::steady_clock::now();
     });
+    
+    // Setup offline queue for operations when peers are unavailable
+    setupOfflineQueue();
 }
 
 EventHandlers::~EventHandlers() = default;
@@ -428,6 +431,54 @@ void EventHandlers::processPendingChanges() {
     }
     
     logger.info("✅ Finished broadcasting pending changes", "EventHandlers");
+}
+
+void EventHandlers::setupOfflineQueue() {
+    auto& logger = Logger::instance();
+    
+    offlineQueue_ = std::make_unique<sfs::sync::OfflineQueue>();
+    
+    // Set processor callback
+    offlineQueue_->setProcessor([this](const sfs::sync::QueuedOperation& op) {
+        auto& logger = Logger::instance();
+        
+        // Check if we have peers to sync with
+        auto peers = storage_->getAllPeers();
+        if (peers.empty()) {
+            logger.debug("No peers available, keeping operation in queue", "OfflineQueue");
+            return false; // Retry later
+        }
+        
+        std::string filename = std::filesystem::path(op.filePath).filename().string();
+        
+        switch (op.type) {
+            case sfs::sync::OperationType::Create:
+            case sfs::sync::OperationType::Update:
+                logger.info("Processing queued update: " + filename, "OfflineQueue");
+                if (fileSyncHandler_->updateFileInDatabase(op.filePath)) {
+                    fileSyncHandler_->broadcastUpdate(op.filePath);
+                    return true;
+                }
+                break;
+                
+            case sfs::sync::OperationType::Delete:
+                logger.info("Processing queued delete: " + filename, "OfflineQueue");
+                // Broadcast delete to peers
+                // TODO: Implement delete broadcast
+                return true;
+                
+            case sfs::sync::OperationType::Rename:
+                logger.info("Processing queued rename: " + filename, "OfflineQueue");
+                // TODO: Implement rename broadcast
+                return true;
+        }
+        
+        return false;
+    });
+    
+    // Start the queue processor
+    offlineQueue_->start();
+    logger.info("Offline queue initialized and started", "EventHandlers");
 }
 
 } // namespace SentinelFS

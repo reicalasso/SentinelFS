@@ -406,6 +406,51 @@ std::string IPCHandler::processCommand(const std::string& command) {
         const auto& cfg = daemonCore_->getConfig();
         network_->broadcastPresence(cfg.discoveryPort, cfg.tcpPort);
         return "Discovery broadcast sent.\n";
+    } else if (cmd == "SET_DISCOVERY") {
+        // SET_DISCOVERY udp=1 or SET_DISCOVERY tcp=0
+        // args contains "udp=1" or "tcp=0"
+        std::string setting = args;
+        
+        // Parse key=value
+        size_t eq = setting.find('=');
+        if (eq == std::string::npos) {
+            return "Error: Invalid format. Use SET_DISCOVERY key=value\n";
+        }
+        
+        std::string key = setting.substr(0, eq);
+        std::string value = setting.substr(eq + 1);
+        bool enabled = (value == "1" || value == "true");
+        
+        if (key == "udp") {
+            // UDP discovery is always enabled in current implementation
+            return "OK: UDP discovery " + std::string(enabled ? "enabled" : "disabled") + " (note: UDP is always active)\n";
+        } else if (key == "tcp") {
+            // Enable/disable TCP relay for NAT traversal
+            if (network_) {
+                network_->setRelayEnabled(enabled);
+                bool connected = network_->isRelayConnected();
+                std::string status = enabled 
+                    ? (connected ? "enabled and connected" : "enabled (connecting...)")
+                    : "disabled";
+                return "OK: TCP relay " + status + "\n";
+            }
+            return "Error: Network subsystem not ready\n";
+        }
+        
+        return "Error: Unknown discovery setting: " + key + "\n";
+    } else if (cmd == "GET_RELAY_STATUS") {
+        // Get relay connection status
+        if (!network_) {
+            return "Error: Network subsystem not ready\n";
+        }
+        
+        bool enabled = network_->isRelayEnabled();
+        bool connected = network_->isRelayConnected();
+        
+        std::stringstream ss;
+        ss << "{\"enabled\":" << (enabled ? "true" : "false") << ",";
+        ss << "\"connected\":" << (connected ? "true" : "false") << "}\n";
+        return ss.str();
     } else if (cmd == "LIST_IGNORE") {
         // List ignore patterns
         if (!storage_) {

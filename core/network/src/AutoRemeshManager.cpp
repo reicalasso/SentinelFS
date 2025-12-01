@@ -1,4 +1,5 @@
 #include "AutoRemeshManager.h"
+#include "Constants.h"
 
 #include <algorithm>
 #include <limits>
@@ -76,11 +77,11 @@ namespace SentinelFS {
     }
 
     double AutoRemeshManager::computeScore(const InternalMetrics& m) const {
-        // Filter out stale metrics (older than 60s)
+        // Filter out stale metrics
         auto now = std::chrono::steady_clock::now();
         auto age = std::chrono::duration_cast<std::chrono::seconds>(now - m.lastUpdated).count();
         
-        if (age > 60) {
+        if (age > sfs::config::PEER_STALE_TIMEOUT_SEC) {
             return std::numeric_limits<double>::infinity();
         }
 

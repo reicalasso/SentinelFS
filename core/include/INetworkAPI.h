@@ -114,6 +114,24 @@ namespace SentinelFS {
          * @brief Get human-readable bandwidth limiter statistics.
          */
         virtual std::string getBandwidthStats() const = 0;
+        
+        /**
+         * @brief Enable or disable TCP relay for NAT traversal.
+         * @param enabled true to enable relay, false to disable.
+         */
+        virtual void setRelayEnabled(bool enabled) = 0;
+        
+        /**
+         * @brief Check if TCP relay is enabled.
+         * @return true if relay is enabled, false otherwise.
+         */
+        virtual bool isRelayEnabled() const = 0;
+        
+        /**
+         * @brief Check if connected to relay server.
+         * @return true if connected to relay, false otherwise.
+         */
+        virtual bool isRelayConnected() const = 0;
     };
 }
 

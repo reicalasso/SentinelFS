@@ -12,6 +12,7 @@
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
+#include "OfflineQueue.h"
 
 namespace SentinelFS {
 
@@ -94,6 +95,10 @@ private:
     // Pending changes queue (files modified while sync is paused)
     std::mutex pendingMutex_;
     std::vector<std::string> pendingChanges_;
+    
+    // Offline queue for operations when peers are unavailable
+    std::unique_ptr<sfs::sync::OfflineQueue> offlineQueue_;
+    void setupOfflineQueue();
 };
 
 } // namespace SentinelFS

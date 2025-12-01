@@ -4,6 +4,7 @@
 #include "HandshakeProtocol.h"
 #include "TCPHandler.h"
 #include "UDPDiscovery.h"
+#include "TCPRelay.h"
 #include "BandwidthLimiter.h"
 #include <iostream>
 #include <memory>
@@ -48,6 +49,19 @@ public:
         tcpHandler_ = std::make_unique<TCPHandler>(eventBus_, handshake_.get(), &bandwidthManager_);
         udpDiscovery_ = std::make_unique<UDPDiscovery>(eventBus_, localPeerId_);
         
+        // Initialize TCP Relay for NAT traversal
+        tcpRelay_ = std::make_unique<TCPRelay>("localhost", 9000);
+        tcpRelay_->setDataCallback([this](const std::string& peerId, const std::vector<uint8_t>& data) {
+            handleReceivedData(peerId, data);
+        });
+        tcpRelay_->setPeerCallback([this](const RelayPeer& peer) {
+            // Publish relay peer discovery
+            if (eventBus_) {
+                std::string msg = "SENTINEL_RELAY|" + peer.peerId + "|" + std::to_string(peer.publicPort) + "|" + peer.publicIp;
+                eventBus_->publish("PEER_DISCOVERED", msg);
+            }
+        });
+        
         // Setup data callback for encryption/decryption
         tcpHandler_->setDataCallback([this](const std::string& peerId, 
                                            const std::vector<uint8_t>& data) {
@@ -59,6 +73,10 @@ public:
 
     void shutdown() override {
         std::cout << "NetworkPlugin shutdown" << std::endl;
+        
+        if (tcpRelay_) {
+            tcpRelay_->disconnect();
+        }
         
         if (udpDiscovery_) {
             udpDiscovery_->stopDiscovery();
@@ -103,7 +121,16 @@ public:
             }
         }
 
-        // Bandwidth limiting is handled internally by TCPHandler now
+        // Try direct connection first
+        if (tcpHandler_->isPeerConnected(peerId)) {
+            return tcpHandler_->sendData(peerId, dataToSend);
+        }
+        
+        // Fall back to relay if enabled and direct connection fails
+        if (tcpRelay_ && tcpRelay_->isEnabled() && tcpRelay_->isConnected()) {
+            std::cout << "Using relay for peer: " << peerId << std::endl;
+            return tcpRelay_->sendToPeer(peerId, dataToSend);
+        }
         
         return tcpHandler_->sendData(peerId, dataToSend);
     }
@@ -276,8 +303,28 @@ private:
     std::unique_ptr<HandshakeProtocol> handshake_;
     std::unique_ptr<TCPHandler> tcpHandler_;
     std::unique_ptr<UDPDiscovery> udpDiscovery_;
+    std::unique_ptr<TCPRelay> tcpRelay_;
 
     BandwidthManager bandwidthManager_;
+    
+public:
+    // Relay control methods (INetworkAPI interface)
+    void setRelayEnabled(bool enabled) override {
+        if (tcpRelay_) {
+            tcpRelay_->setEnabled(enabled);
+            if (enabled && !sessionCode_.empty()) {
+                tcpRelay_->connect(localPeerId_, sessionCode_);
+            }
+        }
+    }
+    
+    bool isRelayEnabled() const override {
+        return tcpRelay_ && tcpRelay_->isEnabled();
+    }
+    
+    bool isRelayConnected() const override {
+        return tcpRelay_ && tcpRelay_->isConnected();
+    }
 };
 
 // Plugin factory functions

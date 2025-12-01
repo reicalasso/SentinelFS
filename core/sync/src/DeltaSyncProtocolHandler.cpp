@@ -6,6 +6,7 @@
 #include "IFileAPI.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "Compression.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>

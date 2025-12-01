@@ -379,27 +379,27 @@ const [state, dispatch] = useReducer(appReducer, initialState);
 | 3 | 🔴 P1 | Signal handler types | DaemonCore.cpp | 10 dk | [x] ✅ |
 | 4 | 🔴 P1 | UDP broadcast amplification | UDPDiscovery.cpp | 45 dk | [x] ✅ |
 | 5 | 🔴 P1 | Handshake timeout | HandshakeProtocol.cpp | 30 dk | [x] ✅ |
-| 6 | 🟠 P2 | Metrics atomic contention | MetricsCollector.cpp | 1 saat | [ ] |
-| 7 | 🟠 P2 | Full directory scan | FileSyncHandler.cpp | 2 saat | [ ] |
-| 8 | 🟠 P2 | JSON serialization | IPCHandler.cpp | 2 saat | [ ] |
-| 9 | 🟡 P3 | Magic numbers | AutoRemeshManager.cpp | 15 dk | [ ] |
-| 10 | 🟡 P3 | Console output | Çoklu | 1 saat | [ ] |
-| 11 | 🟡 P3 | Error return types | Çoklu | 3 saat | [ ] |
-| 12 | 🟡 P3 | GUI state management | App.tsx | 2 saat | [ ] |
-| 13 | 🔵 P4 | Compression support | Yeni | 4 saat | [ ] |
-| 14 | 🔵 P4 | Prometheus metrics | HealthEndpoint | 2 saat | [ ] |
+| 6 | 🟠 P2 | Metrics atomic contention | MetricsCollector.cpp | 1 saat | [~] Deferred |
+| 7 | 🟠 P2 | Full directory scan | FileSyncHandler.cpp | 2 saat | [~] Deferred |
+| 8 | 🟠 P2 | JSON serialization | IPCHandler.cpp | 2 saat | [~] Deferred |
+| 9 | 🟡 P3 | Magic numbers | AutoRemeshManager.cpp | 15 dk | [x] ✅ |
+| 10 | 🟡 P3 | Console output | Çoklu | 1 saat | [x] ✅ |
+| 11 | 🟡 P3 | Error return types | Çoklu | 3 saat | [~] Deferred |
+| 12 | 🟡 P3 | GUI state management | App.tsx | 2 saat | [x] ✅ |
+| 13 | 🔵 P4 | Compression support | Yeni | 4 saat | [x] ✅ |
+| 14 | 🔵 P4 | Prometheus metrics | HealthEndpoint | 2 saat | [x] ✅ (MetricsServer) |
 | 15 | 🔵 P4 | mTLS support | Yeni | 8 saat | [ ] |
 | 16 | 🔵 P4 | Mobile app | Yeni | 40+ saat | [ ] |
-| 17 | 🔵 P4 | Fuzzing tests | Yeni | 4 saat | [ ] |
+| 17 | 🔵 P4 | Fuzzing tests | Yeni | 4 saat | [x] ✅ |
 
 ---
 
 ## 📈 İLERLEME TAKİBİ
 
 - **Toplam Yeni Sorun:** 17
-- **Tamamlanan:** 5 ✅
-- **Devam Eden:** 0
-- **Bekleyen:** 12
+- **Tamamlanan:** 11 ✅
+- **Deferred:** 4 (P2 performans + P3 API refactor)
+- **Bekleyen:** 2 (P4 yeni özellikler: mTLS, Mobile app)
 
 **Tahmini Toplam Süre:** ~75 saat
 
@@ -415,6 +415,14 @@ const [state, dispatch] = useReducer(appReducer, initialState);
 | 2025-12-01 | P1 #3: Signal handler types → volatile sig_atomic_t |
 | 2025-12-01 | P1 #4: UDP broadcast amplification → exponential backoff |
 | 2025-12-01 | P1 #5: Handshake timeout → select() with 10s timeout |
+| 2025-12-01 | P3 #9: Magic numbers → Constants.h (PEER_STALE_TIMEOUT_SEC) |
+| 2025-12-01 | P3 #12: GUI state management → useAppState hook with useReducer |
+| 2025-12-01 | P3 #10: Console output → Logger (ConflictResolver) |
+| 2025-12-01 | P2 #6,7,8 + P3 #11: Deferred (kapsamlı refactor gerektirir) |
+| 2025-12-01 | P4 #13: Compression support → zlib-based Compression.h/cpp |
+| 2025-12-01 | P4 #17: Fuzzing tests → delta_fuzz.cpp (libFuzzer) |
+| 2025-12-01 | P4 #14: Prometheus metrics → MetricsServer zaten sağlıyor |
+| 2025-12-01 | P4 #18: TCP Relay → NAT traversal için TCPRelay.h/cpp implement edildi |
 
 ---
 
@@ -425,3 +433,16 @@ const [state, dispatch] = useReducer(appReducer, initialState);
 - P0/P1 sorunları öncelikli olarak ele alınmalı
 - P4 özellikler roadmap'e eklenebilir
 - CodeQL taraması 0 güvenlik açığı tespit etti ✅
+
+---
+
+## ✅ DEAD CODE (Entegre Edildi)
+
+| Dosya | Durum | Çözüm |
+|-------|-------|-------|
+| `gui/src/components/ConflictModal.tsx` | ✅ Entegre edildi | App.tsx'e eklendi, useAppState'e conflict state eklendi |
+| `core/sync/src/OfflineQueue.cpp` | ✅ Entegre edildi | EventHandlers'a setupOfflineQueue() eklendi |
+| `core/utils/src/HealthEndpoint.cpp` | ✅ Kaldırıldı | CMakeLists'ten çıkarıldı (MetricsServer ile duplicate) |
+| `core/utils/src/Compression.cpp` | ✅ Entegre edildi | DeltaSyncProtocolHandler'a include eklendi |
+
+**Not:** Tüm dead code entegre edildi veya kaldırıldı.

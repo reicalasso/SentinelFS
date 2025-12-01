@@ -1,7 +1,7 @@
 #include "ConflictResolver.h"
+#include "Logger.h"
 #include <fstream>
 #include <filesystem>
-#include <iostream>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -22,23 +22,25 @@ bool ConflictResolver::detectConflict(
         return false;
     }
     
+    auto& logger = Logger::instance();
+    
     // Check vector clocks for causality
     if (remoteClock.happensBefore(localClock)) {
         // Remote is older, local version supersedes it
-        std::cout << "No conflict: Remote change is causally older" << std::endl;
+        logger.debug("No conflict: Remote change is causally older", "ConflictResolver");
         return false;
     }
     
     if (localClock.happensBefore(remoteClock)) {
         // Local is older, remote version supersedes it
-        std::cout << "No conflict: Local change is causally older" << std::endl;
+        logger.debug("No conflict: Local change is causally older", "ConflictResolver");
         return false;
     }
     
     // Concurrent modifications detected
     if (remoteClock.isConcurrentWith(localClock)) {
-        std::cout << "⚠️  CONFLICT DETECTED: Concurrent modifications on " << path << std::endl;
-        std::cout << "   Local timestamp: " << localTimestamp << ", Remote timestamp: " << remoteTimestamp << std::endl;
+        logger.warn("CONFLICT DETECTED: Concurrent modifications on " + path, "ConflictResolver");
+        logger.debug("Local timestamp: " + std::to_string(localTimestamp) + ", Remote: " + std::to_string(remoteTimestamp), "ConflictResolver");
         return true;
     }
     
@@ -50,8 +52,8 @@ bool ConflictResolver::resolveConflict(
     const std::string& localPath,
     const std::vector<uint8_t>& remoteData
 ) {
-    std::cout << "Resolving conflict for " << conflict.path 
-              << " using strategy: " << static_cast<int>(conflict.strategy) << std::endl;
+    auto& logger = Logger::instance();
+    logger.info("Resolving conflict for " + conflict.path + " using strategy: " + std::to_string(static_cast<int>(conflict.strategy)), "ConflictResolver");
     
     bool success = false;
     
@@ -75,22 +77,22 @@ bool ConflictResolver::resolveConflict(
                 file.write(reinterpret_cast<const char*>(remoteData.data()), remoteData.size());
                 file.close();
                 success = true;
-                std::cout << "✓ Applied REMOTE_WINS: Overwrote local with remote" << std::endl;
+                logger.info("Applied REMOTE_WINS: Overwrote local with remote", "ConflictResolver");
             } catch (const std::exception& e) {
-                std::cerr << "Failed to apply REMOTE_WINS: " << e.what() << std::endl;
+                logger.error("Failed to apply REMOTE_WINS: " + std::string(e.what()), "ConflictResolver");
             }
             break;
             
         case ResolutionStrategy::LOCAL_WINS:
             // Keep local version, ignore remote
             success = true;
-            std::cout << "✓ Applied LOCAL_WINS: Kept local version" << std::endl;
+            logger.info("Applied LOCAL_WINS: Kept local version", "ConflictResolver");
             break;
             
         case ResolutionStrategy::MANUAL:
             // Mark for manual resolution (save both versions)
             success = applyKeepBoth(conflict, localPath, remoteData);
-            std::cout << "⚠️  MANUAL resolution required. Both versions saved." << std::endl;
+            logger.warn("MANUAL resolution required. Both versions saved.", "ConflictResolver");
             break;
     }
     

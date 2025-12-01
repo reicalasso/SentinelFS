@@ -5,8 +5,26 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 export function Peers({ peers }: { peers?: any[] }) {
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [discoverySettings, setDiscoverySettings] = useState({ udp: true, tcp: false })
+  const [relayStatus, setRelayStatus] = useState({ enabled: false, connected: false })
   const [latencyHistory, setLatencyHistory] = useState<Record<string, {time: string, latency: number}[]>>({})
   const [blockedPeers, setBlockedPeers] = useState<Set<string>>(new Set())
+  
+  // Load discovery settings from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('discoverySettings')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setDiscoverySettings(parsed)
+        // If TCP was enabled, check relay status
+        if (parsed.tcp && window.api) {
+          window.api.sendCommand('GET_RELAY_STATUS').then(res => {
+            // Response is JSON string
+          })
+        }
+      } catch {}
+    }
+  }, [])
   
   // Track latency history for each peer
   useEffect(() => {
@@ -36,8 +54,20 @@ export function Peers({ peers }: { peers?: any[] }) {
     }
   }
 
-  const toggleSetting = (key: 'udp' | 'tcp') => {
-    setDiscoverySettings(prev => ({ ...prev, [key]: !prev[key] }))
+  const toggleSetting = async (key: 'udp' | 'tcp') => {
+    const newSettings = { ...discoverySettings, [key]: !discoverySettings[key] }
+    setDiscoverySettings(newSettings)
+    
+    // Persist to localStorage
+    localStorage.setItem('discoverySettings', JSON.stringify(newSettings))
+    
+    // Send to daemon
+    if (window.api) {
+      const cmd = key === 'udp' 
+        ? `SET_DISCOVERY udp=${newSettings.udp ? '1' : '0'}`
+        : `SET_DISCOVERY tcp=${newSettings.tcp ? '1' : '0'}`
+      await window.api.sendCommand(cmd)
+    }
   }
   
   const handleBlockPeer = async (peerId: string) => {
@@ -216,7 +246,18 @@ export function Peers({ peers }: { peers?: any[] }) {
                 </div>
                 <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-border/50">
                     <div>
-                        <div className="font-medium text-sm">Global Relay (TCP)</div>
+                        <div className="font-medium text-sm flex items-center gap-2">
+                            Global Relay (TCP)
+                            {discoverySettings.tcp && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                    relayStatus.connected 
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                }`}>
+                                    {relayStatus.connected ? 'Connected' : 'Connecting...'}
+                                </span>
+                            )}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-1">Connect via relay when direct connection fails</div>
                     </div>
                     <div 
