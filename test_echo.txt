@@ -1,1 +1,2 @@
-hello
+SENTINELFS_PLUGIN_DIR=/home/rei/sentinelFS-demo/SentinelFS/build/plugins \         gcloud gcloud   01:12 
+  ./build/app/daemon/sentinel_daemon --config peer2.conf

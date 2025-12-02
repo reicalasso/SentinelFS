@@ -879,9 +879,34 @@ std::string IPCHandler::handleStatusJsonCommand() {
 std::string IPCHandler::handlePeersJsonCommand() {
     std::stringstream ss;
     auto sortedPeers = storage_->getPeersByLatency();
+    
+    // Get local peer info to filter out ourselves
+    std::string localPeerId;
+    int localPort = 0;
+    if (network_) {
+        localPeerId = network_->getLocalPeerId();
+        localPort = network_->getLocalPort();
+    }
+    
     ss << "{\"peers\": [";
+    bool first = true;
     for (size_t i = 0; i < sortedPeers.size(); ++i) {
         const auto& p = sortedPeers[i];
+        
+        // Skip our own peer ID
+        if (p.id == localPeerId) {
+            continue;
+        }
+        
+        // Skip peers on our own port (different sessions on same machine)
+        // This catches cases where peer ID changed but same IP:port
+        if (p.port == localPort && (p.ip == "127.0.0.1" || p.ip == "localhost")) {
+            continue;
+        }
+        
+        if (!first) ss << ",";
+        first = false;
+        
         ss << "{";
         ss << "\"id\": \"" << p.id << "\",";
         ss << "\"ip\": \"" << p.ip << "\",";
@@ -889,7 +914,6 @@ std::string IPCHandler::handlePeersJsonCommand() {
         ss << "\"latency\": " << p.latency << ",";
         ss << "\"status\": \"" << p.status << "\"";
         ss << "}";
-        if (i < sortedPeers.size() - 1) ss << ",";
     }
     ss << "]}\n";
     return ss.str();

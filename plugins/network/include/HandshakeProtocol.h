@@ -83,7 +83,8 @@ private:
                           std::string& digest);
     std::string computeAuthDigest(const std::vector<uint8_t>& clientNonce,
                                   const std::vector<uint8_t>& serverNonce,
-                                  const std::string& remotePeerId,
+                                  const std::string& clientPeerId,
+                                  const std::string& serverPeerId,
                                   const std::string& purpose) const;
     std::vector<uint8_t> generateNonce() const;
     

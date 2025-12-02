@@ -70,27 +70,40 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden selection:bg-primary/30">
-      {/* Modern Sidebar */}
-      <div className="w-[280px] flex-shrink-0 border-r border-border/40 bg-card/30 flex flex-col backdrop-blur-2xl z-20">
-        <div className="p-6 flex items-center gap-3 select-none">
+      {/* Ultra Modern Sidebar */}
+      <div className="w-[300px] flex-shrink-0 border-r border-border/30 bg-gradient-to-b from-card/80 to-card/40 flex flex-col backdrop-blur-2xl z-20 relative overflow-hidden">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
+        <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none"></div>
+        
+        {/* Logo Section */}
+        <div className="p-6 flex items-center gap-4 select-none relative">
           <div className="relative group cursor-pointer">
-            <div className="absolute inset-0 bg-primary blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-            <div className="relative bg-primary/10 p-2.5 rounded-xl border border-primary/20 group-hover:border-primary/40 transition-colors">
-                <Shield className="w-6 h-6 text-primary" />
+            {/* Subtle glow effect */}
+            <div className="absolute inset-0 bg-primary/40 blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
+            <div className="relative bg-gradient-to-br from-primary/15 to-primary/5 p-3 rounded-2xl border border-primary/20 group-hover:border-primary/40 transition-all duration-300 shadow-md group-hover:scale-105">
+                <Shield className="w-7 h-7 text-primary" />
             </div>
           </div>
           <div>
-            <h1 className="font-bold text-lg tracking-tight leading-none flex items-center gap-2">
-              SentinelFS
-              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-[10px] text-primary font-bold tracking-wide uppercase">Neo</span>
+            <h1 className="font-bold text-xl tracking-tight leading-none flex items-center gap-2">
+              <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">SentinelFS</span>
+              <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 text-[10px] text-primary font-bold tracking-widest uppercase border border-primary/20">Neo</span>
             </h1>
-            <p className="text-[10px] text-muted-foreground font-medium tracking-wider mt-1">Distributed Sync Engine</p>
+            <p className="text-[11px] text-muted-foreground font-medium tracking-wider mt-1.5 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400"></span>
+              Distributed Sync Engine
+            </p>
           </div>
         </div>
 
-        <div className="flex-1 px-4 py-2 space-y-8 overflow-y-auto no-scrollbar">
+        <div className="flex-1 px-4 py-2 space-y-6 overflow-y-auto no-scrollbar relative">
+          {/* Navigation Groups */}
           <div className="space-y-1">
-            <h3 className="px-3 text-[10px] font-bold uppercase text-muted-foreground/50 tracking-wider mb-2">Main</h3>
+            <h3 className="px-3 text-[10px] font-bold uppercase text-primary/60 tracking-[0.2em] mb-3 flex items-center gap-2">
+              <div className="w-4 h-px bg-gradient-to-r from-primary/50 to-transparent"></div>
+              Main
+            </h3>
             <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setTab('dashboard')} />
             <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => setTab('files')} />
             <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => setTab('peers')} badge={peers.length > 0 ? peers.length : undefined} />
@@ -98,29 +111,45 @@ export default function App() {
           </div>
 
           <div className="space-y-1">
-             <h3 className="px-3 text-[10px] font-bold uppercase text-muted-foreground/50 tracking-wider mb-2">System</h3>
+             <h3 className="px-3 text-[10px] font-bold uppercase text-accent/60 tracking-[0.2em] mb-3 flex items-center gap-2">
+               <div className="w-4 h-px bg-gradient-to-r from-accent/50 to-transparent"></div>
+               System
+             </h3>
             <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => setTab('settings')} />
             <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => setTab('logs')} />
           </div>
         </div>
 
-        {/* Daemon Status Footer */}
-        <div className="p-4 mt-auto border-t border-border/40 bg-background/20 backdrop-blur-sm">
-           <div className="flex items-center justify-between gap-3 bg-secondary/50 p-3 rounded-xl border border-border/50 hover:border-primary/30 transition-colors cursor-default">
-              <div className="flex items-center gap-3">
-                <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
-                  status === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
-                  status === 'error' ? 'bg-red-500' : 'bg-amber-500 animate-pulse'
-                }`} />
+        {/* Daemon Status Footer - Enhanced */}
+        <div className="p-4 mt-auto border-t border-border/30 bg-gradient-to-t from-background/40 to-transparent backdrop-blur-sm relative">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+          
+           <div className="relative overflow-hidden flex items-center justify-between gap-3 bg-gradient-to-r from-secondary/60 to-secondary/30 p-4 rounded-2xl border border-border/50 hover:border-primary/30 transition-all cursor-default group shadow-lg">
+              {/* Animated border glow */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              
+              <div className="relative flex items-center gap-3">
+                <div className="relative">
+                  <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
+                    status === 'connected' 
+                      ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50' 
+                      : status === 'error' 
+                        ? 'bg-red-500 shadow-lg shadow-red-500/50' 
+                        : 'bg-amber-400 animate-pulse shadow-lg shadow-amber-400/50'
+                  }`} />
+                  {status === 'connected' && (
+                    <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30"></div>
+                  )}
+                </div>
                 <div className="flex flex-col">
-                    <span className="text-xs font-semibold">Daemon Status</span>
-                    <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                    <span className="text-sm font-semibold">Daemon Status</span>
+                    <span className="text-[11px] text-muted-foreground truncate max-w-[140px]">
                         {status === 'connected' ? 'Active & Monitoring' : 'Waiting for connection...'}
                     </span>
                 </div>
               </div>
-              <button onClick={() => sendCommand('STATUS')} className="p-1.5 hover:bg-background rounded-lg text-muted-foreground hover:text-foreground transition-colors">
-                <RefreshCw className="w-3.5 h-3.5" />
+              <button onClick={() => sendCommand('STATUS')} className="relative p-2 hover:bg-background/50 rounded-xl text-muted-foreground hover:text-primary transition-all hover:scale-110 active:scale-95">
+                <RefreshCw className="w-4 h-4" />
               </button>
            </div>
         </div>
@@ -149,38 +178,48 @@ export default function App() {
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Glass Header */}
-        <header className="h-16 px-8 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-background/60 border-b border-border/40 transition-all">
-          <div className="flex items-center gap-4">
-             {/* Breadcrumbs or Title */}
-             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Command className="w-4 h-4 opacity-50" />
-                <span>/</span>
-                <span className="font-semibold text-foreground capitalize">{activeTab.replace('-', ' ')}</span>
+        {/* Animated Background Pattern */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
+        </div>
+        
+        {/* Header - Clean & Minimal */}
+        <header className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-background/70 border-b border-border/20">
+          <div className="flex items-center gap-3">
+             {/* Page Title - Simple */}
+             <div className="flex items-center gap-2 text-sm">
+                <Command className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground/60">/</span>
+                <span className="font-medium text-foreground capitalize">{activeTab.replace('-', ' ')}</span>
              </div>
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50 text-xs text-muted-foreground font-mono">
-               <div className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
-               {isPaused ? 'SYNC PAUSED' : 'SYNC ACTIVE'}
+            {/* Sync Status Indicator - Minimal */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/40 rounded-lg border border-border/30 text-xs">
+               <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></div>
+               <span className={`font-medium ${isPaused ? 'text-amber-400/80' : 'text-emerald-400/80'}`}>
+                 {isPaused ? 'Paused' : 'Active'}
+               </span>
             </div>
 
+            {/* Toggle Button - Clean & Minimal */}
             <button 
                 onClick={togglePause}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold tracking-wide uppercase transition-all shadow-sm hover:shadow-md active:scale-95 ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 border ${
                     isPaused 
-                    ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                    : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30' 
+                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30'
                 }`}
             >
-              {isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
-              {isPaused ? 'Resume' : 'Pause'}
+              {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+              <span>{isPaused ? 'Resume' : 'Pause'}</span>
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
+        <main className="relative flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} />}
             {activeTab === 'files' && <Files files={files} />}
@@ -199,21 +238,40 @@ function SidebarItem({ icon, label, active, onClick, badge }: any) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden ${
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group relative overflow-hidden ${
         active 
-          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
+          ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
           : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
       }`}
     >
-      {/* Active Indicator Line */}
-      {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white/20 rounded-r-full"></div>}
+      {/* Animated Background Shine */}
+      {active && (
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+      )}
       
-      {cloneElement(icon, { size: 18, className: `transition-transform group-hover:scale-110 ${active ? '' : 'opacity-70 group-hover:opacity-100'}` })}
-      <span className="flex-1 text-left">{label}</span>
+      {/* Active Indicator - Enhanced */}
+      {active && (
+        <>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/30 rounded-r-full shadow-lg shadow-white/20"></div>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white/50 rounded-full animate-pulse"></div>
+        </>
+      )}
+      
+      {/* Hover glow effect */}
+      {!active && (
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      )}
+      
+      <div className={`relative transition-all duration-300 ${active ? '' : 'group-hover:scale-110 group-hover:text-primary'}`}>
+        {cloneElement(icon, { size: 20, className: `transition-all ${active ? 'drop-shadow-lg' : 'opacity-70 group-hover:opacity-100'}` })}
+      </div>
+      <span className="flex-1 text-left relative">{label}</span>
       
       {badge !== undefined && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
-            active ? 'bg-white/20 text-white' : 'bg-secondary-foreground/10 text-secondary-foreground'
+        <span className={`relative text-[10px] px-2 py-0.5 rounded-lg font-bold transition-all ${
+            active 
+              ? 'bg-white/20 text-white shadow-inner' 
+              : 'bg-primary/10 text-primary border border-primary/20 group-hover:bg-primary/20'
         }`}>
             {badge}
         </span>
@@ -224,36 +282,76 @@ function SidebarItem({ icon, label, active, onClick, badge }: any) {
 
 function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
     return (
-        <div className="space-y-4 animate-in fade-in duration-500 slide-in-from-bottom-4">
+        <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+            {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Terminal className="w-5 h-5 text-muted-foreground" />
-                        Debug Console
-                    </h2>
-                    <p className="text-sm text-muted-foreground">Real-time daemon logs and events</p>
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20">
+                        <Terminal className="w-6 h-6 text-violet-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold">Debug Console</h2>
+                        <p className="text-sm text-muted-foreground">Real-time daemon logs and system events</p>
+                    </div>
                 </div>
                 <button
                     onClick={onClear}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-secondary hover:bg-destructive/10 hover:text-destructive transition-colors font-medium"
+                    className="flex items-center gap-2 text-xs px-4 py-2 rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
                 >
-                    Clear Logs
+                    <span>Clear</span>
                 </button>
             </div>
-            <div className="bg-black/80 backdrop-blur-md rounded-xl border border-border/50 font-mono text-xs p-4 h-[calc(100vh-220px)] overflow-auto shadow-inner selection:bg-primary/30">
-                {logs.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40">
-                        <Terminal className="w-12 h-12 mb-3 opacity-50" />
-                        <p>Waiting for daemon logs...</p>
+            
+            {/* Terminal Window */}
+            <div className="relative overflow-hidden rounded-2xl border border-border/30 shadow-xl">
+                {/* Terminal Header - macOS style */}
+                <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/90 border-b border-zinc-800/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/70 hover:bg-red-500 transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/70 hover:bg-yellow-500 transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500/70 hover:bg-green-500 transition-colors cursor-pointer"></div>
                     </div>
-                ) : (
-                    logs.map((log, i) => (
-                        <div key={i} className="mb-1.5 break-all hover:bg-white/5 px-2 py-1 rounded transition-colors flex gap-3 border-l-2 border-transparent hover:border-primary/50">
-                            <span className="text-muted-foreground/50 select-none w-6 text-right">{i+1}</span>
-                            <span className="text-zinc-300">{log}</span>
+                    <div className="text-xs text-zinc-500 font-mono">sentinel-daemon.log</div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                        <span>Live</span>
+                    </div>
+                </div>
+                
+                {/* Terminal Content */}
+                <div className="bg-zinc-950 font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-violet-500/30">
+                    {logs.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-600">
+                            <div className="p-4 rounded-2xl bg-zinc-900/50 mb-4">
+                                <Terminal className="w-10 h-10 opacity-30" />
+                            </div>
+                            <p className="text-sm">Waiting for daemon logs...</p>
+                            <p className="text-xs text-zinc-700 mt-1">Logs will appear here in real-time</p>
                         </div>
-                    ))
-                )}
+                    ) : (
+                        logs.map((log, i) => (
+                            <div 
+                                key={i} 
+                                className="group mb-0.5 break-all hover:bg-white/[0.02] px-3 py-1 rounded transition-colors flex gap-4"
+                            >
+                                <span className="text-zinc-700 select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
+                                <span className="text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                    {log.includes('ERROR') ? (
+                                        <span className="text-red-400">{log}</span>
+                                    ) : log.includes('WARN') ? (
+                                        <span className="text-amber-400">{log}</span>
+                                    ) : log.includes('SUCCESS') || log.includes('OK') ? (
+                                        <span className="text-emerald-400">{log}</span>
+                                    ) : log.includes('INFO') ? (
+                                        <span className="text-blue-400">{log}</span>
+                                    ) : (
+                                        log
+                                    )}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     )

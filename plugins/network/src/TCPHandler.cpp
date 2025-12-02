@@ -62,6 +62,7 @@ bool TCPHandler::startListening(int port) {
     }
 
     listening_ = true;
+    listeningPort_ = port;
     listenThread_ = std::thread(&TCPHandler::listenLoop, this);
     
     logger_.log(LogLevel::INFO, "TCP server listening on port " + std::to_string(port), "TCPHandler");

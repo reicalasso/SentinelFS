@@ -325,6 +325,17 @@ public:
     bool isRelayConnected() const override {
         return tcpRelay_ && tcpRelay_->isConnected();
     }
+    
+    std::string getLocalPeerId() const override {
+        return localPeerId_;
+    }
+    
+    int getLocalPort() const override {
+        if (tcpHandler_) {
+            return tcpHandler_->getListeningPort();
+        }
+        return 0;
+    }
 };
 
 // Plugin factory functions

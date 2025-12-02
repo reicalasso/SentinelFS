@@ -81,7 +81,8 @@ HandshakeProtocol::performClientHandshake(int socket) {
             return result;
         }
 
-        std::string digest = computeAuthDigest(clientNonce, serverNonce, remotePeerId, "CLIENT_AUTH");
+        // Client computes digest: clientPeerId=localPeerId_, serverPeerId=remotePeerId
+        std::string digest = computeAuthDigest(clientNonce, serverNonce, localPeerId_, remotePeerId, "CLIENT_AUTH");
         if (digest.empty()) {
             result.errorMessage = "Failed to compute handshake digest";
             logger.log(LogLevel::ERROR, result.errorMessage, "HandshakeProtocol");
@@ -241,7 +242,8 @@ HandshakeProtocol::performServerHandshake(int socket) {
         return result;
     }
 
-    std::string expectedDigest = computeAuthDigest(clientNonce, serverNonce, remotePeerId, "CLIENT_AUTH");
+    // Server computes digest: clientPeerId=remotePeerId (the one who sent AUTH), serverPeerId=localPeerId_
+    std::string expectedDigest = computeAuthDigest(clientNonce, serverNonce, remotePeerId, localPeerId_, "CLIENT_AUTH");
     if (expectedDigest.empty() || expectedDigest != digest) {
         result.errorMessage = "Handshake authentication failed";
         logger.log(LogLevel::WARN, "Authentication failed - Expected: " + expectedDigest.substr(0, 16) + 
@@ -480,7 +482,8 @@ bool HandshakeProtocol::parseAuthMessage(const std::string& message,
 
 std::string HandshakeProtocol::computeAuthDigest(const std::vector<uint8_t>& clientNonce,
                                                  const std::vector<uint8_t>& serverNonce,
-                                                 const std::string& remotePeerId,
+                                                 const std::string& clientPeerId,
+                                                 const std::string& serverPeerId,
                                                  const std::string& purpose) const {
     auto& logger = Logger::instance();
     if (sessionCode_.empty()) {
@@ -500,12 +503,13 @@ std::string HandshakeProtocol::computeAuthDigest(const std::vector<uint8_t>& cli
         return "";
     }
 
-    std::string payload = purpose + "|" + localPeerId_ + "|" + remotePeerId + "|"
+    // Use consistent ordering: always client|server to ensure both sides compute same digest
+    std::string payload = purpose + "|" + clientPeerId + "|" + serverPeerId + "|"
         + Crypto::toHex(clientNonce) + "|" + Crypto::toHex(serverNonce);
     std::vector<uint8_t> payloadBytes(payload.begin(), payload.end());
 
     logger.log(LogLevel::DEBUG, "Computing auth digest - Purpose: " + purpose + 
-               ", Local: " + localPeerId_ + ", Remote: " + remotePeerId + 
+               ", Client: " + clientPeerId + ", Server: " + serverPeerId + 
                ", SessionCode: " + sessionCode_, "HandshakeProtocol");
 
     std::vector<uint8_t> digest;

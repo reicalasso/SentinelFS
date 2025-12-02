@@ -177,12 +177,22 @@ export function Settings({ config }: SettingsProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
-      <h2 className="text-lg font-semibold mb-6">Settings</h2>
+    <div className="max-w-5xl mx-auto animate-in fade-in duration-500 slide-in-from-bottom-4">
+      {/* Page Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
+          <Shield className="w-6 h-6 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">Settings</h2>
+          <p className="text-sm text-muted-foreground">Configure your SentinelFS instance</p>
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Settings Navigation */}
-        <nav className="space-y-1">
+        <nav className="space-y-2 bg-card/30 p-3 rounded-2xl border border-border/30 h-fit sticky top-4">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-3">Navigation</div>
             <SettingsTab 
                 active={activeTab === 'general'} 
                 onClick={() => setActiveTab('general')} 
@@ -281,9 +291,11 @@ export function Settings({ config }: SettingsProps) {
             {activeTab === 'network' && (
                 <div className="space-y-6">
                     <Section title="Manual Peer Connection">
-                        <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-4 mb-4">
-                            <div className="flex items-start gap-2 text-blue-500 mb-3">
-                                <Globe className="w-4 h-4 mt-0.5" />
+                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 mb-4">
+                            <div className="flex items-start gap-3 mb-4">
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                    <Globe className="w-4 h-4 text-primary" />
+                                </div>
                                 <div>
                                     <span className="text-sm font-semibold">Connect to a specific peer</span>
                                     <p className="text-xs text-muted-foreground mt-1">Enter the IP address and port of a peer on a different network</p>
@@ -295,18 +307,18 @@ export function Settings({ config }: SettingsProps) {
                                     value={peerIp}
                                     onChange={(e) => setPeerIp(e.target.value)}
                                     placeholder="192.168.1.100"
-                                    className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                    className="bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <input 
                                     type="number" 
                                     value={peerPort}
                                     onChange={(e) => setPeerPort(e.target.value)}
                                     placeholder="8080"
-                                    className="w-24 bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                    className="w-24 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <button 
                                     onClick={handleAddPeer}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Connect
@@ -316,45 +328,45 @@ export function Settings({ config }: SettingsProps) {
                     </Section>
                     
                     <Section title="Bandwidth Limits">
-                        <div className="mb-4">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Upload Limit (KB/s)</label>
+                        <div className="mb-5">
+                            <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Upload Limit (KB/s)</label>
                             <div className="flex gap-2">
                                 <input 
                                     type="number" 
                                     value={uploadLimit}
                                     onChange={(e) => setUploadLimit(e.target.value)}
                                     placeholder="0 = Unlimited"
-                                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <button 
                                     onClick={handleUploadLimitChange}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
                                 >
                                     <Save className="w-4 h-4" />
                                     Apply
                                 </button>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">0 = Unlimited</div>
+                            <div className="text-xs text-muted-foreground mt-1.5">0 = Unlimited</div>
                         </div>
                         <div className="mb-4">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Download Limit (KB/s)</label>
+                            <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Download Limit (KB/s)</label>
                             <div className="flex gap-2">
                                 <input 
                                     type="number" 
                                     value={downloadLimit}
                                     onChange={(e) => setDownloadLimit(e.target.value)}
                                     placeholder="0 = Unlimited"
-                                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <button 
                                     onClick={handleDownloadLimitChange}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
                                 >
                                     <Save className="w-4 h-4" />
                                     Apply
                                 </button>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">0 = Unlimited</div>
+                            <div className="text-xs text-muted-foreground mt-1.5">0 = Unlimited</div>
                         </div>
                     </Section>
                 </div>
@@ -365,35 +377,35 @@ export function Settings({ config }: SettingsProps) {
                     <Section title="Session Code">
                         {/* Current Code Display */}
                         {config?.sessionCode && (
-                            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <div className="mb-6 p-5 bg-primary/5 border border-primary/15 rounded-xl">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-blue-500/20">
-                                            <Key className="w-5 h-5 text-blue-500" />
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+                                            <Key className="w-5 h-5 text-primary" />
                                         </div>
                                         <div>
                                             <div className="text-xs text-muted-foreground uppercase tracking-wider">Current Session Code</div>
-                                            <div className="font-mono text-2xl font-bold tracking-widest text-blue-500">
+                                            <div className="font-mono text-2xl font-bold tracking-widest text-primary mt-1">
                                                 {formatCode(config.sessionCode)}
                                             </div>
                                         </div>
                                     </div>
                                     <button 
                                         onClick={handleCopyCode}
-                                        className="p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                                        className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border border-border/50"
                                         title="Copy to clipboard"
                                     >
-                                        {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
+                                        {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-2">Share this code with peers to allow them to connect.</p>
+                                <p className="text-xs text-muted-foreground mt-3">Share this code with peers to allow them to connect.</p>
                             </div>
                         )}
                         
                         {/* No Code Warning */}
                         {!config?.sessionCode && (
-                            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                                <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                <div className="flex items-center gap-2 text-amber-500 mb-2">
                                     <Shield className="w-4 h-4" />
                                     <span className="text-sm font-semibold">No Session Code Set</span>
                                 </div>
@@ -408,7 +420,7 @@ export function Settings({ config }: SettingsProps) {
                                 <button 
                                     onClick={handleGenerateCode}
                                     disabled={isGenerating}
-                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
                                 >
                                     <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                                     {isGenerating ? 'Generating...' : 'Generate New Code'}
@@ -417,15 +429,15 @@ export function Settings({ config }: SettingsProps) {
                             
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-border"></div>
+                                    <div className="w-full border-t border-border/50"></div>
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-2 text-muted-foreground">or enter manually</span>
+                                    <span className="bg-card px-3 text-muted-foreground">or enter manually</span>
                                 </div>
                             </div>
                             
                             <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Manual Entry</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Manual Entry</label>
                                 <div className="flex gap-2">
                                     <input 
                                         type="text" 
@@ -433,12 +445,12 @@ export function Settings({ config }: SettingsProps) {
                                         onChange={(e) => setNewSessionCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                                         maxLength={6}
                                         placeholder="ABC123"
-                                        className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all tracking-widest text-center" 
+                                        className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all tracking-widest text-center" 
                                     />
                                     <button 
                                         onClick={handleSessionCodeChange}
                                         disabled={newSessionCode.length !== 6}
-                                        className="px-4 py-2 bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                        className="px-4 py-2.5 bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2"
                                     >
                                         <Save className="w-4 h-4" />
                                         Set
@@ -449,7 +461,7 @@ export function Settings({ config }: SettingsProps) {
                     </Section>
                     
                     <Section title="Encryption">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-5">
                             <div>
                                 <span className="text-sm font-medium block">Enable AES-256 Encryption</span>
                                 <span className="text-xs text-muted-foreground">Encrypt all peer-to-peer traffic</span>
@@ -457,15 +469,15 @@ export function Settings({ config }: SettingsProps) {
                             <Toggle checked={encryptionEnabled} onChange={handleEncryptionToggle} />
                         </div>
                         {encryptionEnabled ? (
-                            <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
-                                <div className="flex items-center gap-2 text-green-500 mb-2">
+                            <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
+                                <div className="flex items-center gap-2 text-emerald-500 mb-2">
                                     <Shield className="w-4 h-4" />
                                     <span className="text-sm font-semibold">Encryption Active</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">All traffic is encrypted with AES-256-CBC + HMAC verification.</p>
                             </div>
                         ) : (
-                            <div className="bg-secondary/50 p-4 rounded-lg border border-border">
+                            <div className="bg-secondary/30 p-4 rounded-xl border border-border/50">
                                 <p className="text-xs text-muted-foreground">⚠ Traffic is not encrypted. Enable encryption for secure file transfers.</p>
                             </div>
                         )}
@@ -512,13 +524,13 @@ export function Settings({ config }: SettingsProps) {
                                     value={newPattern}
                                     onChange={(e) => setNewPattern(e.target.value)}
                                     placeholder="*.log, node_modules/, .git/"
-                                    className="flex-1 bg-background border border-input rounded-md px-3 py-2 text-sm font-mono focus:ring-1 focus:ring-blue-500 outline-none"
+                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none"
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddPattern()}
                                 />
                                 <button 
                                     onClick={handleAddPattern}
                                     disabled={!newPattern.trim()}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
                                 >
                                     <Plus className="w-4 h-4" /> Add
                                 </button>
@@ -526,14 +538,14 @@ export function Settings({ config }: SettingsProps) {
                             {ignorePatterns.length > 0 ? (
                                 <div className="space-y-2">
                                     {ignorePatterns.map((pattern, i) => (
-                                        <div key={i} className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
+                                        <div key={i} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/30">
                                             <div className="flex items-center gap-2">
                                                 <FileX className="w-4 h-4 text-muted-foreground" />
                                                 <span className="font-mono text-sm">{pattern}</span>
                                             </div>
                                             <button 
                                                 onClick={() => handleRemovePattern(pattern)}
-                                                className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500"
+                                                className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
@@ -541,7 +553,7 @@ export function Settings({ config }: SettingsProps) {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-muted-foreground text-center py-4">No ignore patterns defined</p>
+                                <p className="text-xs text-muted-foreground text-center py-6 bg-secondary/20 rounded-xl border border-dashed border-border/50">No ignore patterns defined</p>
                             )}
                         </div>
                     </Section>
@@ -549,22 +561,22 @@ export function Settings({ config }: SettingsProps) {
                         <div className="grid grid-cols-2 gap-4">
                             <button 
                                 onClick={handleExportConfig}
-                                className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
+                                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
                             >
                                 <Download className="w-4 h-4" /> Export Config
                             </button>
                             <button 
                                 onClick={handleImportConfig}
-                                className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
+                                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
                             >
                                 <Upload className="w-4 h-4" /> Import Config
                             </button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">Export settings to share with other devices or backup your configuration.</p>
+                        <p className="text-xs text-muted-foreground mt-3">Export settings to share with other devices or backup your configuration.</p>
                     </Section>
                     <Section title="ML Anomaly Detection">
-                        <div className="bg-yellow-500/10 p-4 rounded-lg border border-yellow-500/20">
-                            <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                        <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+                            <div className="flex items-center gap-2 text-amber-500 mb-2">
                                 <Database className="w-4 h-4" />
                                 <span className="text-sm font-semibold">Experimental Feature</span>
                             </div>
@@ -572,15 +584,15 @@ export function Settings({ config }: SettingsProps) {
                         </div>
                     </Section>
                     <Section title="Danger Zone">
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <button 
                                 onClick={() => window.api?.sendCommand('STATUS')}
-                                className="w-full px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md text-sm font-medium transition-colors"
+                                className="w-full px-4 py-3 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
                             >
                                 Refresh Daemon Status
                             </button>
                             <button 
-                                className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-md text-sm font-medium transition-colors"
+                                className="w-full px-4 py-3 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 hover:border-destructive/30 rounded-xl text-sm font-medium transition-all"
                                 onClick={() => {
                                     if (confirm('Are you sure you want to reset all settings to defaults?')) {
                                         sendConfig('uploadLimit', '0')
@@ -605,20 +617,26 @@ function SettingsTab({ active, onClick, icon, label }: any) {
     return (
         <button 
             onClick={onClick}
-            className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                active 
+                  ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm' 
+                  : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
             }`}
         >
-            {icon}
+            <span className={`transition-colors ${active ? 'text-primary' : ''}`}>{icon}</span>
             {label}
+            {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"></div>}
         </button>
     )
 }
 
 function Section({ title, children }: any) {
     return (
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="font-medium mb-4 pb-2 border-b border-border">{title}</h3>
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 shadow-sm hover:border-border/80 transition-colors">
+            <h3 className="font-semibold mb-4 pb-3 border-b border-border/50 text-foreground flex items-center gap-2">
+                <div className="w-1 h-4 bg-primary/60 rounded-full"></div>
+                {title}
+            </h3>
             {children}
         </div>
     )
@@ -631,7 +649,7 @@ function Input({ label, value }: any) {
             <input 
                 type="text" 
                 defaultValue={value} 
-                className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all" 
+                className="w-full bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
             />
         </div>
     )
@@ -641,9 +659,13 @@ function Toggle({ checked, onChange }: any) {
     return (
         <div 
             onClick={onChange}
-            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${checked ? 'bg-blue-600' : 'bg-secondary'}`}
+            className={`w-11 h-6 rounded-full relative cursor-pointer transition-all duration-300 ${
+                checked 
+                  ? 'bg-primary shadow-sm shadow-primary/30' 
+                  : 'bg-secondary/80 border border-border/50'
+            }`}
         >
-            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${checked ? 'right-1' : 'left-1'}`}></div>
+            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${checked ? 'right-1' : 'left-1'}`}></div>
         </div>
     )
 }

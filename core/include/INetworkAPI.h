@@ -132,6 +132,18 @@ namespace SentinelFS {
          * @return true if connected to relay, false otherwise.
          */
         virtual bool isRelayConnected() const = 0;
+        
+        /**
+         * @brief Get the local peer ID.
+         * @return The local peer ID string.
+         */
+        virtual std::string getLocalPeerId() const = 0;
+        
+        /**
+         * @brief Get the TCP port this peer is listening on.
+         * @return The TCP listening port.
+         */
+        virtual int getLocalPort() const = 0;
     };
 }
 

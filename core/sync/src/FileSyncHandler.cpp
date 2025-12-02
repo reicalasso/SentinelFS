@@ -160,9 +160,9 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
             if (it->is_regular_file()) {
                 std::string hash = calculateFileHash(currentPath);
                 long long size = std::filesystem::file_size(it->path());
-                long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(
-                    std::filesystem::last_write_time(it->path()).time_since_epoch()
-                ).count();
+                // Use system time (Unix timestamp in seconds) instead of filesystem clock
+                // filesystem::file_time_type uses a different epoch on some systems
+                long long timestamp = std::time(nullptr);
                 
                 if (storage_->addFile(currentPath, hash, timestamp, size)) {
                     count++;

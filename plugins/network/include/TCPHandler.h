@@ -101,6 +101,12 @@ public:
      */
     int measureRTT(const std::string& peerId);
     
+    /**
+     * @brief Get the port this handler is listening on
+     * @return The listening port, or 0 if not listening
+     */
+    int getListeningPort() const { return listeningPort_; }
+    
 private:
     void listenLoop();
     void handleClient(int clientSocket);
@@ -115,6 +121,7 @@ private:
     MetricsCollector& metrics_{MetricsCollector::instance()};
     
     int serverSocket_{-1};
+    int listeningPort_{0};
     std::atomic<bool> listening_{false};
     std::atomic<bool> shuttingDown_{false};
     std::thread listenThread_;
