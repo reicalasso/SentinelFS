@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# SentinelFS - Varsayılan Yapılandırma Şablonu
+# ═══════════════════════════════════════════════════════════════════════════════
+# Bu dosya SentinelFS daemon'ı için varsayılan yapılandırma şablonudur.
+# Yeni bir peer oluşturmak için bu dosyayı kopyalayıp düzenleyin.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AĞ AYARLARI
+# ─────────────────────────────────────────────────────────────────────────────
+
+# TCP portu (8080-8099 aralığı önerilir)
+tcp_port=8080
+
+# UDP Discovery portu (tüm peer'lar için aynı olmalı)
+discovery_port=9999
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOSYA SİSTEMİ
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Senkronize edilecek dizin
+watch_directory=~/sentinel_sync
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GÜVENLİK
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Şifreleme (production'da true olmalı)
+encryption_enabled=true
+
+# Oturum kodu (6 karakterli, büyük harf + rakam)
+# session_code=ABC123
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BANT GENİŞLİĞİ (KB/s, 0 = sınırsız)
+# ─────────────────────────────────────────────────────────────────────────────
+
+upload_limit_kbps=0
+download_limit_kbps=0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# METRİKLER
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Prometheus-uyumlu HTTP endpoint portu
+metrics_port=9100
