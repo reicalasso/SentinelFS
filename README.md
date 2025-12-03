@@ -2,9 +2,27 @@
 
 Lightweight, production-grade **P2P file synchronization** built around a modular daemon, plugin-driven services, and an Electron/React control plane.
 
-![Architecture diagram](docs/251124_22h09m15s_screenshot.png)
-
 Licensing: [MIT](LICENSE)
+
+---
+
+## 📸 Screenshots
+
+| Dashboard |
+|:--------:|
+| ![Dashboard](docs/images/dashboard.png) |
+
+| Dashboard | Files | Transfers |
+|:---------:|:-----:|:---------:|
+| ![Dashboard](docs/images/251203_01h53m17s_screenshot.png) | ![Files](docs/images/251203_01h53m36s_screenshot.png) | ![Transfers](docs/images/251203_01h54m57s_screenshot.png) |
+
+| Peers | Settings | Network Config |
+|:-----:|:--------:|:--------------:|
+| ![Peers](docs/images/251203_01h55m07s_screenshot.png) | ![Settings](docs/images/251203_01h55m26s_screenshot.png) | ![Network](docs/images/251203_01h55m39s_screenshot.png) |
+
+| Security | Advanced | Logs |
+|:--------:|:--------:|:----:|
+| ![Security](docs/images/251203_01h55m48s_screenshot.png) | ![Advanced](docs/images/251203_01h55m56s_screenshot.png) | ![Logs](docs/images/251203_01h56m05s_screenshot.png) |
 
 ---
 
