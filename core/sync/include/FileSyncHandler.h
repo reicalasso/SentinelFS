@@ -82,6 +82,14 @@ public:
      */
     void broadcastDelete(const std::string& fullPath);
 
+    /**
+     * @brief Broadcast all local files to a specific peer
+     * @param peerId The peer to send updates to
+     * 
+     * Used when a new peer connects to send them our file list.
+     */
+    void broadcastAllFilesToPeer(const std::string& peerId);
+
 private:
     std::string calculateFileHash(const std::string& path);
     bool shouldIgnore(const std::string& path);

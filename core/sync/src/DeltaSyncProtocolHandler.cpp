@@ -116,14 +116,26 @@ void DeltaSyncProtocolHandler::handleUpdateAvailable(const std::string& peerId,
             }
         }
         
-        // Convert relative path to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
-        }
-        localPath += relativePath;
-        
+        // Convert path to local absolute path
+        std::string localPath;
         std::string filename = std::filesystem::path(relativePath).filename().string();
+        
+        if (!relativePath.empty() && relativePath[0] == '/') {
+            // Absolute path from peer - use just the filename under our watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += filename;
+        } else {
+            // Relative path - append to watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += relativePath;
+        }
+        
         logger.info("Peer " + peerId + " has update for: " + filename + " (remote hash: " + remoteHash.substr(0, 8) + "...)", "DeltaSyncProtocol");
         
         // Check if we already have this version (same hash)
@@ -179,16 +191,27 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
             return;
         }
         
-        // This is the relative path from peer
-        std::string relativePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
-        std::string filename = std::filesystem::path(relativePath).filename().string();
+        // This is the path from peer (might be relative or absolute)
+        std::string remotePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string filename = std::filesystem::path(remotePath).filename().string();
         
         // Convert to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
+        std::string localPath;
+        if (!remotePath.empty() && remotePath[0] == '/') {
+            // Absolute path from peer - use just the filename under our watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += filename;
+        } else {
+            // Relative path - append to watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += remotePath;
         }
-        localPath += relativePath;
         
         logger.info("Received delta request for: " + filename + " from " + peerId, "DeltaSyncProtocol");
         
@@ -224,7 +247,7 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
 
         if (totalChunks == 0) {
             // No delta data, but send an empty payload for protocol symmetry
-            std::string header = "DELTA_DATA|" + relativePath + "|";
+            std::string header = "DELTA_DATA|" + remotePath + "|";
             std::vector<uint8_t> payload(header.begin(), header.end());
             bool sent = network_->sendData(peerId, payload);
             if (!sent) {
@@ -239,7 +262,7 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
             std::size_t offset = static_cast<std::size_t>(chunkId) * CHUNK_SIZE;
             std::size_t len = std::min(CHUNK_SIZE, totalSize - offset);
 
-            std::string header = "DELTA_DATA|" + relativePath + "|" +
+            std::string header = "DELTA_DATA|" + remotePath + "|" +
                                  std::to_string(chunkId) + "/" + std::to_string(totalChunks) + "|";
             std::vector<uint8_t> payload(header.begin(), header.end());
             payload.insert(payload.end(),
@@ -287,16 +310,30 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
             return;
         }
         
-        // This is the relative path
-        std::string relativePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
-        std::string filename = std::filesystem::path(relativePath).filename().string();
+        // This is the path from peer (might be relative or absolute)
+        std::string remotePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string filename = std::filesystem::path(remotePath).filename().string();
         
         // Convert to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
+        std::string localPath;
+        if (!remotePath.empty() && remotePath[0] == '/') {
+            // Absolute path - use just the filename under our watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += filename;
+        } else {
+            // Relative path - append to watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += remotePath;
         }
-        localPath += relativePath;
+        
+        // For chunk assembly, use remotePath as key component
+        std::string relativePath = remotePath;
         
         // Check if this is a chunked DELTA_DATA message: DELTA_DATA|relativePath|chunkId/total|...
         size_t thirdPipe = msg.find('|', secondPipe + 1);
@@ -533,16 +570,30 @@ void DeltaSyncProtocolHandler::handleFileData(const std::string& peerId,
             return;
         }
         
-        std::string relativePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
+        std::string remotePath = msg.substr(firstPipe + 1, secondPipe - firstPipe - 1);
         std::string chunkInfo = msg.substr(secondPipe + 1, thirdPipe - secondPipe - 1);
-        std::string filename = std::filesystem::path(relativePath).filename().string();
+        std::string filename = std::filesystem::path(remotePath).filename().string();
         
         // Convert to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
+        std::string localPath;
+        if (!remotePath.empty() && remotePath[0] == '/') {
+            // Absolute path - use just the filename under our watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += filename;
+        } else {
+            // Relative path - append to watch directory
+            localPath = watchDirectory_;
+            if (!localPath.empty() && localPath.back() != '/') {
+                localPath += '/';
+            }
+            localPath += remotePath;
         }
-        localPath += relativePath;
+        
+        // Keep remotePath for key assembly
+        std::string relativePath = remotePath;
         
         size_t slashPos = chunkInfo.find('/');
         if (slashPos == std::string::npos) {

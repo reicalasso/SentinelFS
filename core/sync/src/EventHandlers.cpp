@@ -7,6 +7,8 @@
 #include <iostream>
 #include <ctime>
 #include <sqlite3.h>
+#include <thread>
+#include <chrono>
 
 namespace SentinelFS {
 
@@ -197,7 +199,30 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
             metrics.incrementPeersConnected();
             logger.info("Peer " + peerId + " is now active and ready for sync", "EventHandlers");
         } else {
-            logger.warn("PEER_CONNECTED event for unknown peer: " + peerId, "EventHandlers");
+            // Peer not in database (incoming connection) - add with minimal info
+            // This happens when we receive a connection from a peer we haven't discovered yet
+            logger.info("Adding new peer from incoming connection: " + peerId, "EventHandlers");
+            PeerInfo newPeer;
+            newPeer.id = peerId;
+            newPeer.ip = "0.0.0.0";  // Will be updated later by RTT thread or discovery
+            newPeer.port = 0;
+            newPeer.lastSeen = std::time(nullptr);
+            newPeer.status = "active";
+            newPeer.latency = -1;
+            storage_->addPeer(newPeer);
+            metrics.incrementPeersConnected();
+            logger.info("Peer " + peerId + " added and marked as active", "EventHandlers");
+        }
+        
+        // Trigger file sync after peer connection is established
+        // This broadcasts all local files to the newly connected peer
+        if (syncEnabled_) {
+            logger.info("Triggering file sync to newly connected peer: " + peerId, "EventHandlers");
+            // Use a small delay to ensure connection is fully established
+            std::thread([this, peerId]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+            }).detach();
         }
         
     } catch (const std::exception& e) {

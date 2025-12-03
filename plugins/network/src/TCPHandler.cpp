@@ -169,9 +169,17 @@ void TCPHandler::handleClient(int clientSocket) {
     
     logger_.log(LogLevel::INFO, "Handshake successful with peer: " + result.peerId, "TCPHandler");
     
-    // Store connection
+    // Check if we already have an active connection to this peer
     {
         std::lock_guard<std::mutex> lock(connectionMutex_);
+        auto existingConn = connections_.find(result.peerId);
+        if (existingConn != connections_.end()) {
+            // Already connected to this peer - close duplicate connection
+            logger_.log(LogLevel::INFO, "Already connected to peer " + result.peerId + ", closing duplicate incoming connection", "TCPHandler");
+            close(clientSocket);
+            return;
+        }
+        // Store new connection
         connections_[result.peerId] = clientSocket;
     }
     
@@ -233,14 +241,22 @@ bool TCPHandler::connectToPeer(const std::string& address, int port) {
         return false;
     }
     
-    logger_.log(LogLevel::INFO, "Successfully connected to peer: " + result.peerId, "TCPHandler");
-    metrics_.incrementConnections();
-    
-    // Store connection
+    // Check if we already have an active connection to this peer
     {
         std::lock_guard<std::mutex> lock(connectionMutex_);
+        auto existingConn = connections_.find(result.peerId);
+        if (existingConn != connections_.end()) {
+            // Already connected to this peer - close duplicate connection
+            logger_.log(LogLevel::INFO, "Already connected to peer " + result.peerId + ", closing duplicate outgoing connection", "TCPHandler");
+            close(sock);
+            return true;  // Return true because we are already connected
+        }
+        // Store new connection
         connections_[result.peerId] = sock;
     }
+    
+    logger_.log(LogLevel::INFO, "Successfully connected to peer: " + result.peerId, "TCPHandler");
+    metrics_.incrementConnections();
     
     // Publish peer connected event
     if (eventBus_) {

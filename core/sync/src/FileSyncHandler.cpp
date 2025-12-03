@@ -418,6 +418,82 @@ void FileSyncHandler::broadcastDelete(const std::string& fullPath) {
     }
 }
 
+void FileSyncHandler::broadcastAllFilesToPeer(const std::string& peerId) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    if (!storage_ || !network_) {
+        logger.error("Storage or Network plugin not available", "FileSyncHandler");
+        return;
+    }
+    
+    logger.info("Broadcasting all files to newly connected peer: " + peerId, "FileSyncHandler");
+    
+    try {
+        // Get all files from database
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        if (!db) {
+            logger.error("Database connection is null", "FileSyncHandler");
+            return;
+        }
+        
+        const char* selectSql = "SELECT path, hash, size FROM files";
+        sqlite3_stmt* stmt;
+        
+        if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) {
+            logger.error("Failed to prepare select statement for files", "FileSyncHandler");
+            return;
+        }
+        
+        int successCount = 0;
+        int failCount = 0;
+        
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            const char* pathRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const char* hashRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            int64_t size = sqlite3_column_int64(stmt, 2);
+            
+            if (!pathRaw || !hashRaw) continue;
+            
+            std::string fullPath = pathRaw;
+            std::string hash = hashRaw;
+            
+            // Check if file still exists
+            if (!std::filesystem::exists(fullPath)) {
+                continue;
+            }
+            
+            // Calculate relative path
+            std::string relativePath = fullPath;
+            if (fullPath.find(watchDirectory_) == 0) {
+                relativePath = fullPath.substr(watchDirectory_.length());
+                if (!relativePath.empty() && relativePath[0] == '/') {
+                    relativePath = relativePath.substr(1);
+                }
+            }
+            
+            // Send UPDATE_AVAILABLE to specific peer
+            std::string updateMsg = "UPDATE_AVAILABLE|" + relativePath + "|" + hash + "|" + std::to_string(size);
+            std::vector<uint8_t> payload(updateMsg.begin(), updateMsg.end());
+            
+            if (network_->sendData(peerId, payload)) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        }
+        
+        sqlite3_finalize(stmt);
+        
+        logger.info("Sent " + std::to_string(successCount) + " file update(s) to peer " + peerId + 
+                   (failCount > 0 ? " (" + std::to_string(failCount) + " failed)" : ""), "FileSyncHandler");
+        
+    } catch (const std::exception& e) {
+        logger.error("Error broadcasting files to peer " + peerId + ": " + std::string(e.what()), "FileSyncHandler");
+        metrics.incrementSyncErrors();
+    }
+}
+
 void FileSyncHandler::handleFileDeleted(const std::string& fullPath) {
     auto& logger = Logger::instance();
     
