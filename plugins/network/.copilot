@@ -1,7 +1,0 @@
-Network pluginleri:
-- UDP discovery
-- Hole-punching
-- TCP/QUIC transfer
-
-Core'a asla erişme.
-Sadece IDiscovery veya ITransfer interface’lerini uygula.
