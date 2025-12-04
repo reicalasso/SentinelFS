@@ -34,6 +34,9 @@ set(CORE_SOURCES
     security/src/keymanager/IdentityKeyManager.cpp
     security/src/keymanager/PeerKeyManager.cpp
     security/src/keymanager/SessionKeyManager.cpp
+    security/src/tls/TLSContextCore.cpp
+    security/src/tls/PinManager.cpp
+    security/src/tls/Verification.cpp
 
     # Sync sources
     sync/src/ConflictResolver.cpp
