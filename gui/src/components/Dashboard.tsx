@@ -138,7 +138,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           value={syncStatus?.syncStatus || "Idle"} 
           sub={syncStatus?.pendingFiles ? `${syncStatus.pendingFiles} files pending` : "Up to date"}
           icon={<Zap className="w-5 h-5 text-amber-500" />}
-          status={syncStatus?.syncStatus === 'Synced' ? "success" : "warning"}
+          status={syncStatus?.syncStatus === 'ENABLED' ? "success" : "warning"}
         />
         <StatCard 
           title="Active Peers" 
@@ -333,7 +333,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           icon={<Shield className="w-5 h-5" />}
           status={health?.healthy ? 'success' : 'warning'}
           value={health?.statusMessage || 'Unknown'}
-          sub={health ? `${health.activeWatcherCount} active watchers` : 'Loading...'}
+          sub={health ? `${health.activeWatcherCount || 0} active watcher${(health.activeWatcherCount || 0) !== 1 ? 's' : ''}` : 'Loading...'}
         />
         <HealthCard
           title="Disk Usage"

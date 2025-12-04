@@ -234,11 +234,31 @@ int main(int argc, char* argv[]) {
     metricsServer.setMetricsHandler([]() {
         return MetricsCollector::instance().exportPrometheus();
     });
+    
+    // Liveness check: daemon process is running and responsive
     metricsServer.setLivenessHandler([&]() {
         return daemon.isRunning();
     });
+    
+    // Readiness check: daemon is fully initialized and ready to serve
+    // Checks: daemon running + network plugin active + storage accessible
     metricsServer.setReadinessHandler([&]() {
-        return daemon.isRunning();
+        if (!daemon.isRunning()) return false;
+        
+        auto network = daemon.getNetworkPlugin();
+        if (!network) return false;
+        
+        auto storage = daemon.getStoragePlugin();
+        if (!storage) return false;
+        
+        // Verify storage is accessible by checking DB connection
+        try {
+            storage->getAllPeers();  // Simple query to verify DB access
+        } catch (...) {
+            return false;
+        }
+        
+        return true;
     });
 
     if (!metricsServer.start()) {

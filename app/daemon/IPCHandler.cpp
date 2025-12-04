@@ -2048,8 +2048,14 @@ HealthSummary IPCHandler::computeHealthSummary() const {
         }
     }
     
-    // Watcher count - count active watched folders from DB
-    if (storage_) {
+    // Watcher count - get from MetricsCollector which tracks actual watched files
+    // This is more accurate than DB count as it reflects real-time filesystem monitoring
+    auto& metrics = MetricsCollector::instance();
+    auto syncMetrics = metrics.getSyncMetrics();
+    summary.activeWatcherCount = static_cast<int>(syncMetrics.filesWatched);
+    
+    // Fallback to DB count if metrics show 0 but DB has entries
+    if (summary.activeWatcherCount == 0 && storage_) {
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         if (db) {
             sqlite3_stmt* stmt;

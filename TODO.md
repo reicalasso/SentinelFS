@@ -73,9 +73,18 @@ Bu dosya, SentinelFS için planlanan geliştirmeleri ve iyileştirmeleri özetle
 
 ## 5. Monitoring & Operasyonellik
 
-- [ ] Prometheus endpoint şemasını finalize et ve örnek Grafana dashboard JSON ekle
-- [ ] Liveness / readiness health-check endpoint'leri (production için)
-- [ ] systemd unit ile birlikte log formatı ve log rotation senaryosunu dokümante et
+- [x] Prometheus endpoint şemasını finalize et ve örnek Grafana dashboard JSON ekle
+  - `MetricsCollector::exportPrometheus()` genişletildi: 28 metrik
+  - Grafana dashboard: `docs/grafana/sentinelfs-dashboard.json`
+  - Sync, Network, Security, Performance kategorileri
+- [x] Liveness / readiness health-check endpoint'leri (production için)
+  - `/healthz`: Daemon process liveness kontrolü
+  - `/readyz`: Full readiness (network, storage, DB erişimi)
+  - Kubernetes-uyumlu probe yapılandırma örnekleri
+- [x] systemd unit ile birlikte log formatı ve log rotation senaryosunu dokümante et
+  - `docs/MONITORING.md`: Kapsamlı operasyon rehberi
+  - Journald ve logrotate yapılandırmaları
+  - Troubleshooting ve support bundle script'i
 
 ## 6. CLI Geliştirmeleri
 

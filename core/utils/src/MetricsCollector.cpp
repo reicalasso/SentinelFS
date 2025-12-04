@@ -172,50 +172,136 @@ namespace SentinelFS {
 
     std::string MetricsCollector::exportPrometheus() const {
         std::stringstream ss;
+        auto uptime = getUptime();
         
-        // Sync metrics
-        ss << "# HELP sentinelfs_files_watched Total number of files being watched" << std::endl;
-        ss << "# TYPE sentinelfs_files_watched counter" << std::endl;
-        ss << "sentinelfs_files_watched " << syncMetrics_.filesWatched.load() << std::endl;
+        // === Daemon Info ===
+        ss << "# HELP sentinelfs_info SentinelFS daemon information" << std::endl;
+        ss << "# TYPE sentinelfs_info gauge" << std::endl;
+        ss << "sentinelfs_info{version=\"1.0.0\"} 1" << std::endl;
         
-        ss << "# HELP sentinelfs_files_synced Total number of files synced" << std::endl;
-        ss << "# TYPE sentinelfs_files_synced counter" << std::endl;
-        ss << "sentinelfs_files_synced " << syncMetrics_.filesSynced.load() << std::endl;
+        ss << "# HELP sentinelfs_uptime_seconds Daemon uptime in seconds" << std::endl;
+        ss << "# TYPE sentinelfs_uptime_seconds counter" << std::endl;
+        ss << "sentinelfs_uptime_seconds " << uptime.count() << std::endl;
         
-        ss << "# HELP sentinelfs_sync_errors Total number of sync errors" << std::endl;
-        ss << "# TYPE sentinelfs_sync_errors counter" << std::endl;
-        ss << "sentinelfs_sync_errors " << syncMetrics_.syncErrors.load() << std::endl;
+        // === Sync Metrics ===
+        ss << "# HELP sentinelfs_files_watched_total Total number of files being watched" << std::endl;
+        ss << "# TYPE sentinelfs_files_watched_total gauge" << std::endl;
+        ss << "sentinelfs_files_watched_total " << syncMetrics_.filesWatched.load() << std::endl;
         
-        // Network metrics
-        ss << "# HELP sentinelfs_bytes_uploaded_total Total bytes uploaded" << std::endl;
+        ss << "# HELP sentinelfs_files_synced_total Total number of files synced" << std::endl;
+        ss << "# TYPE sentinelfs_files_synced_total counter" << std::endl;
+        ss << "sentinelfs_files_synced_total " << syncMetrics_.filesSynced.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_files_modified_total Total number of file modifications detected" << std::endl;
+        ss << "# TYPE sentinelfs_files_modified_total counter" << std::endl;
+        ss << "sentinelfs_files_modified_total " << syncMetrics_.filesModified.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_files_deleted_total Total number of file deletions detected" << std::endl;
+        ss << "# TYPE sentinelfs_files_deleted_total counter" << std::endl;
+        ss << "sentinelfs_files_deleted_total " << syncMetrics_.filesDeleted.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_sync_errors_total Total number of sync errors" << std::endl;
+        ss << "# TYPE sentinelfs_sync_errors_total counter" << std::endl;
+        ss << "sentinelfs_sync_errors_total " << syncMetrics_.syncErrors.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_conflicts_detected_total Total number of conflicts detected" << std::endl;
+        ss << "# TYPE sentinelfs_conflicts_detected_total counter" << std::endl;
+        ss << "sentinelfs_conflicts_detected_total " << syncMetrics_.conflictsDetected.load() << std::endl;
+        
+        // === Network Metrics ===
+        ss << "# HELP sentinelfs_bytes_uploaded_total Total bytes uploaded to peers" << std::endl;
         ss << "# TYPE sentinelfs_bytes_uploaded_total counter" << std::endl;
         ss << "sentinelfs_bytes_uploaded_total " << networkMetrics_.bytesUploaded.load() << std::endl;
         
-        ss << "# HELP sentinelfs_bytes_downloaded_total Total bytes downloaded" << std::endl;
+        ss << "# HELP sentinelfs_bytes_downloaded_total Total bytes downloaded from peers" << std::endl;
         ss << "# TYPE sentinelfs_bytes_downloaded_total counter" << std::endl;
         ss << "sentinelfs_bytes_downloaded_total " << networkMetrics_.bytesDownloaded.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_peers_discovered_total Total number of peers discovered" << std::endl;
+        ss << "# TYPE sentinelfs_peers_discovered_total counter" << std::endl;
+        ss << "sentinelfs_peers_discovered_total " << networkMetrics_.peersDiscovered.load() << std::endl;
         
         ss << "# HELP sentinelfs_peers_connected Current number of connected peers" << std::endl;
         ss << "# TYPE sentinelfs_peers_connected gauge" << std::endl;
         ss << "sentinelfs_peers_connected " << networkMetrics_.peersConnected.load() << std::endl;
         
-        // Security metrics
-        ss << "# HELP sentinelfs_anomalies_detected Total anomalies detected" << std::endl;
-        ss << "# TYPE sentinelfs_anomalies_detected counter" << std::endl;
-        ss << "sentinelfs_anomalies_detected " << securityMetrics_.anomaliesDetected.load() << std::endl;
+        ss << "# HELP sentinelfs_peers_disconnected_total Total number of peer disconnections" << std::endl;
+        ss << "# TYPE sentinelfs_peers_disconnected_total counter" << std::endl;
+        ss << "sentinelfs_peers_disconnected_total " << networkMetrics_.peersDisconnected.load() << std::endl;
         
-        ss << "# HELP sentinelfs_auth_failures Total authentication failures" << std::endl;
-        ss << "# TYPE sentinelfs_auth_failures counter" << std::endl;
-        ss << "sentinelfs_auth_failures " << securityMetrics_.authFailures.load() << std::endl;
+        ss << "# HELP sentinelfs_transfers_completed_total Total number of successful file transfers" << std::endl;
+        ss << "# TYPE sentinelfs_transfers_completed_total counter" << std::endl;
+        ss << "sentinelfs_transfers_completed_total " << networkMetrics_.transfersCompleted.load() << std::endl;
         
-        // Performance metrics
+        ss << "# HELP sentinelfs_transfers_failed_total Total number of failed file transfers" << std::endl;
+        ss << "# TYPE sentinelfs_transfers_failed_total counter" << std::endl;
+        ss << "sentinelfs_transfers_failed_total " << networkMetrics_.transfersFailed.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_deltas_sent_total Total number of delta sync operations sent" << std::endl;
+        ss << "# TYPE sentinelfs_deltas_sent_total counter" << std::endl;
+        ss << "sentinelfs_deltas_sent_total " << networkMetrics_.deltasSent.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_deltas_received_total Total number of delta sync operations received" << std::endl;
+        ss << "# TYPE sentinelfs_deltas_received_total counter" << std::endl;
+        ss << "sentinelfs_deltas_received_total " << networkMetrics_.deltasReceived.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_remesh_cycles_total Total number of auto-remesh cycles executed" << std::endl;
+        ss << "# TYPE sentinelfs_remesh_cycles_total counter" << std::endl;
+        ss << "sentinelfs_remesh_cycles_total " << networkMetrics_.remeshCycles.load() << std::endl;
+        
+        // Active transfers
+        {
+            std::lock_guard<std::mutex> lock(transferMutex_);
+            ss << "# HELP sentinelfs_active_transfers Current number of active file transfers" << std::endl;
+            ss << "# TYPE sentinelfs_active_transfers gauge" << std::endl;
+            ss << "sentinelfs_active_transfers " << activeTransfers_.size() << std::endl;
+        }
+        
+        // === Security Metrics ===
+        ss << "# HELP sentinelfs_anomalies_detected_total Total anomalies detected by ML plugin" << std::endl;
+        ss << "# TYPE sentinelfs_anomalies_detected_total counter" << std::endl;
+        ss << "sentinelfs_anomalies_detected_total " << securityMetrics_.anomaliesDetected.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_suspicious_activities_total Total suspicious activities detected" << std::endl;
+        ss << "# TYPE sentinelfs_suspicious_activities_total counter" << std::endl;
+        ss << "sentinelfs_suspicious_activities_total " << securityMetrics_.suspiciousActivities.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_sync_paused_total Total times sync was paused due to security" << std::endl;
+        ss << "# TYPE sentinelfs_sync_paused_total counter" << std::endl;
+        ss << "sentinelfs_sync_paused_total " << securityMetrics_.syncPausedCount.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_auth_failures_total Total authentication failures" << std::endl;
+        ss << "# TYPE sentinelfs_auth_failures_total counter" << std::endl;
+        ss << "sentinelfs_auth_failures_total " << securityMetrics_.authFailures.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_encryption_errors_total Total encryption/decryption errors" << std::endl;
+        ss << "# TYPE sentinelfs_encryption_errors_total counter" << std::endl;
+        ss << "sentinelfs_encryption_errors_total " << securityMetrics_.encryptionErrors.load() << std::endl;
+        
+        // === Performance Metrics ===
         ss << "# HELP sentinelfs_sync_latency_ms Average sync latency in milliseconds" << std::endl;
         ss << "# TYPE sentinelfs_sync_latency_ms gauge" << std::endl;
         ss << "sentinelfs_sync_latency_ms " << perfMetrics_.avgSyncLatencyMs.load() << std::endl;
         
-        ss << "# HELP sentinelfs_memory_usage_mb Peak memory usage in MB" << std::endl;
+        ss << "# HELP sentinelfs_delta_compute_time_ms Average delta computation time in milliseconds" << std::endl;
+        ss << "# TYPE sentinelfs_delta_compute_time_ms gauge" << std::endl;
+        ss << "sentinelfs_delta_compute_time_ms " << perfMetrics_.avgDeltaComputeTimeMs.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_transfer_speed_kbps Average transfer speed in KB/s" << std::endl;
+        ss << "# TYPE sentinelfs_transfer_speed_kbps gauge" << std::endl;
+        ss << "sentinelfs_transfer_speed_kbps " << perfMetrics_.avgTransferSpeedKBps.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_memory_usage_mb Peak memory usage in megabytes" << std::endl;
         ss << "# TYPE sentinelfs_memory_usage_mb gauge" << std::endl;
         ss << "sentinelfs_memory_usage_mb " << perfMetrics_.peakMemoryUsageMB.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_cpu_usage_percent Current CPU usage percentage" << std::endl;
+        ss << "# TYPE sentinelfs_cpu_usage_percent gauge" << std::endl;
+        ss << "sentinelfs_cpu_usage_percent " << perfMetrics_.cpuUsagePercent.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_remesh_rtt_improvement_ms Average RTT improvement from auto-remesh in ms" << std::endl;
+        ss << "# TYPE sentinelfs_remesh_rtt_improvement_ms gauge" << std::endl;
+        ss << "sentinelfs_remesh_rtt_improvement_ms " << perfMetrics_.avgRemeshRttImprovementMs.load() << std::endl;
         
         return ss.str();
     }
