@@ -28,14 +28,24 @@ set(CORE_SOURCES
 
     # Security sources
     security/src/Crypto.cpp
+    security/src/keymanager/KeyStructs.cpp
+    security/src/keymanager/FileKeyStore.cpp
+    security/src/keymanager/KeyManagerCore.cpp
+    security/src/keymanager/IdentityKeyManager.cpp
+    security/src/keymanager/PeerKeyManager.cpp
+    security/src/keymanager/SessionKeyManager.cpp
 
     # Sync sources
     sync/src/ConflictResolver.cpp
     sync/src/EventHandlers.cpp
     sync/src/FileSyncHandler.cpp
-    sync/src/DeltaSyncProtocolHandler.cpp
     sync/src/DeltaSerialization.cpp
     sync/src/OfflineQueue.cpp
+    sync/src/delta/DeltaSyncCore.cpp
+    sync/src/delta/UpdateHandler.cpp
+    sync/src/delta/DeltaRequestHandler.cpp
+    sync/src/delta/DeltaDataHandler.cpp
+    sync/src/delta/FileTransferHandler.cpp
 
     # Storage sources
     storage/src/FileVersionManager.cpp

@@ -1,0 +1,265 @@
+#include "StatusCommands.h"
+#include "../../DaemonCore.h"
+#include "INetworkAPI.h"
+#include "IStorageAPI.h"
+#include "IFileAPI.h"
+#include "SessionCode.h"
+#include "MetricsCollector.h"
+#include "AutoRemeshManager.h"
+#include <sstream>
+#include <iomanip>
+#include <sys/statvfs.h>
+#include <sqlite3.h>
+#include <filesystem>
+#include <cstdlib>
+
+namespace SentinelFS {
+
+std::string StatusCommands::handleStatus() {
+    std::stringstream ss;
+    
+    ss << "=== SentinelFS Daemon Status ===\n";
+    if (ctx_.daemonCore) {
+        ss << "Sync Status: " << (ctx_.daemonCore->isSyncEnabled() ? "ENABLED" : "PAUSED") << "\n";
+    } else {
+        ss << "Sync Status: UNKNOWN\n";
+    }
+    ss << "Encryption: " << (ctx_.network->isEncryptionEnabled() ? "ENABLED 🔒" : "Disabled") << "\n";
+    
+    std::string code = ctx_.network->getSessionCode();
+    if (!code.empty()) {
+        ss << "Session Code: " << SessionCode::format(code) << " ✓\n";
+    } else {
+        ss << "Session Code: Not set ⚠️\n";
+    }
+    
+    auto peers = ctx_.storage->getAllPeers();
+    ss << "Connected Peers: " << peers.size() << "\n";
+    
+    return ss.str();
+}
+
+std::string StatusCommands::handlePlugins() {
+    if (!ctx_.daemonCore) {
+        return "Plugin status unavailable.\n";
+    }
+
+    std::stringstream ss;
+    ss << "=== Plugin Status ===\n";
+
+    ss << "Storage: " << (ctx_.storage ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "Network: " << (ctx_.network ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "Filesystem: " << (ctx_.filesystem ? "LOADED ✓" : "FAILED ✗") << "\n";
+    ss << "ML: " << (ctx_.daemonCore->getConfig().uploadLimit >= 0 ? "Optional" : "Optional") << "\n";
+
+    return ss.str();
+}
+
+std::string StatusCommands::handleStats() {
+    auto& metrics = MetricsCollector::instance();
+    auto networkMetrics = metrics.getNetworkMetrics();
+    auto syncMetrics = metrics.getSyncMetrics();
+    
+    std::stringstream ss;
+    ss << "=== Transfer Statistics ===\n";
+    
+    double uploadMB = networkMetrics.bytesUploaded / (1024.0 * 1024.0);
+    double downloadMB = networkMetrics.bytesDownloaded / (1024.0 * 1024.0);
+    
+    ss << "Uploaded: " << std::fixed << std::setprecision(2) << uploadMB << " MB\n";
+    ss << "Downloaded: " << downloadMB << " MB\n";
+    ss << "Files Synced: " << syncMetrics.filesSynced << "\n";
+    ss << "Deltas Sent: " << networkMetrics.deltasSent << "\n";
+    ss << "Deltas Received: " << networkMetrics.deltasReceived << "\n";
+    ss << "Transfers Completed: " << networkMetrics.transfersCompleted << "\n";
+    ss << "Transfers Failed: " << networkMetrics.transfersFailed << "\n";
+    
+    return ss.str();
+}
+
+std::string StatusCommands::handleStatusJson() {
+    std::stringstream ss;
+    ss << "{";
+    ss << "\"syncStatus\": \"" << (ctx_.daemonCore && ctx_.daemonCore->isSyncEnabled() ? "ENABLED" : "PAUSED") << "\",";
+    ss << "\"encryption\": " << (ctx_.network->isEncryptionEnabled() ? "true" : "false") << ",";
+    ss << "\"sessionCode\": \"" << ctx_.network->getSessionCode() << "\",";
+    ss << "\"peerCount\": " << ctx_.storage->getAllPeers().size() << ",";
+    
+    // Anomaly report
+    auto anomaly = getAnomalyReport();
+    ss << "\"anomaly\": {";
+    ss << "\"score\": " << anomaly.score << ",";
+    ss << "\"lastType\": \"" << anomaly.lastType << "\",";
+    ss << "\"lastDetectedAt\": " << anomaly.lastDetectedAt;
+    ss << "},";
+    
+    // Peer health reports with degradation flags
+    auto peerHealth = computePeerHealthReports();
+    ss << "\"peerHealth\": [";
+    for (size_t i = 0; i < peerHealth.size(); ++i) {
+        const auto& ph = peerHealth[i];
+        ss << "{";
+        ss << "\"peerId\": \"" << ph.peerId << "\",";
+        ss << "\"avgRttMs\": " << ph.avgRttMs << ",";
+        ss << "\"jitterMs\": " << ph.jitterMs << ",";
+        ss << "\"packetLossPercent\": " << ph.packetLossPercent << ",";
+        ss << "\"degraded\": " << (ph.degraded ? "true" : "false");
+        ss << "}";
+        if (i < peerHealth.size() - 1) ss << ",";
+    }
+    ss << "],";
+    
+    // Health summary
+    auto health = computeHealthSummary();
+    ss << "\"health\": {";
+    ss << "\"diskTotalBytes\": " << health.diskTotalBytes << ",";
+    ss << "\"diskFreeBytes\": " << health.diskFreeBytes << ",";
+    ss << "\"diskUsagePercent\": " << health.diskUsagePercent << ",";
+    ss << "\"dbConnected\": " << (health.dbConnected ? "true" : "false") << ",";
+    ss << "\"dbSizeBytes\": " << health.dbSizeBytes << ",";
+    ss << "\"activeWatcherCount\": " << health.activeWatcherCount << ",";
+    ss << "\"healthy\": " << (health.healthy ? "true" : "false") << ",";
+    ss << "\"statusMessage\": \"" << health.statusMessage << "\"";
+    ss << "}";
+    
+    ss << "}\n";
+    return ss.str();
+}
+
+HealthSummary StatusCommands::computeHealthSummary() const {
+    HealthSummary summary;
+    
+    // Disk usage - use root filesystem as fallback
+    std::string watchDir = "/";
+    if (ctx_.daemonCore) {
+        std::string configDir = ctx_.daemonCore->getConfig().watchDirectory;
+        // Expand tilde if present
+        if (!configDir.empty() && configDir[0] == '~') {
+            const char* home = std::getenv("HOME");
+            if (home) {
+                watchDir = std::string(home) + configDir.substr(1);
+            }
+        } else if (!configDir.empty()) {
+            watchDir = configDir;
+        }
+    }
+    
+    struct statvfs statBuf;
+    if (statvfs(watchDir.c_str(), &statBuf) == 0) {
+        summary.diskTotalBytes = statBuf.f_blocks * statBuf.f_frsize;
+        summary.diskFreeBytes = statBuf.f_bavail * statBuf.f_frsize;
+        if (summary.diskTotalBytes > 0) {
+            summary.diskUsagePercent = 100.0 * (1.0 - static_cast<double>(summary.diskFreeBytes) / summary.diskTotalBytes);
+        }
+    }
+    
+    // Database status
+    if (ctx_.storage) {
+        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+        summary.dbConnected = (db != nullptr);
+        
+        if (db) {
+            // Get DB file size via pragma database_list
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db, "PRAGMA database_list", -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* dbPathRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+                    if (dbPathRaw) {
+                        std::string dbPathStr = dbPathRaw;
+                        sqlite3_finalize(stmt);
+                        stmt = nullptr;
+                        std::error_code ec;
+                        auto size = std::filesystem::file_size(dbPathStr, ec);
+                        if (!ec) {
+                            summary.dbSizeBytes = static_cast<int64_t>(size);
+                        }
+                    }
+                }
+                if (stmt) {
+                    sqlite3_finalize(stmt);
+                }
+            }
+        }
+    }
+    
+    // Watcher count
+    auto& metrics = MetricsCollector::instance();
+    auto syncMetrics = metrics.getSyncMetrics();
+    summary.activeWatcherCount = static_cast<int>(syncMetrics.filesWatched);
+    
+    // Fallback to DB count if metrics show 0 but DB has entries
+    if (summary.activeWatcherCount == 0 && ctx_.storage) {
+        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+        if (db) {
+            sqlite3_stmt* stmt;
+            if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM watched_folders WHERE status = 'active'", -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    summary.activeWatcherCount = sqlite3_column_int(stmt, 0);
+                }
+                sqlite3_finalize(stmt);
+            }
+        }
+    }
+    
+    // Overall health assessment
+    summary.healthy = true;
+    summary.statusMessage = "OK";
+    
+    if (summary.diskUsagePercent > 90.0) {
+        summary.healthy = false;
+        summary.statusMessage = "Disk usage critical";
+    } else if (!summary.dbConnected) {
+        summary.healthy = false;
+        summary.statusMessage = "Database disconnected";
+    } else if (summary.activeWatcherCount == 0) {
+        summary.statusMessage = "No active watchers";
+    }
+    
+    return summary;
+}
+
+std::vector<PeerHealthReport> StatusCommands::computePeerHealthReports() const {
+    std::vector<PeerHealthReport> reports;
+    
+    if (!ctx_.autoRemesh) {
+        return reports;
+    }
+    
+    auto metrics = ctx_.autoRemesh->snapshotMetrics();
+    reports.reserve(metrics.size());
+    
+    for (const auto& m : metrics) {
+        PeerHealthReport report;
+        report.peerId = m.peerId;
+        report.avgRttMs = m.avgRttMs;
+        report.jitterMs = m.jitterMs;
+        report.packetLossPercent = m.packetLossPercent;
+        
+        // Check degradation thresholds
+        report.degraded = (m.jitterMs > healthThresholds_.jitterThresholdMs) ||
+                          (m.packetLossPercent > healthThresholds_.packetLossThresholdPercent) ||
+                          (m.avgRttMs > healthThresholds_.rttThresholdMs);
+        
+        reports.push_back(std::move(report));
+    }
+    
+    return reports;
+}
+
+AnomalyReport StatusCommands::getAnomalyReport() const {
+    AnomalyReport report;
+    
+    // Get anomaly data from MetricsCollector security metrics
+    auto& metrics = MetricsCollector::instance();
+    auto secMetrics = metrics.getSecurityMetrics();
+    
+    if (secMetrics.anomaliesDetected > 0) {
+        report.score = std::min(1.0, static_cast<double>(secMetrics.anomaliesDetected) / 10.0);
+        report.lastType = "ANOMALY_DETECTED";
+        report.lastDetectedAt = std::time(nullptr);
+    }
+    
+    return report;
+}
+
+} // namespace SentinelFS

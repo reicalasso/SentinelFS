@@ -14,10 +14,19 @@
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 #include "HealthReport.h"
+#include "ipc/commands/CommandHandler.h"
 
 namespace SentinelFS {
     class DaemonCore;
     class AutoRemeshManager;
+    
+    // Forward declare command handlers
+    class StatusCommands;
+    class PeerCommands;
+    class ConfigCommands;
+    class FileCommands;
+    class TransferCommands;
+    class RelayCommands;
 }
 
 namespace SentinelFS {
@@ -136,52 +145,6 @@ private:
     void handleClient(int clientSocket);
     std::string processCommand(const std::string& command);
     
-    // Command handlers
-    std::string handleStatusCommand();
-    std::string handleListCommand();
-    std::string handlePauseCommand();
-    std::string handleResumeCommand();
-    std::string handleConnectCommand(const std::string& args);
-    std::string handleAddPeerCommand(const std::string& args);
-    std::string handleUploadLimitCommand(const std::string& args);
-    std::string handleDownloadLimitCommand(const std::string& args);
-    std::string handleMetricsCommand();
-    std::string handleStatsCommand();
-    std::string handlePluginsCommand();
-
-    // JSON Command handlers for GUI
-    std::string handleStatusJsonCommand();
-    std::string handlePeersJsonCommand();
-    std::string handleMetricsJsonCommand();
-    std::string handleFilesJsonCommand();
-    std::string handleActivityJsonCommand();
-    std::string handleTransfersJsonCommand();
-    std::string handleConfigJsonCommand();
-    std::string handleSetConfigCommand(const std::string& args);
-    std::string handleConflictsJsonCommand();
-    std::string handleSyncQueueJsonCommand();
-    std::string handleExportConfigCommand();
-    std::string handleImportConfigCommand(const std::string& args);
-    std::string handleAddIgnoreCommand(const std::string& args);
-    std::string handleRemoveIgnoreCommand(const std::string& args);
-    std::string handleListIgnoreCommand();
-    std::string handleResolveConflictCommand(const std::string& args);
-    std::string handleBlockPeerCommand(const std::string& args);
-    std::string handleUnblockPeerCommand(const std::string& args);
-    std::string handleExportSupportBundleCommand();
-    
-    // Version management handlers
-    std::string handleVersionsJsonCommand();
-    std::string handleRestoreVersionCommand(const std::string& args);
-    std::string handleDeleteVersionCommand(const std::string& args);
-    std::string handlePreviewVersionCommand(const std::string& args);
-    
-    // Relay server handlers
-    std::string handleRelayConnectCommand(const std::string& args);
-    std::string handleRelayDisconnectCommand();
-    std::string handleRelayStatusCommand();
-    std::string handleRelayPeersCommand();
-    
     std::string socketPath_;
     int serverSocket_{-1};
     std::atomic<bool> running_{false};
@@ -210,13 +173,14 @@ private:
     // Auto-remesh manager for peer health metrics
     AutoRemeshManager* autoRemesh_;
     
-    // Health thresholds
-    HealthThresholds healthThresholds_;
-    
-    // Helper methods for health reporting
-    HealthSummary computeHealthSummary() const;
-    std::vector<PeerHealthReport> computePeerHealthReports() const;
-    AnomalyReport getAnomalyReport() const;
+    // Command context and handlers (modular command processing)
+    CommandContext cmdContext_;
+    std::unique_ptr<StatusCommands> statusCmds_;
+    std::unique_ptr<PeerCommands> peerCmds_;
+    std::unique_ptr<ConfigCommands> configCmds_;
+    std::unique_ptr<FileCommands> fileCmds_;
+    std::unique_ptr<TransferCommands> transferCmds_;
+    std::unique_ptr<RelayCommands> relayCmds_;
     
     // Security helper methods
     bool ensureSocketDirectory();
@@ -224,6 +188,9 @@ private:
     bool isClientAuthorized(uid_t uid, gid_t gid);
     bool checkRateLimit(uid_t uid);
     void auditConnection(uid_t uid, gid_t gid, bool authorized);
+    
+    // Initialize command handlers
+    void initializeCommandHandlers();
 };
 
 } // namespace SentinelFS
