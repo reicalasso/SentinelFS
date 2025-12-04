@@ -27,7 +27,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/core/include/Version.h.in
                ${CMAKE_CURRENT_SOURCE_DIR}/core/include/Version.h
                @ONLY)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/sentinel_daemon.service
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/systemd/sentinel_daemon.service
                ${SENTINEL_GENERATED_DIR}/sentinel_daemon.service
                @ONLY)
 

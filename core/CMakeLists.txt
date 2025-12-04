@@ -63,7 +63,7 @@ set(CORE_SOURCES
     utils/src/ThreadPool.cpp
     # utils/src/HealthEndpoint.cpp  # Deprecated: Use MetricsServer instead
     utils/src/Compression.cpp
-    src/PathUtils.cpp
+    utils/src/PathUtils.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

@@ -19,6 +19,11 @@ set(IPC_COMMAND_SOURCES
     ipc/commands/RelayCommands.cpp
 )
 
+# IPC Handler
+set(IPC_SOURCES
+    ipc/IPCHandler.cpp
+)
+
 # DaemonCore modular sources
 set(DAEMON_CORE_SOURCES
     core/DaemonLifecycle.cpp
@@ -28,8 +33,8 @@ set(DAEMON_CORE_SOURCES
 
 add_executable(sentinel_daemon 
     sentinel_daemon.cpp
-    IPCHandler.cpp
     MetricsServer.cpp
+    ${IPC_SOURCES}
     ${IPC_COMMAND_SOURCES}
     ${DAEMON_CORE_SOURCES}
 )
@@ -37,6 +42,7 @@ add_executable(sentinel_daemon
 target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread sqlite3)
 target_include_directories(sentinel_daemon PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/ipc
     ../../core/include
     ../../core/network/include
     ../../core/security/include
