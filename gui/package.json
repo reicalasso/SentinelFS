@@ -48,24 +48,24 @@
       "executableName": "sentinelfs"
     },
     "appImage": {
-      "license": "LICENSE",
+      "license": "../LICENSE",
       "synopsis": "Secure Delta-Sync File System with GUI and Daemon"
     },
     "extraResources": [
       {
-        "from": "../build_release/app/daemon/sentinel_daemon",
+        "from": "../build/app/daemon/sentinel_daemon",
         "to": "bin/sentinel_daemon"
       },
       {
-        "from": "../build_release/app/cli/sentinel_cli",
+        "from": "../build/app/cli/sentinel_cli",
         "to": "bin/sentinel_cli"
       },
       {
-        "from": "../build_release/core/libsentinel_core.a",
-        "to": "lib/libsentinel_core.a"
+        "from": "../build/core/libsentinel_core.so",
+        "to": "lib/libsentinel_core.so"
       },
       {
-        "from": "../build_release/plugins",
+        "from": "../build/plugins",
         "to": "lib/plugins",
         "filter": ["**/*.so"]
       },
