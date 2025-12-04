@@ -336,6 +336,82 @@ public:
         }
         return 0;
     }
+    
+    bool connectToRelay(const std::string& host, int port, const std::string& sessionCode) override {
+        if (!tcpRelay_) {
+            tcpRelay_ = std::make_unique<TCPRelay>(host, port);
+            tcpRelay_->setDataCallback([this](const std::string& peerId, const std::vector<uint8_t>& data) {
+                handleReceivedData(peerId, data);
+            });
+            tcpRelay_->setPeerCallback([this](const RelayPeer& peer) {
+                if (eventBus_) {
+                    std::string msg = "SENTINEL_RELAY|" + peer.peerId + "|" + std::to_string(peer.publicPort) + "|" + peer.publicIp;
+                    eventBus_->publish("PEER_DISCOVERED", msg);
+                }
+            });
+        } else {
+            // Reconfigure existing relay
+            tcpRelay_->disconnect();
+            tcpRelay_ = std::make_unique<TCPRelay>(host, port);
+            tcpRelay_->setDataCallback([this](const std::string& peerId, const std::vector<uint8_t>& data) {
+                handleReceivedData(peerId, data);
+            });
+            tcpRelay_->setPeerCallback([this](const RelayPeer& peer) {
+                if (eventBus_) {
+                    std::string msg = "SENTINEL_RELAY|" + peer.peerId + "|" + std::to_string(peer.publicPort) + "|" + peer.publicIp;
+                    eventBus_->publish("PEER_DISCOVERED", msg);
+                }
+            });
+        }
+        
+        // Store the session code for relay
+        relaySessionCode_ = sessionCode;
+        
+        // Enable and connect
+        tcpRelay_->setEnabled(true);
+        bool result = tcpRelay_->connect(localPeerId_, sessionCode);
+        
+        if (result) {
+            std::cout << "Connected to relay server at " << host << ":" << port << std::endl;
+        } else {
+            std::cerr << "Failed to connect to relay server at " << host << ":" << port << std::endl;
+        }
+        
+        return result;
+    }
+    
+    void disconnectFromRelay() override {
+        if (tcpRelay_) {
+            tcpRelay_->disconnect();
+            tcpRelay_->setEnabled(false);
+        }
+        relaySessionCode_.clear();
+        relayPeers_.clear();
+        std::cout << "Disconnected from relay server" << std::endl;
+    }
+    
+    std::vector<RelayPeerInfo> getRelayPeers() const override {
+        std::vector<RelayPeerInfo> result;
+        
+        if (tcpRelay_ && tcpRelay_->isConnected()) {
+            auto peers = tcpRelay_->getConnectedPeers();
+            for (const auto& peer : peers) {
+                RelayPeerInfo info;
+                info.id = peer.peerId;
+                info.ip = peer.publicIp;
+                info.port = peer.publicPort;
+                info.natType = peer.natType;
+                info.connectedAt = peer.connectedAt;
+                result.push_back(info);
+            }
+        }
+        
+        return result;
+    }
+    
+private:
+    std::string relaySessionCode_;
+    std::vector<RelayPeerInfo> relayPeers_;
 };
 
 // Plugin factory functions

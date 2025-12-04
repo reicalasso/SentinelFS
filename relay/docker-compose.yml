@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  relay:
+    build: .
+    container_name: sentinelfs-relay
+    ports:
+      - "9000:9000"
+    environment:
+      - RELAY_HOST=0.0.0.0
+      - RELAY_PORT=9000
+      - RELAY_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; s=socket.socket(); s.connect(('localhost', 9000)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

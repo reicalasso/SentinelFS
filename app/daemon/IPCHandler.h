@@ -111,6 +111,12 @@ private:
     std::string handleDeleteVersionCommand(const std::string& args);
     std::string handlePreviewVersionCommand(const std::string& args);
     
+    // Relay server handlers
+    std::string handleRelayConnectCommand(const std::string& args);
+    std::string handleRelayDisconnectCommand();
+    std::string handleRelayStatusCommand();
+    std::string handleRelayPeersCommand();
+    
     std::string socketPath_;
     int serverSocket_{-1};
     std::atomic<bool> running_{false};

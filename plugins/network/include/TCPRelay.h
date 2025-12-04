@@ -42,6 +42,8 @@ struct RelayPeer {
     std::string publicIp;
     int publicPort;
     bool online;
+    std::string natType;      // NAT type: symmetric, cone, open, unknown
+    std::string connectedAt;  // ISO timestamp of connection
 };
 
 /**
@@ -136,6 +138,11 @@ public:
      * @brief Get list of known relay peers
      */
     std::vector<RelayPeer> getRelayPeers() const;
+    
+    /**
+     * @brief Get list of connected relay peers (alias for getRelayPeers)
+     */
+    std::vector<RelayPeer> getConnectedPeers() const { return getRelayPeers(); }
     
     /**
      * @brief Get relay server address

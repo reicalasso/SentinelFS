@@ -26,9 +26,21 @@ Bu dosya, SentinelFS için planlanan geliştirmeleri ve iyileştirmeleri özetle
 
 ## 3. WAN / Çok Segment Ağ Desteği
 
-- [ ] Opsiyonel lightweight relay / introducer sunucusu tasarla (global discovery için)
-- [ ] NAT arkasındaki peer'lar için temel NAT traversal stratejisi (örn. TCP hole punching veya sadece relay üzerinden)
-- [ ] GUI'de "Remote peer" ekleme akışı (hostname/IP + session code)
+- [x] Opsiyonel lightweight relay / introducer sunucusu tasarla (global discovery için)
+  - Python asyncio tabanlı relay sunucusu: `relay/relay_server.py`
+  - Session code tabanlı peer gruplandırma
+  - REST API endpoint: `/peers?session=...`
+  - Docker/Docker Compose desteği
+  - Heartbeat ve otomatik temizlik mekanizması
+- [x] NAT arkasındaki peer'lar için temel NAT traversal stratejisi (örn. TCP hole punching veya sadece relay üzerinden)
+  - TCPRelay client'a connectToRelay/disconnectFromRelay metodları eklendi
+  - Daemon'a RELAY_CONNECT, RELAY_DISCONNECT, RELAY_STATUS, RELAY_PEERS komutları
+  - NAT type bilgisi peer metadata'sında
+- [x] GUI'de "Remote peer" ekleme akışı (hostname/IP + session code)
+  - Peers.tsx'e "Add Remote" butonu ve modal eklendi
+  - Session code oluşturma/kopyalama/regenerate
+  - Relay sunucusundan peer listesi görüntüleme
+  - Bağlantı durumu göstergesi
 
 ## 4. Güvenlik Sertleşmesi (Hardening)
 

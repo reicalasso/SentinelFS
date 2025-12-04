@@ -144,6 +144,37 @@ namespace SentinelFS {
          * @return The TCP listening port.
          */
         virtual int getLocalPort() const = 0;
+        
+        /**
+         * @brief Connect to a relay server for NAT traversal.
+         * @param host The relay server hostname.
+         * @param port The relay server port.
+         * @param sessionCode The session code for peer discovery.
+         * @return true if connected successfully, false otherwise.
+         */
+        virtual bool connectToRelay(const std::string& host, int port, const std::string& sessionCode) = 0;
+        
+        /**
+         * @brief Disconnect from the relay server.
+         */
+        virtual void disconnectFromRelay() = 0;
+        
+        /**
+         * @brief Relay peer info structure
+         */
+        struct RelayPeerInfo {
+            std::string id;
+            std::string ip;
+            int port;
+            std::string natType;
+            std::string connectedAt;
+        };
+        
+        /**
+         * @brief Get list of peers available via relay server.
+         * @return Vector of relay peer information.
+         */
+        virtual std::vector<RelayPeerInfo> getRelayPeers() const = 0;
     };
 }
 

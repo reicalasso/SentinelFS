@@ -1,6 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Laptop, Smartphone, Globe, Ban, Scan, Loader2, Trash2, Wifi, Network, Signal, Zap, Shield } from 'lucide-react'
+import { Laptop, Smartphone, Globe, Ban, Scan, Loader2, Trash2, Wifi, Network, Signal, Zap, Shield, Plus, X, Server, Key, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
+
+interface RemotePeerForm {
+  hostname: string
+  port: string
+  sessionCode: string
+}
+
+interface RelayPeer {
+  peer_id: string
+  public_endpoint: string
+  connected_at: string
+  capabilities?: {
+    nat_type?: string
+  }
+}
 
 export function Peers({ peers }: { peers?: any[] }) {
   const [isDiscovering, setIsDiscovering] = useState(false)
@@ -8,6 +23,28 @@ export function Peers({ peers }: { peers?: any[] }) {
   const [relayStatus, setRelayStatus] = useState({ enabled: false, connected: false })
   const [latencyHistory, setLatencyHistory] = useState<Record<string, {time: string, latency: number}[]>>({})
   const [blockedPeers, setBlockedPeers] = useState<Set<string>>(new Set())
+  
+  // Remote peer modal state
+  const [showAddRemote, setShowAddRemote] = useState(false)
+  const [remoteForm, setRemoteForm] = useState<RemotePeerForm>({ hostname: '', port: '9000', sessionCode: '' })
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [sessionCodeCopied, setSessionCodeCopied] = useState(false)
+  
+  // Relay peers from remote server
+  const [relayPeers, setRelayPeers] = useState<RelayPeer[]>([])
+  const [isLoadingRelayPeers, setIsLoadingRelayPeers] = useState(false)
+  
+  // Local session code (generated or loaded)
+  const [localSessionCode, setLocalSessionCode] = useState<string>(() => {
+    const saved = localStorage.getItem('sentinelfs_session_code')
+    if (saved) return saved
+    // Generate new session code
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const code = Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    localStorage.setItem('sentinelfs_session_code', code)
+    return code
+  })
   
   // Load discovery settings from localStorage on mount
   useEffect(() => {
@@ -83,6 +120,81 @@ export function Peers({ peers }: { peers?: any[] }) {
       setLatencyHistory({})
     }
   }
+  
+  // Connect to remote relay server
+  const handleConnectRemote = async () => {
+    if (!remoteForm.hostname || !remoteForm.sessionCode) {
+      setConnectionError('Hostname and session code are required')
+      return
+    }
+    
+    setIsConnecting(true)
+    setConnectionError(null)
+    
+    try {
+      // Save relay config
+      const relayConfig = {
+        host: remoteForm.hostname,
+        port: parseInt(remoteForm.port) || 9000,
+        sessionCode: remoteForm.sessionCode
+      }
+      localStorage.setItem('sentinelfs_relay_config', JSON.stringify(relayConfig))
+      
+      // Send command to daemon to connect to relay
+      if (window.api) {
+        const result = await window.api.sendCommand(`RELAY_CONNECT ${relayConfig.host}:${relayConfig.port} ${remoteForm.sessionCode}`)
+        if (result && result.includes('ERROR')) {
+          throw new Error(result)
+        }
+      }
+      
+      // Fetch peers from relay
+      await fetchRelayPeers(relayConfig.host, relayConfig.port, remoteForm.sessionCode)
+      
+      setRelayStatus({ enabled: true, connected: true })
+      setShowAddRemote(false)
+      setRemoteForm({ hostname: '', port: '9000', sessionCode: '' })
+    } catch (err) {
+      setConnectionError(err instanceof Error ? err.message : 'Connection failed')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+  
+  // Fetch peers from relay server's REST API
+  const fetchRelayPeers = async (host: string, port: number, sessionCode: string) => {
+    setIsLoadingRelayPeers(true)
+    try {
+      const response = await fetch(`http://${host}:${port}/peers?session=${encodeURIComponent(sessionCode)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setRelayPeers(data.peers || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch relay peers:', err)
+    } finally {
+      setIsLoadingRelayPeers(false)
+    }
+  }
+  
+  // Copy session code to clipboard
+  const copySessionCode = async () => {
+    try {
+      await navigator.clipboard.writeText(localSessionCode)
+      setSessionCodeCopied(true)
+      setTimeout(() => setSessionCodeCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+  
+  // Generate new session code
+  const regenerateSessionCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const code = Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    localStorage.setItem('sentinelfs_session_code', code)
+    setLocalSessionCode(code)
+  }
 
   // Filter out blocked peers and map backend peers to UI format
   const displayPeers = (peers && peers.length > 0) ? peers
@@ -136,6 +248,14 @@ export function Peers({ peers }: { peers?: any[] }) {
                             <Trash2 className="w-4 h-4" />
                         </button>
                     )}
+                    <button 
+                        onClick={() => setShowAddRemote(true)}
+                        className="flex items-center gap-2 bg-accent/10 hover:bg-accent/20 text-accent px-4 py-2.5 rounded-xl text-sm font-medium transition-all border border-accent/20 hover:border-accent/40 hover:shadow-lg hover:shadow-accent/10"
+                        title="Add remote peer via relay"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Add Remote</span>
+                    </button>
                     <button 
                         onClick={handleScan}
                         disabled={isDiscovering}
@@ -362,7 +482,220 @@ export function Peers({ peers }: { peers?: any[] }) {
                     </div>
                 </div>
             </div>
+            
+            {/* Your Session Code */}
+            <div className="mt-6 p-5 bg-gradient-to-br from-violet-500/10 to-primary/5 rounded-2xl border border-violet-500/20">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <Key className="w-4 h-4 text-violet-400" />
+                        <span className="font-semibold text-sm">Your Session Code</span>
+                    </div>
+                    <button 
+                        onClick={regenerateSessionCode}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    >
+                        <RefreshCw className="w-3 h-3" /> Regenerate
+                    </button>
+                </div>
+                <div className="flex items-center gap-3">
+                    <code className="flex-1 font-mono text-lg bg-background/50 px-4 py-2.5 rounded-xl border border-border/50 tracking-wider">
+                        {localSessionCode}
+                    </code>
+                    <button 
+                        onClick={copySessionCode}
+                        className={`p-2.5 rounded-xl transition-all ${
+                            sessionCodeCopied 
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                : 'bg-secondary hover:bg-secondary/80 border border-border/50'
+                        }`}
+                    >
+                        {sessionCodeCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                    Share this code with other devices to connect via relay server
+                </p>
+            </div>
         </div>
+        
+        {/* Remote Peers from Relay */}
+        {relayPeers.length > 0 && (
+            <div className="card-modern p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
+                        <Server className="w-5 h-5 text-accent" />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-lg">Remote Peers</h3>
+                        <p className="text-xs text-muted-foreground">Connected via relay server</p>
+                    </div>
+                    <button 
+                        onClick={() => {
+                            const config = localStorage.getItem('sentinelfs_relay_config')
+                            if (config) {
+                                const { host, port, sessionCode } = JSON.parse(config)
+                                fetchRelayPeers(host, port, sessionCode)
+                            }
+                        }}
+                        disabled={isLoadingRelayPeers}
+                        className="p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isLoadingRelayPeers ? 'animate-spin' : ''}`} />
+                    </button>
+                </div>
+                
+                <div className="space-y-3">
+                    {relayPeers.map((peer, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl border border-border/30">
+                            <div className="p-3 rounded-xl bg-accent/10 text-accent border border-accent/20">
+                                <Globe className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="font-semibold truncate">Device {peer.peer_id.substring(0, 8)}</div>
+                                <div className="text-xs text-muted-foreground font-mono">{peer.public_endpoint}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs text-muted-foreground">
+                                    {peer.capabilities?.nat_type && (
+                                        <span className="px-2 py-0.5 bg-secondary rounded text-xs">
+                                            {peer.capabilities.nat_type}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    {new Date(peer.connected_at).toLocaleTimeString()}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+        
+        {/* Add Remote Peer Modal */}
+        {showAddRemote && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-lg w-full animate-in zoom-in-95 duration-300">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between p-6 border-b border-border">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
+                                <Server className="w-5 h-5 text-accent" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-lg">Connect to Relay Server</h2>
+                                <p className="text-xs text-muted-foreground">Join a remote peer network</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => {
+                                setShowAddRemote(false)
+                                setConnectionError(null)
+                            }}
+                            className="p-2 rounded-xl hover:bg-secondary transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    
+                    {/* Modal Body */}
+                    <div className="p-6 space-y-5">
+                        {/* Info Banner */}
+                        <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex gap-3">
+                            <ExternalLink className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                                <p className="font-medium text-accent mb-1">How it works</p>
+                                <p className="text-muted-foreground text-xs leading-relaxed">
+                                    Enter the relay server address and the session code shared by your peer. 
+                                    Both devices must use the same session code to discover each other.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {/* Server Address */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Relay Server Address</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text"
+                                    value={remoteForm.hostname}
+                                    onChange={e => setRemoteForm(prev => ({ ...prev, hostname: e.target.value }))}
+                                    placeholder="relay.example.com"
+                                    className="flex-1 px-4 py-3 bg-secondary/50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                                />
+                                <input 
+                                    type="text"
+                                    value={remoteForm.port}
+                                    onChange={e => setRemoteForm(prev => ({ ...prev, port: e.target.value }))}
+                                    placeholder="9000"
+                                    className="w-24 px-4 py-3 bg-secondary/50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-center font-mono"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                                Default port is 9000 for SentinelFS relay servers
+                            </p>
+                        </div>
+                        
+                        {/* Session Code */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Session Code</label>
+                            <input 
+                                type="text"
+                                value={remoteForm.sessionCode}
+                                onChange={e => setRemoteForm(prev => ({ ...prev, sessionCode: e.target.value.toUpperCase() }))}
+                                placeholder="Enter session code from peer"
+                                className="w-full px-4 py-3 bg-secondary/50 border border-border rounded-xl text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                                maxLength={32}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                                Get this code from the device you want to connect to
+                            </p>
+                        </div>
+                        
+                        {/* Error Message */}
+                        {connectionError && (
+                            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-sm text-destructive">
+                                {connectionError}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Modal Footer */}
+                    <div className="flex gap-3 p-6 border-t border-border bg-secondary/20 rounded-b-3xl">
+                        <button 
+                            onClick={() => {
+                                setShowAddRemote(false)
+                                setConnectionError(null)
+                            }}
+                            className="flex-1 px-4 py-3 bg-secondary hover:bg-secondary/80 rounded-xl text-sm font-medium transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleConnectRemote}
+                            disabled={isConnecting || !remoteForm.hostname || !remoteForm.sessionCode}
+                            className={`flex-1 px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                                isConnecting || !remoteForm.hostname || !remoteForm.sessionCode
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/30'
+                            }`}
+                        >
+                            {isConnecting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Connecting...
+                                </>
+                            ) : (
+                                <>
+                                    <Globe className="w-4 h-4" />
+                                    Connect
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   )
 }
