@@ -24,6 +24,8 @@
 #include <fstream>
 #include <algorithm>
 #include <sys/utsname.h>
+#include <grp.h>
+#include <pwd.h>
 
 namespace SentinelFS {
 
@@ -48,21 +50,177 @@ IPCHandler::IPCHandler(const std::string& socketPath,
     , daemonCore_(daemonCore)
     , autoRemesh_(autoRemesh)
 {
+    // Use secure defaults
+    securityConfig_.socketPermissions = 0660;  // rw-rw----
+    securityConfig_.requireSameUid = true;
+    securityConfig_.auditConnections = false;
+}
+
+IPCHandler::IPCHandler(const std::string& socketPath,
+                       const IPCSecurityConfig& securityConfig,
+                       INetworkAPI* network,
+                       IStorageAPI* storage,
+                       IFileAPI* filesystem,
+                       DaemonCore* daemonCore,
+                       AutoRemeshManager* autoRemesh)
+    : socketPath_(socketPath)
+    , securityConfig_(securityConfig)
+    , network_(network)
+    , storage_(storage)
+    , filesystem_(filesystem)
+    , daemonCore_(daemonCore)
+    , autoRemesh_(autoRemesh)
+{
 }
 
 IPCHandler::~IPCHandler() {
     stop();
 }
 
+bool IPCHandler::ensureSocketDirectory() {
+    std::filesystem::path sockPath(socketPath_);
+    std::filesystem::path parentDir = sockPath.parent_path();
+    
+    if (parentDir.empty()) {
+        return true;  // Socket in current directory
+    }
+    
+    if (!std::filesystem::exists(parentDir)) {
+        if (!securityConfig_.createParentDirs) {
+            std::cerr << "IPC: Socket directory does not exist: " << parentDir << std::endl;
+            return false;
+        }
+        
+        try {
+            std::filesystem::create_directories(parentDir);
+            
+            // Set secure permissions on parent directory
+            if (chmod(parentDir.c_str(), securityConfig_.parentDirPermissions) != 0) {
+                std::cerr << "IPC: Warning - Failed to set directory permissions" << std::endl;
+            }
+            
+            std::cout << "IPC: Created socket directory: " << parentDir << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "IPC: Failed to create socket directory: " << e.what() << std::endl;
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool IPCHandler::verifyClientCredentials(int clientSocket, uid_t& clientUid, gid_t& clientGid) {
+    struct ucred cred;
+    socklen_t credLen = sizeof(cred);
+    
+    if (getsockopt(clientSocket, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) != 0) {
+        std::cerr << "IPC: Failed to get client credentials" << std::endl;
+        return false;
+    }
+    
+    clientUid = cred.uid;
+    clientGid = cred.gid;
+    return true;
+}
+
+bool IPCHandler::isClientAuthorized(uid_t uid, gid_t gid) {
+    // Check if same UID as daemon
+    if (securityConfig_.requireSameUid && uid == geteuid()) {
+        return true;
+    }
+    
+    // Check allowed UIDs list
+    if (!securityConfig_.allowedUids.empty()) {
+        auto it = std::find(securityConfig_.allowedUids.begin(),
+                            securityConfig_.allowedUids.end(), uid);
+        if (it != securityConfig_.allowedUids.end()) {
+            return true;
+        }
+    }
+    
+    // Check allowed GIDs list
+    if (!securityConfig_.allowedGids.empty()) {
+        auto it = std::find(securityConfig_.allowedGids.begin(),
+                            securityConfig_.allowedGids.end(), gid);
+        if (it != securityConfig_.allowedGids.end()) {
+            return true;
+        }
+    }
+    
+    // If no explicit allowed list and not requiring same UID, allow
+    if (!securityConfig_.requireSameUid && 
+        securityConfig_.allowedUids.empty() &&
+        securityConfig_.allowedGids.empty()) {
+        return true;
+    }
+    
+    return false;
+}
+
+bool IPCHandler::checkRateLimit(uid_t uid) {
+    if (securityConfig_.maxCommandsPerMinute == 0) {
+        return true;  // Rate limiting disabled
+    }
+    
+    std::lock_guard<std::mutex> lock(rateLimitMutex_);
+    
+    time_t now = time(nullptr);
+    auto& limit = clientRateLimits_[uid];
+    
+    // Reset window if expired
+    if (now - limit.windowStart >= 60) {
+        limit.windowStart = now;
+        limit.commandCount = 0;
+    }
+    
+    // Check limit
+    if (limit.commandCount >= securityConfig_.maxCommandsPerMinute) {
+        std::cerr << "IPC: Rate limit exceeded for UID " << uid << std::endl;
+        return false;
+    }
+    
+    limit.commandCount++;
+    return true;
+}
+
+void IPCHandler::auditConnection(uid_t uid, gid_t gid, bool authorized) {
+    if (!securityConfig_.auditConnections) {
+        return;
+    }
+    
+    // Get username if possible
+    std::string username = "unknown";
+    struct passwd* pw = getpwuid(uid);
+    if (pw) {
+        username = pw->pw_name;
+    }
+    
+    // Get group name if possible
+    std::string groupname = "unknown";
+    struct group* gr = getgrgid(gid);
+    if (gr) {
+        groupname = gr->gr_name;
+    }
+    
+    std::cout << "IPC AUDIT: Connection from UID=" << uid << " (" << username << ") "
+              << "GID=" << gid << " (" << groupname << ") - "
+              << (authorized ? "AUTHORIZED" : "DENIED") << std::endl;
+}
+
 bool IPCHandler::start() {
     if (running_) return true;
+    
+    // Ensure socket directory exists with proper permissions
+    if (!ensureSocketDirectory()) {
+        return false;
+    }
     
     // Remove old socket if exists
     unlink(socketPath_.c_str());
     
     // Set restrictive umask BEFORE creating socket to prevent permission race
     // This ensures the socket file is created with restricted permissions from the start
-    mode_t oldMask = umask(S_IRWXO);  // Block all permissions for "others"
+    mode_t oldMask = umask(0077);  // Block all permissions for group and others initially
     
     // Create Unix domain socket
     serverSocket_ = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -79,7 +237,7 @@ bool IPCHandler::start() {
     
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         umask(oldMask);  // Restore umask
-        std::cerr << "IPC: Cannot bind socket" << std::endl;
+        std::cerr << "IPC: Cannot bind socket: " << strerror(errno) << std::endl;
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -88,10 +246,24 @@ bool IPCHandler::start() {
     // Restore original umask
     umask(oldMask);
 
-    // Additionally set explicit permissions on socket file for defense in depth
-    if (chmod(socketPath_.c_str(), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
-        std::cerr << "IPC: Warning - Failed to set socket file permissions" << std::endl;
-        // Continue anyway - umask should have protected us
+    // Set explicit permissions from security config
+    if (chmod(socketPath_.c_str(), securityConfig_.socketPermissions) < 0) {
+        std::cerr << "IPC: Warning - Failed to set socket file permissions: " 
+                  << strerror(errno) << std::endl;
+        // Continue anyway - the restrictive umask should have protected us
+    }
+    
+    // Set group ownership if specified
+    if (!securityConfig_.requiredGroup.empty()) {
+        struct group* gr = getgrnam(securityConfig_.requiredGroup.c_str());
+        if (gr) {
+            if (chown(socketPath_.c_str(), -1, gr->gr_gid) < 0) {
+                std::cerr << "IPC: Warning - Failed to set socket group ownership" << std::endl;
+            }
+        } else {
+            std::cerr << "IPC: Warning - Group '" << securityConfig_.requiredGroup 
+                      << "' not found" << std::endl;
+        }
     }
     
     if (listen(serverSocket_, 5) < 0) {
@@ -101,7 +273,10 @@ bool IPCHandler::start() {
         return false;
     }
     
-    std::cout << "IPC Server listening on " << socketPath_ << std::endl;
+    // Log socket path and permissions for security awareness
+    std::cout << "IPC Server listening on " << socketPath_ 
+              << " (mode: " << std::oct << securityConfig_.socketPermissions << std::dec << ")"
+              << std::endl;
     
     running_ = true;
     serverThread_ = std::thread(&IPCHandler::serverLoop, this);
@@ -151,15 +326,26 @@ void IPCHandler::serverLoop() {
 }
 
 void IPCHandler::handleClient(int clientSocket) {
-    struct ucred cred;
-    socklen_t credLen = sizeof(cred);
-    if (getsockopt(clientSocket, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) == 0) {
-        // Only allow same UID by default
-        if (cred.uid != geteuid()) {
-            const char* msg = "Unauthorized IPC client\n";
-            send(clientSocket, msg, strlen(msg), 0);
-            return;
-        }
+    uid_t clientUid = 0;
+    gid_t clientGid = 0;
+    
+    // Verify and get client credentials
+    if (!verifyClientCredentials(clientSocket, clientUid, clientGid)) {
+        const char* msg = "ERROR: Failed to verify credentials\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
+    }
+    
+    // Check authorization
+    bool authorized = isClientAuthorized(clientUid, clientGid);
+    
+    // Audit the connection attempt
+    auditConnection(clientUid, clientGid, authorized);
+    
+    if (!authorized) {
+        const char* msg = "ERROR: Unauthorized IPC client\n";
+        send(clientSocket, msg, strlen(msg), 0);
+        return;
     }
     
     // Persistent connection: keep reading commands until client disconnects
@@ -180,6 +366,13 @@ void IPCHandler::handleClient(int clientSocket) {
                 lineBuffer.erase(0, pos + 1);
                 
                 if (!command.empty()) {
+                    // Check rate limit before processing command
+                    if (!checkRateLimit(clientUid)) {
+                        const char* msg = "ERROR: Rate limit exceeded. Try again later.\n";
+                        send(clientSocket, msg, strlen(msg), 0);
+                        continue;
+                    }
+                    
                     std::string response = processCommand(command);
                     send(clientSocket, response.c_str(), response.length(), 0);
                 }

@@ -44,10 +44,32 @@ Bu dosya, SentinelFS için planlanan geliştirmeleri ve iyileştirmeleri özetle
 
 ## 4. Güvenlik Sertleşmesi (Hardening)
 
-- [ ] Handshake aşamasına TLS sertifika doğrulama / pinning ekle
-- [ ] IPC socket dosyası için daha sıkı izinler ve konfigüre edilebilir path
-- [ ] AppArmor/SELinux profil örnekleri ekle (docs/ altında)
-- [ ] Session code yanında uzun-ömürlü key + kısa-ömürlü session ayrımını tasarla
+- [x] Handshake aşamasına TLS sertifika doğrulama / pinning ekle
+  - `TLSContext` C++ sınıfı oluşturuldu (core/security/)
+  - Certificate pinning: NONE, TOFU, STRICT_PIN, SPKI_PIN modları
+  - Hostname doğrulama (SAN ve CN kontrolü)
+  - TLS 1.2+ minimum versiyon, güvenli cipher suites
+  - `TLSConnection` RAII wrapper sınıfı
+- [x] IPC socket dosyası için daha sıkı izinler ve konfigüre edilebilir path
+  - `IPCSecurityConfig` struct ile tüm güvenlik ayarları
+  - Konfigüre edilebilir socket izinleri (default: 0660)
+  - UID/GID bazlı erişim kontrolü
+  - Rate limiting (komut/dakika limiti)
+  - Bağlantı auditing desteği
+  - Socket dizini otomatik oluşturma (güvenli izinlerle)
+- [x] AppArmor/SELinux profil örnekleri ekle (docs/ altında)
+  - AppArmor: daemon, CLI ve GUI için ayrı profiller
+  - SELinux: Tam policy modülü ve file context tanımları
+  - Kurulum ve sorun giderme dokümantasyonu
+  - Defense-in-depth: deny kuralları ve capability kısıtlamaları
+- [x] Session code yanında uzun-ömürlü key + kısa-ömürlü session ayrımını tasarla
+  - `KeyManager` sınıfı: Identity key + Session key yönetimi
+  - Ed25519 identity keypair (uzun ömürlü, yıllarca)
+  - X25519 ECDH + HKDF ile session key derivation
+  - Otomatik key rotation (zaman/veri/mesaj bazlı)
+  - Forward secrecy: ephemeral keypair her bağlantıda
+  - FileKeyStore: şifreli anahtar depolama (AES-256-GCM)
+  - docs/security/KEY_MANAGEMENT.md tasarım dokümanı
 
 ## 5. Monitoring & Operasyonellik
 

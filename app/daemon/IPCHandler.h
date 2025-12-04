@@ -5,6 +5,11 @@
 #include <thread>
 #include <memory>
 #include <functional>
+#include <cstdint>
+#include <vector>
+#include <map>
+#include <mutex>
+#include <sys/types.h>
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
@@ -18,21 +23,81 @@ namespace SentinelFS {
 namespace SentinelFS {
 
 /**
+ * @brief IPC socket security configuration
+ */
+struct IPCSecurityConfig {
+    // Socket file permissions (default: 0660 - owner and group read/write)
+    mode_t socketPermissions{0660};
+    
+    // Required group for socket access (empty = process group)
+    std::string requiredGroup;
+    
+    // Whether to verify client UID matches daemon UID
+    bool requireSameUid{true};
+    
+    // Allowed UIDs for connection (empty = same UID only)
+    std::vector<uid_t> allowedUids;
+    
+    // Allowed GIDs for connection (empty = no GID check)
+    std::vector<gid_t> allowedGids;
+    
+    // Maximum concurrent connections
+    size_t maxConnections{32};
+    
+    // Connection timeout in seconds (0 = no timeout)
+    int connectionTimeoutSec{300};
+    
+    // Rate limiting: max commands per minute per client
+    size_t maxCommandsPerMinute{120};
+    
+    // Enable credential logging for audit
+    bool auditConnections{false};
+    
+    // Create parent directories with secure permissions if needed
+    bool createParentDirs{true};
+    
+    // Parent directory permissions (if creating)
+    mode_t parentDirPermissions{0750};
+};
+
+/**
  * @brief IPC command handler interface
  * 
  * Manages Unix domain socket for CLI communication.
  * Handles commands like: status, list, pause, resume, bandwidth limits, connect
+ * 
+ * Security features:
+ * - Configurable socket file permissions
+ * - UID/GID based access control
+ * - Rate limiting per client
+ * - Connection auditing
  */
 class IPCHandler {
 public:
     /**
-     * @brief Constructor
-     * @param socketPath Path to Unix domain socket (e.g., /tmp/sentinelfs.sock)
+     * @brief Constructor with default security
+     * @param socketPath Path to Unix domain socket (e.g., /run/sentinelfs/daemon.sock)
      * @param network Network plugin for connect commands
      * @param storage Storage plugin for status/list commands
      * @param filesystem Filesystem plugin for sync control
      */
     IPCHandler(const std::string& socketPath,
+               INetworkAPI* network,
+               IStorageAPI* storage,
+               IFileAPI* filesystem,
+               DaemonCore* daemonCore = nullptr,
+               AutoRemeshManager* autoRemesh = nullptr);
+    
+    /**
+     * @brief Constructor with custom security configuration
+     * @param socketPath Path to Unix domain socket
+     * @param securityConfig Security configuration
+     * @param network Network plugin for connect commands
+     * @param storage Storage plugin for status/list commands
+     * @param filesystem Filesystem plugin for sync control
+     */
+    IPCHandler(const std::string& socketPath,
+               const IPCSecurityConfig& securityConfig,
                INetworkAPI* network,
                IStorageAPI* storage,
                IFileAPI* filesystem,
@@ -122,6 +187,17 @@ private:
     std::atomic<bool> running_{false};
     std::thread serverThread_;
     
+    // Security configuration
+    IPCSecurityConfig securityConfig_;
+    
+    // Rate limiting state
+    struct ClientRateLimit {
+        time_t windowStart{0};
+        size_t commandCount{0};
+    };
+    std::map<uid_t, ClientRateLimit> clientRateLimits_;
+    std::mutex rateLimitMutex_;
+    
     // Plugin references (not owned)
     INetworkAPI* network_;
     IStorageAPI* storage_;
@@ -141,6 +217,13 @@ private:
     HealthSummary computeHealthSummary() const;
     std::vector<PeerHealthReport> computePeerHealthReports() const;
     AnomalyReport getAnomalyReport() const;
+    
+    // Security helper methods
+    bool ensureSocketDirectory();
+    bool verifyClientCredentials(int clientSocket, uid_t& clientUid, gid_t& clientGid);
+    bool isClientAuthorized(uid_t uid, gid_t gid);
+    bool checkRateLimit(uid_t uid);
+    void auditConnection(uid_t uid, gid_t gid, bool authorized);
 };
 
 } // namespace SentinelFS

@@ -1,29 +1,212 @@
-module sentinelfs 1.0;
+# SentinelFS SELinux Policy Module
+# 
+# Installation:
+#   1. Compile the policy:
+#      checkmodule -M -m -o sentinelfs.mod sentinelfs.te
+#      semodule_package -o sentinelfs.pp -m sentinelfs.mod
+#   
+#   2. Install the policy:
+#      sudo semodule -i sentinelfs.pp
+#   
+#   3. Label the files:
+#      sudo restorecon -Rv /usr/bin/sentinel_daemon
+#      sudo restorecon -Rv /var/lib/sentinelfs
+#      sudo restorecon -Rv /run/sentinelfs
+#
+# To check for denials:
+#   sudo ausearch -m avc -ts recent | audit2allow
+#
+# To generate additional rules from denials:
+#   sudo ausearch -m avc -ts recent | audit2allow -M sentinelfs_local
 
-require {
-    type unconfined_t;
-    type var_run_t;
-    type init_t;
-    class capability { net_bind_service dac_override };
-    class file { getattr open read execute execute_no_trans map write append create unlink };
-    class dir { search read write add_name remove_name };
-    class tcp_socket { name_bind name_connect listen accept };
-    class unix_stream_socket { create connect write read bind listen accept };
-};
+policy_module(sentinelfs, 1.1.0)
 
-# SentinelFS daemon domain
-allow init_t self:process transition;
+########################################
+# Type declarations
+########################################
 
-# Executable and runtime directories
-allow unconfined_t self:file { getattr open read execute execute_no_trans map };
+# Daemon executable type
+type sentinelfs_exec_t;
+corecmd_executable_file(sentinelfs_exec_t)
 
-# Capabilities needed by sentinel_daemon
-allow unconfined_t self:capability { net_bind_service dac_override };
+# Daemon process type
+type sentinelfs_t;
+domain_type(sentinelfs_t)
+init_daemon_domain(sentinelfs_t, sentinelfs_exec_t)
 
-# Runtime state under /run/sentinelfs
-allow unconfined_t var_run_t:dir { search read write add_name remove_name };
-allow unconfined_t var_run_t:file { create open read write append getattr unlink };
-allow unconfined_t var_run_t:unix_stream_socket { create connect write read bind listen accept };
+# Configuration files type
+type sentinelfs_conf_t;
+files_config_file(sentinelfs_conf_t)
 
-# TCP sockets for mesh traffic
-allow unconfined_t self:tcp_socket { name_bind name_connect listen accept };
+# Runtime state directory
+type sentinelfs_runtime_t;
+files_pid_file(sentinelfs_runtime_t)
+
+# Data directory type
+type sentinelfs_data_t;
+files_type(sentinelfs_data_t)
+
+# Log files type
+type sentinelfs_log_t;
+logging_log_file(sentinelfs_log_t)
+
+# TLS certificates type
+type sentinelfs_cert_t;
+files_type(sentinelfs_cert_t)
+
+# User sync directory type (for home directories)
+type sentinelfs_sync_t;
+userdom_user_home_content(sentinelfs_sync_t)
+
+########################################
+# Daemon process rules
+########################################
+
+# Allow the daemon to be started by init
+init_daemon_domain(sentinelfs_t, sentinelfs_exec_t)
+
+# Transition to sentinelfs_t when executing sentinel_daemon
+domain_auto_trans(init_t, sentinelfs_exec_t, sentinelfs_t)
+
+########################################
+# Capabilities
+########################################
+
+# Network binding capability
+allow sentinelfs_t self:capability { net_bind_service dac_override dac_read_search chown fowner fsetid };
+
+# Process capabilities
+allow sentinelfs_t self:process { signal_perms setrlimit };
+
+########################################
+# Configuration file access
+########################################
+
+# Read configuration files
+allow sentinelfs_t sentinelfs_conf_t:dir { search read getattr };
+allow sentinelfs_t sentinelfs_conf_t:file { read getattr open };
+
+# Allow modification of runtime config
+allow sentinelfs_t sentinelfs_conf_t:file { write append };
+
+########################################
+# TLS Certificate access
+########################################
+
+# Read TLS certificates and keys
+allow sentinelfs_t sentinelfs_cert_t:dir { search read getattr };
+allow sentinelfs_t sentinelfs_cert_t:file { read getattr open };
+
+# Read system CA certificates
+miscfiles_read_certs(sentinelfs_t)
+
+# Write certificate pins file
+allow sentinelfs_t sentinelfs_conf_t:file { write create unlink };
+
+########################################
+# Runtime state access
+########################################
+
+# Create and manage runtime directory
+allow sentinelfs_t sentinelfs_runtime_t:dir { create read write add_name remove_name search getattr };
+allow sentinelfs_t sentinelfs_runtime_t:file { create read write append getattr unlink lock };
+
+# Unix domain socket for IPC
+allow sentinelfs_t sentinelfs_runtime_t:sock_file { create read write getattr unlink };
+allow sentinelfs_t self:unix_stream_socket { create connect write read bind listen accept getattr setopt };
+allow sentinelfs_t self:unix_dgram_socket { create connect write read bind getattr setopt };
+
+# PID file
+allow sentinelfs_t sentinelfs_runtime_t:file { create write unlink };
+
+########################################
+# Data directory access
+########################################
+
+# Full access to data directory
+allow sentinelfs_t sentinelfs_data_t:dir { create read write add_name remove_name search getattr rmdir };
+allow sentinelfs_t sentinelfs_data_t:file { create read write append getattr unlink rename lock };
+
+# SQLite database files (need locking)
+allow sentinelfs_t sentinelfs_data_t:file { lock };
+
+########################################
+# Log file access
+########################################
+
+# Write to log files
+allow sentinelfs_t sentinelfs_log_t:dir { search add_name write };
+allow sentinelfs_t sentinelfs_log_t:file { create read write append getattr };
+
+# Allow logging daemon to read logs
+logging_send_syslog_msg(sentinelfs_t)
+
+########################################
+# User sync directory access
+########################################
+
+# Access user home directories for sync
+allow sentinelfs_t sentinelfs_sync_t:dir { create read write add_name remove_name search getattr rmdir };
+allow sentinelfs_t sentinelfs_sync_t:file { create read write append getattr unlink rename setattr };
+allow sentinelfs_t sentinelfs_sync_t:lnk_file { create read getattr unlink };
+
+# Allow access to user home directories
+userdom_read_user_home_content_files(sentinelfs_t)
+userdom_write_user_home_content_files(sentinelfs_t)
+
+########################################
+# Network access
+########################################
+
+# TCP for mesh peer connections
+allow sentinelfs_t self:tcp_socket { create connect write read bind listen accept getattr setopt };
+corenet_tcp_bind_generic_port(sentinelfs_t)
+corenet_tcp_connect_generic_port(sentinelfs_t)
+
+# Allow binding to port 8080 (mesh) and 9100 (metrics)
+allow sentinelfs_t self:tcp_socket name_bind;
+
+# UDP for peer discovery
+allow sentinelfs_t self:udp_socket { create connect write read bind getattr setopt };
+corenet_udp_bind_generic_port(sentinelfs_t)
+
+# DNS resolution
+sysnet_dns_name_resolve(sentinelfs_t)
+
+########################################
+# System information access (for metrics)
+########################################
+
+# Read proc filesystem for metrics
+kernel_read_system_state(sentinelfs_t)
+kernel_read_network_state(sentinelfs_t)
+
+# Read hostname
+files_read_etc_files(sentinelfs_t)
+
+########################################
+# Device access
+########################################
+
+# /dev/null and /dev/urandom
+dev_read_rand(sentinelfs_t)
+dev_read_urand(sentinelfs_t)
+
+########################################
+# Temporary files
+########################################
+
+# Allow use of /tmp for temporary files
+files_tmp_file(sentinelfs_t)
+
+########################################
+# File context specifications (separate file)
+########################################
+# These should go in sentinelfs.fc file:
+#
+# /usr/bin/sentinel_daemon    -- gen_context(system_u:object_r:sentinelfs_exec_t,s0)
+# /etc/sentinelfs(/.*)?       gen_context(system_u:object_r:sentinelfs_conf_t,s0)
+# /etc/sentinelfs/certs(/.*)? gen_context(system_u:object_r:sentinelfs_cert_t,s0)
+# /var/lib/sentinelfs(/.*)?   gen_context(system_u:object_r:sentinelfs_data_t,s0)
+# /var/log/sentinelfs(/.*)?   gen_context(system_u:object_r:sentinelfs_log_t,s0)
+# /run/sentinelfs(/.*)?       gen_context(system_u:object_r:sentinelfs_runtime_t,s0)

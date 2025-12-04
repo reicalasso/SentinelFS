@@ -1,0 +1,53 @@
+# SentinelFS SELinux File Context Definitions
+#
+# This file defines the security contexts for SentinelFS files.
+# Install with the policy module or use semanage fcontext.
+#
+# Manual installation:
+#   sudo semanage fcontext -a -t sentinelfs_exec_t '/usr/bin/sentinel_daemon'
+#   sudo semanage fcontext -a -t sentinelfs_conf_t '/etc/sentinelfs(/.*)?'
+#   sudo semanage fcontext -a -t sentinelfs_cert_t '/etc/sentinelfs/certs(/.*)?'
+#   sudo semanage fcontext -a -t sentinelfs_data_t '/var/lib/sentinelfs(/.*)?'
+#   sudo semanage fcontext -a -t sentinelfs_log_t '/var/log/sentinelfs(/.*)?'
+#   sudo semanage fcontext -a -t sentinelfs_runtime_t '/run/sentinelfs(/.*)?'
+#   sudo restorecon -Rv /usr/bin/sentinel_daemon /etc/sentinelfs /var/lib/sentinelfs /var/log/sentinelfs /run/sentinelfs
+
+# Executable
+/usr/bin/sentinel_daemon                --      gen_context(system_u:object_r:sentinelfs_exec_t,s0)
+/usr/bin/sentinel_cli                   --      gen_context(system_u:object_r:sentinelfs_exec_t,s0)
+
+# Libraries
+/usr/lib/sentinelfs(/.*)?                       gen_context(system_u:object_r:lib_t,s0)
+
+# Configuration directory
+/etc/sentinelfs(/.*)?                           gen_context(system_u:object_r:sentinelfs_conf_t,s0)
+
+# TLS certificates (more restrictive)
+/etc/sentinelfs/certs(/.*)?                     gen_context(system_u:object_r:sentinelfs_cert_t,s0)
+/etc/sentinelfs/certs/private(/.*)?             gen_context(system_u:object_r:sentinelfs_cert_t,s0)
+
+# Data directory
+/var/lib/sentinelfs(/.*)?                       gen_context(system_u:object_r:sentinelfs_data_t,s0)
+
+# Database files (need locking)
+/var/lib/sentinelfs/.*\.db              --      gen_context(system_u:object_r:sentinelfs_data_t,s0)
+/var/lib/sentinelfs/.*\.db-journal      --      gen_context(system_u:object_r:sentinelfs_data_t,s0)
+/var/lib/sentinelfs/.*\.db-wal          --      gen_context(system_u:object_r:sentinelfs_data_t,s0)
+/var/lib/sentinelfs/.*\.db-shm          --      gen_context(system_u:object_r:sentinelfs_data_t,s0)
+
+# Version storage
+/var/lib/sentinelfs/versions(/.*)?              gen_context(system_u:object_r:sentinelfs_data_t,s0)
+
+# Log directory
+/var/log/sentinelfs(/.*)?                       gen_context(system_u:object_r:sentinelfs_log_t,s0)
+
+# Runtime directory and socket
+/run/sentinelfs(/.*)?                           gen_context(system_u:object_r:sentinelfs_runtime_t,s0)
+/run/sentinelfs/daemon\.sock            -s      gen_context(system_u:object_r:sentinelfs_runtime_t,s0)
+/run/sentinelfs/sentinel_daemon\.pid    --      gen_context(system_u:object_r:sentinelfs_runtime_t,s0)
+
+# User runtime directory (for user-mode daemon)
+/run/user/[0-9]+/sentinelfs(/.*)?               gen_context(system_u:object_r:sentinelfs_runtime_t,s0)
+
+# User home sync directories (customize patterns as needed)
+HOME_DIR/sentinel_sync(/.*)?                    gen_context(system_u:object_r:sentinelfs_sync_t,s0)
