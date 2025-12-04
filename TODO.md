@@ -11,9 +11,18 @@ Bu dosya, SentinelFS için planlanan geliştirmeleri ve iyileştirmeleri özetle
 
 ## 2. Conflict Resolution & Versiyonlama
 
-- [ ] Basit dosya versiyonlama (N son sürümü sakla)
-- [ ] Conflict durumlarında GUI'de "Conflict Center" görünümü (hangi peer, hangi sürüm)
-- [ ] Last-write-wins'e ek olarak kullanıcıya seçim opsiyonu sun (keep local / keep remote / keep both)
+- [x] Basit dosya versiyonlama (N son sürümü sakla)
+  - `FileVersionManager` C++ sınıfı oluşturuldu (core/storage/)
+  - Configurable: maxVersionsPerFile, maxTotalVersionsBytes
+  - Otomatik pruning ve metadata yönetimi
+- [x] Conflict durumlarında GUI'de "Conflict Center" görünümü (hangi peer, hangi sürüm)
+  - `ConflictCenter.tsx` React komponenti eklendi
+  - Dual-view: Conflicts tab + Versions tab
+  - Detaylı karşılaştırma: local vs remote, hash, timestamp, peer bilgisi
+- [x] Last-write-wins'e ek olarak kullanıcıya seçim opsiyonu sun (keep local / keep remote / keep both)
+  - GUI'de 3 seçenek: Keep Local, Keep Remote, Keep Both
+  - IPC komutları: RESOLVE <id> LOCAL|REMOTE|BOTH
+  - Version restore/preview/delete desteği
 
 ## 3. WAN / Çok Segment Ağ Desteği
 

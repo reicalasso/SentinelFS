@@ -37,6 +37,9 @@ set(CORE_SOURCES
     sync/src/DeltaSerialization.cpp
     sync/src/OfflineQueue.cpp
 
+    # Storage sources
+    storage/src/FileVersionManager.cpp
+
     # Utils sources
     utils/src/Logger.cpp
     utils/src/Config.cpp

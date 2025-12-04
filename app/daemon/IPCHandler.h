@@ -105,6 +105,12 @@ private:
     std::string handleUnblockPeerCommand(const std::string& args);
     std::string handleExportSupportBundleCommand();
     
+    // Version management handlers
+    std::string handleVersionsJsonCommand();
+    std::string handleRestoreVersionCommand(const std::string& args);
+    std::string handleDeleteVersionCommand(const std::string& args);
+    std::string handlePreviewVersionCommand(const std::string& args);
+    
     std::string socketPath_;
     int serverSocket_{-1};
     std::atomic<bool> running_{false};

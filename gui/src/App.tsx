@@ -1,12 +1,12 @@
 import { useEffect, useState, cloneElement } from 'react'
-import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command } from 'lucide-react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
 import { Files } from './components/Files'
 import { Transfers } from './components/Transfers'
 import { ToastList } from './components/ToastList'
-import { ConflictModal } from './components/ConflictModal'
+import { ConflictCenter } from './components/ConflictCenter'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
@@ -28,8 +28,8 @@ declare global {
 export default function App() {
   // Use centralized state management
   const { state, actions } = useAppState()
-  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen } = state
-  const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict } = actions
+  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles } = state
+  const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict, deleteVersion } = actions
   const [showOnboarding, setShowOnboarding] = useState(true)
 
   useEffect(() => {
@@ -119,6 +119,14 @@ export default function App() {
                <div className="w-4 h-px bg-gradient-to-r from-accent/50 to-transparent"></div>
                System
              </h3>
+            <SidebarItem 
+              icon={<AlertTriangle />} 
+              label="Conflict Center" 
+              active={false} 
+              onClick={() => showConflictModal(true)} 
+              badge={conflicts.length > 0 ? conflicts.length : undefined}
+              highlight={conflicts.length > 0}
+            />
             <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => setTab('settings')} />
             <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => setTab('logs')} />
           </div>
@@ -168,9 +176,17 @@ export default function App() {
         onCompleted={() => setShowOnboarding(false)}
       />
       
-      {/* Conflict Resolution Modal */}
-      <ConflictModal
-        conflicts={conflicts}
+      {/* Conflict Center - Enhanced conflict resolution and version history */}
+      <ConflictCenter
+        conflicts={conflicts.map(c => ({
+          ...c,
+          localHash: c.localHash || '',
+          remoteHash: c.remoteHash || '',
+          localTimestamp: typeof c.localTimestamp === 'string' ? new Date(c.localTimestamp).getTime() : c.localTimestamp,
+          remoteTimestamp: typeof c.remoteTimestamp === 'string' ? new Date(c.remoteTimestamp).getTime() : c.remoteTimestamp,
+          detectedAt: c.detectedAt || Date.now(),
+          resolved: c.resolved || false
+        }))}
         isOpen={isConflictModalOpen}
         onClose={() => showConflictModal(false)}
         onResolve={async (conflictId, resolution) => {
@@ -185,6 +201,36 @@ export default function App() {
             }
           }
         }}
+        onRestoreVersion={async (conflictId, versionId) => {
+          if (window.api) {
+            const cmd = `RESTORE_VERSION ${conflictId} ${versionId}`
+            const res = await window.api.sendCommand(cmd)
+            if (res.success) {
+              addToast(`Version ${versionId} restored successfully`)
+            } else {
+              addToast(`Failed to restore version: ${res.error}`)
+            }
+          }
+        }}
+        onPreviewVersion={async (filePath, versionId) => {
+          if (window.api) {
+            const cmd = `PREVIEW_VERSION ${versionId} ${filePath}`
+            await window.api.sendCommand(cmd)
+          }
+        }}
+        onDeleteVersion={async (filePath, versionId) => {
+          if (window.api) {
+            const cmd = `DELETE_VERSION ${versionId} ${filePath}`
+            const res = await window.api.sendCommand(cmd)
+            if (res.success) {
+              deleteVersion(filePath, versionId)
+              addToast(`Version deleted`)
+            } else {
+              addToast(`Failed to delete version: ${res.error}`)
+            }
+          }
+        }}
+        versionedFiles={versionedFiles}
       />
       
       {/* Main Content Area */}
@@ -245,19 +291,26 @@ export default function App() {
   )
 }
 
-function SidebarItem({ icon, label, active, onClick, badge }: any) {
+function SidebarItem({ icon, label, active, onClick, badge, highlight }: any) {
   return (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group relative overflow-hidden ${
         active 
           ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
-          : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+          : highlight 
+            ? 'text-yellow-400 hover:bg-yellow-500/10 border border-yellow-500/30 shadow-sm shadow-yellow-500/10'
+            : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
       }`}
     >
       {/* Animated Background Shine */}
       {active && (
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+      )}
+      
+      {/* Highlight pulse animation for conflicts */}
+      {highlight && !active && (
+        <div className="absolute inset-0 bg-yellow-500/5 animate-pulse"></div>
       )}
       
       {/* Active Indicator - Enhanced */}
@@ -269,12 +322,12 @@ function SidebarItem({ icon, label, active, onClick, badge }: any) {
       )}
       
       {/* Hover glow effect */}
-      {!active && (
+      {!active && !highlight && (
         <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       )}
       
-      <div className={`relative transition-all duration-300 ${active ? '' : 'group-hover:scale-110 group-hover:text-primary'}`}>
-        {cloneElement(icon, { size: 20, className: `transition-all ${active ? 'drop-shadow-lg' : 'opacity-70 group-hover:opacity-100'}` })}
+      <div className={`relative transition-all duration-300 ${active ? '' : highlight ? 'text-yellow-400' : 'group-hover:scale-110 group-hover:text-primary'}`}>
+        {cloneElement(icon, { size: 20, className: `transition-all ${active ? 'drop-shadow-lg' : highlight ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}` })}
       </div>
       <span className="flex-1 text-left relative">{label}</span>
       
@@ -282,7 +335,9 @@ function SidebarItem({ icon, label, active, onClick, badge }: any) {
         <span className={`relative text-[10px] px-2 py-0.5 rounded-lg font-bold transition-all ${
             active 
               ? 'bg-white/20 text-white shadow-inner' 
-              : 'bg-primary/10 text-primary border border-primary/20 group-hover:bg-primary/20'
+              : highlight
+                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 animate-pulse'
+                : 'bg-primary/10 text-primary border border-primary/20 group-hover:bg-primary/20'
         }`}>
             {badge}
         </span>

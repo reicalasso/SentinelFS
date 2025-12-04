@@ -56,16 +56,35 @@ export interface AppConfig {
   downloadLimit?: number
 }
 
+// File version type
+export interface FileVersion {
+  versionId: number
+  filePath: string
+  versionPath: string
+  hash: string
+  peerId: string
+  timestamp: number
+  size: number
+  changeType: 'create' | 'modify' | 'conflict' | 'remote' | 'backup'
+  comment?: string
+}
+
 // Conflict type
 export interface Conflict {
   id: number
   path: string
+  localHash: string
+  remoteHash: string
   localSize: number
   remoteSize: number
-  localTimestamp: string
-  remoteTimestamp: string
+  localTimestamp: number
+  remoteTimestamp: number
   remotePeerId: string
+  remotePeerName?: string
   strategy: string
+  detectedAt: number
+  resolved: boolean
+  versions?: FileVersion[]
 }
 
 // State
@@ -85,6 +104,7 @@ export interface AppState {
   toasts: string[]
   conflicts: Conflict[]
   showConflictModal: boolean
+  versionedFiles: Map<string, FileVersion[]>
 }
 
 // Actions
@@ -107,6 +127,8 @@ type AppAction =
   | { type: 'SET_CONFLICTS'; payload: Conflict[] }
   | { type: 'SHOW_CONFLICT_MODAL'; payload: boolean }
   | { type: 'REMOVE_CONFLICT'; payload: number }
+  | { type: 'SET_VERSIONED_FILES'; payload: Map<string, FileVersion[]> }
+  | { type: 'DELETE_VERSION'; payload: { filePath: string; versionId: number } }
 
 // Initial state
 const initialState: AppState = {
@@ -124,7 +146,8 @@ const initialState: AppState = {
   logs: [],
   toasts: [],
   conflicts: [],
-  showConflictModal: false
+  showConflictModal: false,
+  versionedFiles: new Map()
 }
 
 // Reducer
@@ -166,6 +189,21 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, showConflictModal: action.payload }
     case 'REMOVE_CONFLICT':
       return { ...state, conflicts: state.conflicts.filter(c => c.id !== action.payload) }
+    case 'SET_VERSIONED_FILES':
+      return { ...state, versionedFiles: action.payload }
+    case 'DELETE_VERSION': {
+      const newVersionedFiles = new Map(state.versionedFiles)
+      const versions = newVersionedFiles.get(action.payload.filePath)
+      if (versions) {
+        const filtered = versions.filter(v => v.versionId !== action.payload.versionId)
+        if (filtered.length > 0) {
+          newVersionedFiles.set(action.payload.filePath, filtered)
+        } else {
+          newVersionedFiles.delete(action.payload.filePath)
+        }
+      }
+      return { ...state, versionedFiles: newVersionedFiles }
+    }
     default:
       return state
   }
@@ -249,6 +287,14 @@ export function useAppState() {
     dispatch({ type: 'REMOVE_CONFLICT', payload: conflictId })
   }, [])
 
+  const setVersionedFiles = useCallback((files: Map<string, FileVersion[]>) => {
+    dispatch({ type: 'SET_VERSIONED_FILES', payload: files })
+  }, [])
+
+  const deleteVersion = useCallback((filePath: string, versionId: number) => {
+    dispatch({ type: 'DELETE_VERSION', payload: { filePath, versionId } })
+  }, [])
+
   return {
     state,
     actions: {
@@ -262,7 +308,9 @@ export function useAppState() {
       clearToasts,
       setConflicts,
       showConflictModal,
-      resolveConflict
+      resolveConflict,
+      setVersionedFiles,
+      deleteVersion
     }
   }
 }
