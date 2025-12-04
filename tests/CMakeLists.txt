@@ -41,6 +41,11 @@ add_sentinel_test(test_crypto unit/test_crypto.cpp)
 add_sentinel_test(test_threadpool unit/test_threadpool.cpp)
 add_sentinel_test(test_logger unit/test_logger.cpp)
 add_sentinel_test(test_eventbus unit/test_eventbus.cpp)
+add_sentinel_test(test_sha256 unit/test_sha256.cpp)
+add_sentinel_test(test_compression unit/test_compression.cpp)
+add_sentinel_test(test_utils unit/test_utils.cpp)
+add_sentinel_test(test_result unit/test_result.cpp)
+add_sentinel_test(test_metrics unit/test_metrics.cpp)
 
 # ============================================
 # INTEGRATION TESTS - Add tests here
