@@ -67,6 +67,5 @@ add_sentinel_test(test_network_manager unit/test_network_manager.cpp)
 # INTEGRATION TESTS - Add tests here
 # ============================================
 
-# Example:
-# add_integration_test(test_example integration/test_example.cpp)
+add_integration_test(test_full_sync integration/test_full_sync.cpp)
 
