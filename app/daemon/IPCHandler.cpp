@@ -21,6 +21,8 @@
 #include <filesystem>
 #include <chrono>
 #include <random>
+#include <fstream>
+#include <sys/utsname.h>
 
 namespace SentinelFS {
 
@@ -594,6 +596,8 @@ std::string IPCHandler::processCommand(const std::string& command) {
             return "CODE:" + code + "\n";
         }
         return "Error: Network plugin not initialized.\n";
+    } else if (cmd == "EXPORT_SUPPORT_BUNDLE") {
+        return handleExportSupportBundleCommand();
     } else {
         std::stringstream ss;
         ss << "Unknown command: " << cmd << "\n";
@@ -1882,6 +1886,193 @@ AnomalyReport IPCHandler::getAnomalyReport() const {
     }
     
     return report;
+}
+
+std::string IPCHandler::handleExportSupportBundleCommand() {
+    // Create a support bundle containing config, logs, and system info
+    namespace fs = std::filesystem;
+    
+    // Determine output directory (XDG_DATA_HOME/sentinelfs/support/)
+    std::string dataHome;
+    if (const char* xdg = std::getenv("XDG_DATA_HOME")) {
+        dataHome = xdg;
+    } else if (const char* home = std::getenv("HOME")) {
+        dataHome = std::string(home) + "/.local/share";
+    } else {
+        return "Error: Cannot determine data directory\n";
+    }
+    
+    std::string supportDir = dataHome + "/sentinelfs/support";
+    
+    // Create timestamp-based folder
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+    char timestamp[32];
+    std::strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", &tm);
+    
+    std::string bundleDir = supportDir + "/bundle_" + timestamp;
+    
+    try {
+        fs::create_directories(bundleDir);
+    } catch (const fs::filesystem_error& e) {
+        return "Error: Failed to create support bundle directory: " + std::string(e.what()) + "\n";
+    }
+    
+    std::stringstream result;
+    result << "Creating support bundle at: " << bundleDir << "\n";
+    
+    // 1. Copy config file
+    std::string configHome;
+    if (const char* xdg = std::getenv("XDG_CONFIG_HOME")) {
+        configHome = xdg;
+    } else if (const char* home = std::getenv("HOME")) {
+        configHome = std::string(home) + "/.config";
+    }
+    
+    std::string configPath = configHome + "/sentinelfs/sentinel.conf";
+    std::string destConfig = bundleDir + "/sentinel.conf";
+    
+    try {
+        if (fs::exists(configPath)) {
+            fs::copy_file(configPath, destConfig, fs::copy_options::overwrite_existing);
+            result << "  ✓ Config file copied\n";
+        } else {
+            result << "  ⚠ Config file not found at " << configPath << "\n";
+        }
+    } catch (const fs::filesystem_error& e) {
+        result << "  ✗ Failed to copy config: " << e.what() << "\n";
+    }
+    
+    // 2. Copy recent log files
+    std::string logsDir = dataHome + "/sentinelfs/logs";
+    std::string destLogsDir = bundleDir + "/logs";
+    
+    try {
+        fs::create_directories(destLogsDir);
+        
+        int logsCopied = 0;
+        if (fs::exists(logsDir)) {
+            for (const auto& entry : fs::directory_iterator(logsDir)) {
+                if (entry.is_regular_file()) {
+                    std::string filename = entry.path().filename().string();
+                    // Copy log files (limit to recent ones by count)
+                    if (filename.find("sentinel") != std::string::npos || 
+                        filename.find(".log") != std::string::npos) {
+                        fs::copy_file(entry.path(), destLogsDir + "/" + filename, 
+                                     fs::copy_options::overwrite_existing);
+                        logsCopied++;
+                        if (logsCopied >= 5) break; // Limit to 5 most recent
+                    }
+                }
+            }
+        }
+        
+        // Also check alternative log locations
+        std::string altLogsDir;
+        if (daemonCore_) {
+            altLogsDir = daemonCore_->getConfig().watchDirectory + "/../logs";
+        }
+        
+        result << "  ✓ " << logsCopied << " log file(s) copied\n";
+    } catch (const fs::filesystem_error& e) {
+        result << "  ⚠ Log copy warning: " << e.what() << "\n";
+    }
+    
+    // 3. Generate system info file
+    std::string infoPath = bundleDir + "/system_info.txt";
+    std::ofstream infoFile(infoPath);
+    
+    if (infoFile.is_open()) {
+        infoFile << "=== SentinelFS Support Bundle ===\n";
+        infoFile << "Generated: " << timestamp << "\n\n";
+        
+        // Version info
+        infoFile << "--- Version ---\n";
+        infoFile << "SentinelFS Version: 1.0.0\n"; // Could read from Version.h
+        infoFile << "Build Type: Release\n\n";
+        
+        // System info
+        infoFile << "--- System ---\n";
+        
+        // OS info
+        struct utsname sysinfo;
+        if (uname(&sysinfo) == 0) {
+            infoFile << "OS: " << sysinfo.sysname << " " << sysinfo.release << "\n";
+            infoFile << "Kernel: " << sysinfo.version << "\n";
+            infoFile << "Architecture: " << sysinfo.machine << "\n";
+            infoFile << "Hostname: " << sysinfo.nodename << "\n";
+        }
+        infoFile << "\n";
+        
+        // Daemon status
+        infoFile << "--- Daemon Status ---\n";
+        if (daemonCore_) {
+            infoFile << "Sync Enabled: " << (daemonCore_->isSyncEnabled() ? "Yes" : "No") << "\n";
+            infoFile << "Watch Directory: " << daemonCore_->getConfig().watchDirectory << "\n";
+            infoFile << "TCP Port: " << daemonCore_->getConfig().tcpPort << "\n";
+            infoFile << "Discovery Port: " << daemonCore_->getConfig().discoveryPort << "\n";
+        }
+        infoFile << "\n";
+        
+        // Network status
+        infoFile << "--- Network ---\n";
+        if (network_) {
+            infoFile << "Encryption: " << (network_->isEncryptionEnabled() ? "Enabled" : "Disabled") << "\n";
+            std::string code = network_->getSessionCode();
+            infoFile << "Session Code Set: " << (!code.empty() ? "Yes" : "No") << "\n";
+        }
+        infoFile << "\n";
+        
+        // Peer count
+        infoFile << "--- Peers ---\n";
+        if (storage_) {
+            auto peers = storage_->getAllPeers();
+            infoFile << "Connected Peers: " << peers.size() << "\n";
+            for (const auto& peer : peers) {
+                infoFile << "  - " << peer.id << " @ " << peer.ip << ":" << peer.port 
+                         << " (" << peer.status << ")\n";
+            }
+        }
+        infoFile << "\n";
+        
+        // Storage stats
+        infoFile << "--- Storage ---\n";
+        if (storage_) {
+            auto [totalConflicts, unresolvedConflicts] = storage_->getConflictStats();
+            infoFile << "Total Conflicts: " << totalConflicts << "\n";
+            infoFile << "Unresolved Conflicts: " << unresolvedConflicts << "\n";
+        }
+        
+        infoFile.close();
+        result << "  ✓ System info generated\n";
+    } else {
+        result << "  ✗ Failed to create system info file\n";
+    }
+    
+    // 4. Copy database (optional, can be large)
+    std::string dbPath = dataHome + "/sentinelfs/sentinel.db";
+    std::string destDb = bundleDir + "/sentinel.db";
+    
+    try {
+        if (fs::exists(dbPath)) {
+            auto dbSize = fs::file_size(dbPath);
+            // Only copy if under 50MB
+            if (dbSize < 50 * 1024 * 1024) {
+                fs::copy_file(dbPath, destDb, fs::copy_options::overwrite_existing);
+                result << "  ✓ Database copied (" << formatBytes(dbSize) << ")\n";
+            } else {
+                result << "  ⚠ Database too large (" << formatBytes(dbSize) << "), skipped\n";
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        result << "  ⚠ Database copy skipped: " << e.what() << "\n";
+    }
+    
+    result << "\nSupport bundle created successfully!\n";
+    result << "BUNDLE_PATH:" << bundleDir << "\n";
+    
+    return result.str();
 }
 
 } // namespace SentinelFS

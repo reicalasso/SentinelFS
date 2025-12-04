@@ -574,6 +574,31 @@ export function Settings({ config }: SettingsProps) {
                         </div>
                         <p className="text-xs text-muted-foreground mt-3">Export settings to share with other devices or backup your configuration.</p>
                     </Section>
+                    <Section title="Support Bundle">
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Generate a support bundle containing config, logs, and system info for troubleshooting.
+                        </p>
+                        <button 
+                            onClick={async () => {
+                                if (window.api) {
+                                    addNotification('info', 'Generating...', 'Creating support bundle, please wait...')
+                                    const res = await window.api.sendCommand('EXPORT_SUPPORT_BUNDLE')
+                                    if (res.success) {
+                                        // Parse bundle path from response
+                                        const output = (res as any).output || ''
+                                        const pathMatch = output.match(/BUNDLE_PATH:(.+)/)
+                                        const bundlePath = pathMatch ? pathMatch[1].trim() : 'support folder'
+                                        addNotification('success', 'Support Bundle Created', `Bundle saved to: ${bundlePath}`)
+                                    } else {
+                                        addNotification('error', 'Export Failed', res.error || 'Unknown error')
+                                    }
+                                }
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-sm font-medium transition-all"
+                        >
+                            <Download className="w-4 h-4" /> Export Support Bundle
+                        </button>
+                    </Section>
                     <Section title="ML Anomaly Detection">
                         <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
                             <div className="flex items-center gap-2 text-amber-500 mb-2">

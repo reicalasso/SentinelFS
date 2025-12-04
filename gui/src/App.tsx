@@ -1,4 +1,4 @@
-import { useEffect, cloneElement } from 'react'
+import { useEffect, useState, cloneElement } from 'react'
 import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
@@ -7,6 +7,8 @@ import { Files } from './components/Files'
 import { Transfers } from './components/Transfers'
 import { ToastList } from './components/ToastList'
 import { ConflictModal } from './components/ConflictModal'
+import { OnboardingWizard } from './components/OnboardingWizard'
+import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
 
 // Define the API interface exposed from preload
@@ -28,6 +30,7 @@ export default function App() {
   const { state, actions } = useAppState()
   const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen } = state
   const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict } = actions
+  const [showOnboarding, setShowOnboarding] = useState(true)
 
   useEffect(() => {
     if (!window.api) return
@@ -49,9 +52,10 @@ export default function App() {
     if (window.api) {
         const res = await window.api.sendCommand(cmd)
         if (!res.success) {
-            const message = `Command ${cmd} failed: ${res.error ?? 'unknown'}`
-            handleLog(`ERROR: ${message}`)
-            addToast(message)
+        const friendly = mapDaemonError(res.error)
+        const logMessage = `ERROR: ${cmd} -> ${res.error ?? 'unknown'}`
+        handleLog(logMessage)
+        addToast(`${friendly.title}: ${friendly.message}`)
         }
     } else {
         console.log(`[Mock Command] ${cmd}`)
@@ -156,6 +160,13 @@ export default function App() {
       </div>
 
       <ToastList toasts={toasts} onClear={clearToasts} />
+
+      {/* İlk açılış için onboarding sihirbazı */}
+      <OnboardingWizard
+        open={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onCompleted={() => setShowOnboarding(false)}
+      />
       
       {/* Conflict Resolution Modal */}
       <ConflictModal
@@ -281,6 +292,30 @@ function SidebarItem({ icon, label, active, onClick, badge }: any) {
 }
 
 function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
+  const handleCopy = async () => {
+    try {
+      const text = logs.join('\n')
+      await navigator.clipboard.writeText(text)
+    } catch (e) {
+      console.error('Failed to copy logs', e)
+    }
+  }
+
+  const handleExport = () => {
+    try {
+      const blob = new Blob([logs.join('\n')], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'sentinel_daemon.log.txt'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Failed to export logs', e)
+    }
+  }
     return (
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
             {/* Header */}
@@ -294,12 +329,26 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
                         <p className="text-sm text-muted-foreground">Real-time daemon logs and system events</p>
                     </div>
                 </div>
-                <button
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
+                  >
+                    <span>Copy</span>
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
+                  >
+                    <span>Export</span>
+                  </button>
+                  <button
                     onClick={onClear}
-                    className="flex items-center gap-2 text-xs px-4 py-2 rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
-                >
+                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
+                  >
                     <span>Clear</span>
-                </button>
+                  </button>
+                </div>
             </div>
             
             {/* Terminal Window */}

@@ -103,6 +103,7 @@ private:
     std::string handleResolveConflictCommand(const std::string& args);
     std::string handleBlockPeerCommand(const std::string& args);
     std::string handleUnblockPeerCommand(const std::string& args);
+    std::string handleExportSupportBundleCommand();
     
     std::string socketPath_;
     int serverSocket_{-1};
