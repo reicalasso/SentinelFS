@@ -54,6 +54,9 @@ IPCHandler::IPCHandler(const std::string& socketPath,
     securityConfig_.socketPermissions = 0660;  // rw-rw----
     securityConfig_.requireSameUid = true;
     securityConfig_.auditConnections = false;
+    // Disable rate limiting by default - GUI does frequent polling
+    // Set to non-zero value in config if needed for CLI-only deployments
+    securityConfig_.maxCommandsPerMinute = 0;
 }
 
 IPCHandler::IPCHandler(const std::string& socketPath,
