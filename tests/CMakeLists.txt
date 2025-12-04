@@ -68,4 +68,14 @@ add_sentinel_test(test_network_manager unit/test_network_manager.cpp)
 # ============================================
 
 add_integration_test(test_full_sync integration/test_full_sync.cpp)
+add_integration_test(test_peer_lifecycle integration/test_peer_lifecycle.cpp)
+
+# Remote Sync Test
+add_integration_test(test_remote_sync integration/test_remote_sync.cpp sqlite3)
+add_test(NAME test_remote_sync COMMAND test_remote_sync)
+
+# Offline Sync Test
+add_integration_test(test_offline_sync integration/test_offline_sync.cpp sqlite3)
+add_test(NAME test_offline_sync COMMAND test_offline_sync)
+
 
