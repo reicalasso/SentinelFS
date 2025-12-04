@@ -143,8 +143,8 @@ export function Peers({ peers }: { peers?: any[] }) {
       // Send command to daemon to connect to relay
       if (window.api) {
         const result = await window.api.sendCommand(`RELAY_CONNECT ${relayConfig.host}:${relayConfig.port} ${remoteForm.sessionCode}`)
-        if (result && result.includes('ERROR')) {
-          throw new Error(result)
+        if (!result.success) {
+          throw new Error(result.error || 'Connection failed')
         }
       }
       
