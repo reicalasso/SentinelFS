@@ -61,6 +61,7 @@ add_sentinel_test(test_key_manager unit/test_key_manager.cpp)
 add_sentinel_test(test_conflict_resolver unit/test_conflict_resolver.cpp)
 add_sentinel_test(test_plugin_manager unit/test_plugin_manager.cpp)
 add_sentinel_test(test_storage unit/test_storage.cpp)
+add_sentinel_test(test_network_manager unit/test_network_manager.cpp)
 
 # ============================================
 # INTEGRATION TESTS - Add tests here
