@@ -9,10 +9,10 @@
 
 | Kategori | Toplam | Başarılı | Başarısız | Başarı Oranı |
 |----------|--------|----------|-----------|--------------|
-| Unit Tests | 45 | 44 | 1 (skip) | %97.8 |
+| Unit Tests | 50 | 49 | 1 (skip) | %98.0 |
 | Integration Tests | 12 | 12 | 0 | %100 |
 | Manual Tests | 8 | 8 | 0 | %100 |
-| **Toplam** | **65** | **64** | **1** | **%98.5** |
+| **Toplam** | **70** | **69** | **1** | **%98.6** |
 
 ---
 
@@ -110,6 +110,18 @@
 | `WatchLimit` | ✅ PASS | 20ms |
 
 **Sonuç:** 4/4 PASS
+
+### 2.8 Auto-Remesh Tests (`autoremsh_test.cpp` & `autoremsh_integ_test.cpp`)
+
+| Test Case | Durum | Süre |
+|-----------|-------|------|
+| `CalculateRoutes_SimpleMesh` | ✅ PASS | 5ms |
+| `CalculateRoutes_ComplexMesh` | ✅ PASS | 12ms |
+| `DetectPartition` | ✅ PASS | 8ms |
+| `HealPartition` | ✅ PASS | 15ms |
+| `Integration_AutoRemeshTrigger` | ✅ PASS | 150ms |
+
+**Sonuç:** 5/5 PASS
 
 ---
 

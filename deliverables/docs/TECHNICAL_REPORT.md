@@ -21,6 +21,15 @@ SentinelFS, merkezi sunucu gerektirmeyen, peer-to-peer (P2P) mimarisine dayalı 
 - **Gerçek Zamanlı İzleme:** inotify tabanlı dosya sistemi izleme
 - **Modern GUI:** Electron + React tabanlı kontrol paneli
 
+### 1.2 Proje Metrikleri
+
+| Metrik | Değer |
+|--------|-------|
+| **Core Codebase (C++)** | ~16,600 Satır |
+| **UI Codebase (TypeScript)** | ~3,000 Satır |
+| **Toplam Kaynak Dosya** | ~150 Dosya |
+| **Mimari** | Plugin-based P2P Mesh |
+
 ---
 
 ## 2. Sistem Mimarisi
@@ -77,7 +86,7 @@ Ana işlem olarak çalışır ve tüm senkronizasyon mantığını yönetir.
 | NetworkPlugin | `plugins/network/` | TCP bağlantıları, UDP discovery, handshake |
 | StoragePlugin | `plugins/storage/` | SQLite veritabanı, peer/dosya kayıtları |
 | FilesystemPlugin | `plugins/filesystem/` | inotify izleme, dosya hash hesaplama |
-| MLPlugin | `plugins/ml/` | ONNX anomali tespiti (Future) |
+| MLPlugin | `plugins/ml/` | ONNX anomali tespiti (Aktif) |
 
 #### 2.2.3 Core Modülleri
 
@@ -422,15 +431,15 @@ bool shouldIgnore(const string& filename) {
 2. **Dosya boyutu:** 2GB üzeri dosyalar için memory pressure oluşabilir
 3. **Symbolic link:** Symlink'ler takip edilmez, kopyalanmaz
 4. **Conflict resolution:** Aynı anda düzenleme durumunda "last write wins"
-5. **Platform:** Şu an sadece Linux (inotify). macOS/Windows portu planlanıyor
+5. **Platform:** Windows (ReadDirectoryChangesW), Linux (inotify) ve macOS (FSEvents) desteklenmektedir.
 
 ---
 
 ## 11. Gelecek Geliştirmeler
 
 - [ ] WAN relay sunucusu (NAT traversal)
-- [ ] macOS FSEvents desteği
-- [ ] Windows ReadDirectoryChangesW desteği
+- [x] macOS FSEvents desteği
+- [x] Windows ReadDirectoryChangesW desteği
 - [ ] Conflict resolution UI
 - [ ] Selective sync (klasör/dosya bazlı)
 - [ ] Dosya versiyonlama ve rollback

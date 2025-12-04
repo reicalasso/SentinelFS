@@ -1,7 +1,7 @@
 # SentinelFS Performans Analizi
 
 **Analiz Tarihi:** Aralık 2025  
-**Test Ortamı:** 2x Ubuntu 24.04 VM, 4 vCPU, 8GB RAM, Gigabit LAN
+**Test Ortamı:** 2x Garuda Arch VM,  12 vCPU, 48GB RAM, Gigabit LAN
 
 ---
 
@@ -17,7 +17,7 @@ SentinelFS, çeşitli senaryolarda test edilmiştir. Delta senkronizasyon algori
 | Ortalama latency | 12ms |
 | Delta efficiency | %85-99 |
 | CPU overhead | %15 (aktif sync) |
-| Memory footprint | 80MB (ortalama) |
+| Memory footprint | Daemon: ~25MB, GUI: ~120MB |
 
 ---
 
@@ -184,7 +184,7 @@ RAM Kullanımı (MB)
       Idle    Small   Large   1GB     Idle
               Files   File    File
 
-Baseline: 14MB  |  Active: 80-120MB  |  Peak: 300MB
+Baseline: 14MB (Daemon)  |  Active: 80-120MB (Daemon)  |  Peak: 300MB (Daemon)
 ```
 
 ### 5.3 Kaynak Kullanım Tablosu
