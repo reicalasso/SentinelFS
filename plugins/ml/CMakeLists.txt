@@ -16,3 +16,5 @@ target_include_directories(ml_plugin PUBLIC
     ../../core/sync/include
     ../../core/utils/include
 )
+
+target_link_libraries(ml_plugin PRIVATE sentinel_core)
