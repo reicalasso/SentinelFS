@@ -31,7 +31,7 @@ target_include_directories(storage_plugin PUBLIC
     ${SQLite3_INCLUDE_DIRS}
 )
 
-target_link_libraries(storage_plugin PRIVATE ${SQLite3_LIBRARIES})
+target_link_libraries(storage_plugin PRIVATE sentinel_core ${SQLite3_LIBRARIES})
 
 # Check if we need to link stdc++fs (for older GCC/Clang but harmless to check)
 # In some environments, filesystem is a separate library

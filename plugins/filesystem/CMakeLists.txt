@@ -24,6 +24,7 @@ target_include_directories(filesystem_plugin PUBLIC
 )
 
 target_link_libraries(filesystem_plugin
+    sentinel_core
     OpenSSL::SSL
     OpenSSL::Crypto
 )

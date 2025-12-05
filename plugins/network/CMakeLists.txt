@@ -19,3 +19,5 @@ target_include_directories(network_plugin PUBLIC
     ../../core/sync/include
     ../../core/utils/include
 )
+
+target_link_libraries(network_plugin PRIVATE sentinel_core)
