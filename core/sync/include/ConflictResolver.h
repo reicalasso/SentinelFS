@@ -86,8 +86,8 @@ struct VectorClock {
         for (const auto& [peerId, otherCounter] : other.clocks) {
             if (clocks.find(peerId) == clocks.end()) {
                 // Implicitly 0 in this clock
-                if (0 > otherCounter) return false; // Impossible since unsigned
-                if (0 < otherCounter) anyLess = true;
+                // otherCounter is unsigned, so it's always >= 0
+                if (otherCounter > 0) anyLess = true;
             }
         }
         

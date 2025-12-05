@@ -219,7 +219,7 @@ bool FileKeyStore::remove(const std::string& keyId) {
     return true;
 }
 
-std::vector<KeyInfo> FileKeyStore::list(KeyType type) {
+std::vector<KeyInfo> FileKeyStore::list(KeyType /* type */) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<KeyInfo> results;
     

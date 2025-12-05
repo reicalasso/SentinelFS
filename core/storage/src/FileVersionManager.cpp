@@ -101,7 +101,7 @@ std::optional<FileVersion> FileVersionManager::createVersion(
     const std::string& filePath,
     const std::string& changeType,
     const std::string& peerId,
-    const std::string& comment
+    const std::string& /* comment */
 ) {
     namespace fs = std::filesystem;
     
@@ -136,7 +136,6 @@ std::optional<FileVersion> FileVersionManager::createVersion(
         auto ftime = fs::last_write_time(filePath);
         // Convert file_time to time_t using duration_cast
         auto duration = ftime.time_since_epoch();
-        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
         // Adjust for filesystem epoch difference (typically 1970 vs 1601 on some systems)
         // Use current time as fallback for more reliable timestamps
         uint64_t timestamp = static_cast<uint64_t>(
@@ -144,6 +143,7 @@ std::optional<FileVersion> FileVersionManager::createVersion(
                 std::chrono::system_clock::now().time_since_epoch()
             ).count()
         );
+        (void)duration; // Suppress unused variable warning
         
         // Create version from data
         return createVersionFromData(filePath, content, hash, timestamp, peerId, changeType);
