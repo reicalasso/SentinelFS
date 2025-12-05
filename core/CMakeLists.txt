@@ -61,7 +61,7 @@ set(CORE_SOURCES
     utils/src/PluginManager.cpp
     utils/src/MetricsCollector.cpp
     utils/src/ThreadPool.cpp
-    # utils/src/HealthEndpoint.cpp  # Deprecated: Use MetricsServer instead
+    utils/src/HealthEndpoint.cpp
     utils/src/Compression.cpp
     utils/src/PathUtils.cpp
 )

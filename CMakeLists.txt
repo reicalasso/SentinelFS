@@ -38,6 +38,8 @@ add_subdirectory(plugins/storage)
 add_subdirectory(plugins/ml)
 add_subdirectory(app/cli)
 add_subdirectory(app/daemon)
+
+enable_testing()
 add_subdirectory(tests)
 
 set(SENTINEL_BINARIES sentinel_daemon sentinel_cli)

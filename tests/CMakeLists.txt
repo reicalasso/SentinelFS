@@ -12,6 +12,7 @@ function(add_sentinel_test TEST_NAME SOURCE_FILE)
         ../core/utils/include
         ../core/storage/include
     )
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
 
 # Function for integration tests (includes plugin headers)
@@ -30,6 +31,7 @@ function(add_integration_test TEST_NAME SOURCE_FILE)
         ../plugins/storage/include
         ../plugins/ml/include
     )
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
 
 # ============================================
@@ -67,6 +69,22 @@ add_sentinel_test(test_plugin_manager unit/test_plugin_manager.cpp)
 add_sentinel_test(test_storage unit/test_storage.cpp)
 add_sentinel_test(test_network_manager unit/test_network_manager.cpp)
 
+# New Tests
+add_sentinel_test(test_delta_sync unit/test_delta_sync.cpp)
+add_sentinel_test(test_tls_context unit/test_tls_context.cpp)
+add_sentinel_test(test_delta_sync_protocol_handler unit/test_delta_sync_protocol_handler.cpp)
+add_sentinel_test(test_event_handlers unit/test_event_handlers.cpp)
+add_sentinel_test(test_file_sync_handler unit/test_file_sync_handler.cpp)
+add_sentinel_test(test_health_endpoint unit/test_health_endpoint.cpp)
+add_sentinel_test(test_path_utils unit/test_path_utils.cpp)
+add_sentinel_test(test_plugin_loader unit/test_plugin_loader.cpp)
+
+add_integration_test(test_fs_watchers unit/test_fs_watchers.cpp filesystem_plugin)
+add_integration_test(test_handshake_protocol unit/test_handshake_protocol.cpp network_plugin)
+add_integration_test(test_tcp_handler unit/test_tcp_handler.cpp network_plugin)
+add_integration_test(test_udp_discovery unit/test_udp_discovery.cpp network_plugin)
+add_integration_test(test_storage_managers unit/test_storage_managers.cpp storage_plugin sqlite3)
+
 # ============================================
 # INTEGRATION TESTS - Add tests here
 # ============================================
@@ -76,10 +94,8 @@ add_integration_test(test_peer_lifecycle integration/test_peer_lifecycle.cpp)
 
 # Remote Sync Test
 add_integration_test(test_remote_sync integration/test_remote_sync.cpp sqlite3)
-add_test(NAME test_remote_sync COMMAND test_remote_sync)
 
 # Offline Sync Test
 add_integration_test(test_offline_sync integration/test_offline_sync.cpp sqlite3)
-add_test(NAME test_offline_sync COMMAND test_offline_sync)
 
 

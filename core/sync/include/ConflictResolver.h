@@ -74,11 +74,23 @@ struct VectorClock {
     // Check if this clock happened-before another
     bool happensBefore(const VectorClock& other) const {
         bool anyLess = false;
+        
+        // Check all keys in this->clocks
         for (const auto& [peerId, counter] : clocks) {
             uint64_t otherCounter = other.get(peerId);
             if (counter > otherCounter) return false;  // Not happened-before
             if (counter < otherCounter) anyLess = true;
         }
+        
+        // Check keys in other.clocks that might be missing in this->clocks
+        for (const auto& [peerId, otherCounter] : other.clocks) {
+            if (clocks.find(peerId) == clocks.end()) {
+                // Implicitly 0 in this clock
+                if (0 > otherCounter) return false; // Impossible since unsigned
+                if (0 < otherCounter) anyLess = true;
+            }
+        }
+        
         return anyLess;
     }
     
