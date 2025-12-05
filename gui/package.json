@@ -2,6 +2,11 @@
   "name": "sentinelfs-gui",
   "version": "1.0.0",
   "description": "Modern Desktop GUI for SentinelFS",
+  "author": "SentinelFS Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reicalasso/SentinelFS.git"
+  },
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -53,19 +58,19 @@
     },
     "extraResources": [
       {
-        "from": "../build/app/daemon/sentinel_daemon",
+        "from": "../build_release/app/daemon/sentinel_daemon",
         "to": "bin/sentinel_daemon"
       },
       {
-        "from": "../build/app/cli/sentinel_cli",
+        "from": "../build_release/app/cli/sentinel_cli",
         "to": "bin/sentinel_cli"
       },
       {
-        "from": "../build/core/libsentinel_core.so",
+        "from": "../build_release/core/libsentinel_core.so",
         "to": "lib/libsentinel_core.so"
       },
       {
-        "from": "../build/plugins",
+        "from": "../build_release/plugins",
         "to": "lib/plugins",
         "filter": ["**/*.so"]
       },
