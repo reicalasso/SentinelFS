@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Ensure we are in the project root
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
