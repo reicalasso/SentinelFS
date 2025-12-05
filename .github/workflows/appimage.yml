@@ -1,4 +1,4 @@
-name: Build AppImage
+name: AppImage
 
 on:
   push:
@@ -7,10 +7,16 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: appimage-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-appimage:
     name: Build SentinelFS AppImage
     runs-on: ubuntu-22.04
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
     
     steps:
       - name: Checkout
@@ -20,7 +26,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libssl-dev \
-            libfuse2 desktop-file-utils
+            libfuse2 desktop-file-utils ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-appimage-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,7 +43,10 @@ jobs:
 
       - name: Configure C++ build
         run: |
-          cmake -S . -B build_release -DCMAKE_BUILD_TYPE=Release -DSKIP_SYSTEM_INSTALL=ON
+          cmake -S . -B build_release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_SYSTEM_INSTALL=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build C++ components
         run: |
