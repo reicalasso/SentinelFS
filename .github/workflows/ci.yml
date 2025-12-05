@@ -85,14 +85,14 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure
 
-      - name: Run discovery smoke test
+      - name: Run UDP discovery smoke test
         working-directory: build
         run: |
           export LD_LIBRARY_PATH="${{ github.workspace }}/build/plugins/network:${LD_LIBRARY_PATH}"
-          ./tests/discovery_test
+          ./tests/test_udp_discovery
 
       - name: Run auto-remesh integration test
-        run: ./build/tests/autoremsh_integ_test
+        run: ./build/tests/test_auto_remesh
 
       - name: Upload test logs
         if: failure()
