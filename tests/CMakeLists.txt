@@ -48,6 +48,10 @@ add_sentinel_test(test_result unit/test_result.cpp)
 add_sentinel_test(test_metrics unit/test_metrics.cpp)
 add_sentinel_test(test_bandwidth_limiter unit/test_bandwidth_limiter.cpp)
 add_sentinel_test(test_delta_engine unit/test_delta_engine.cpp)
+add_sentinel_test(test_delta_serialization unit/test_delta_serialization.cpp)
+add_sentinel_test(test_session_code unit/test_session_code.cpp)
+add_integration_test(test_anomaly_detector unit/test_anomaly_detector.cpp ml_plugin)
+add_sentinel_test(test_auto_remesh unit/test_auto_remesh.cpp)
 add_sentinel_test(test_offline_queue unit/test_offline_queue.cpp)
 
 # FileHasher is in plugins/filesystem, so we need to link against it or include its source
