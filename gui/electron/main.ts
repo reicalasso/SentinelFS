@@ -47,6 +47,14 @@ function startDaemon() {
     const daemonPath = getDaemonPath()
     console.log('Looking for daemon at:', daemonPath)
     
+    // Check if daemon binary exists
+    const fs = require('fs')
+    if (!fs.existsSync(daemonPath)) {
+        console.error('Daemon binary not found at:', daemonPath)
+        win?.webContents.send('daemon-status', 'error', 'Daemon binary not found')
+        return
+    }
+    
     // Check if daemon is already running by trying to connect
     const socket = net.createConnection(getSocketPath())
     socket.on('connect', () => {
@@ -58,32 +66,56 @@ function startDaemon() {
         // Not running, spawn it
         console.log('Spawning daemon...')
         
-        // Determine plugin dir
+        // Determine plugin dir and lib dir
         let pluginDir = ''
+        let libDir = ''
         if (app.isPackaged) {
             pluginDir = path.join(process.resourcesPath, 'lib', 'plugins')
+            libDir = path.join(process.resourcesPath, 'lib')
         } else {
             pluginDir = path.join(__dirname, '../../build/plugins')
+            libDir = path.join(__dirname, '../../build/core')
         }
 
         const projectRoot = app.isPackaged ? process.resourcesPath : path.resolve(__dirname, '../../')
+        
+        // Setup environment with library path for daemon
+        const daemonEnv = { 
+            ...process.env, 
+            SENTINELFS_PLUGIN_DIR: pluginDir,
+            // Add library path for libsentinel_core.so
+            LD_LIBRARY_PATH: libDir + (process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : '')
+        }
 
         try {
             // Pass arguments if needed, e.g., config path
             daemonProcess = spawn(daemonPath, [], {
-                stdio: 'ignore', // Daemon logs to file anyway, or use 'pipe' to capture
+                stdio: ['ignore', 'pipe', 'pipe'], // Capture stdout/stderr for debugging
                 detached: false,
                 cwd: projectRoot,
-                env: { ...process.env, SENTINELFS_PLUGIN_DIR: pluginDir }
+                env: daemonEnv
+            })
+            
+            // Log daemon output for debugging
+            daemonProcess.stdout?.on('data', (data) => {
+                console.log('Daemon stdout:', data.toString())
+            })
+            
+            daemonProcess.stderr?.on('data', (data) => {
+                console.error('Daemon stderr:', data.toString())
             })
             
             daemonProcess.on('error', (err) => {
                 console.error('Failed to spawn daemon:', err)
+                win?.webContents.send('daemon-status', 'error', err.message)
             })
             
             daemonProcess.on('exit', (code) => {
                 console.log('Daemon exited with code:', code)
                 daemonProcess = null
+                if (code !== 0) {
+                    win?.webContents.send('daemon-status', 'error', `Daemon exited with code ${code}`)
+                }
             })
             
             // Wait a bit for daemon to initialize socket
