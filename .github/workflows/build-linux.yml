@@ -74,7 +74,7 @@ jobs:
           cmake -S . -B build_release \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DSKIP_SYSTEM_INSTALL=OFF \
+            -DSKIP_SYSTEM_INSTALL=ON \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
