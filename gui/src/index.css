@@ -1,6 +1,16 @@
+/* Google Fonts - Must be at the very top */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ==========================================
+   FONT DEFINITIONS
+   ========================================== */
 
 /* Pixellet TH Font */
 @font-face {
@@ -19,19 +29,117 @@
   font-display: swap;
 }
 
-/* Global Font Override - Force Pixellet TH everywhere */
-* {
+/* ==========================================
+   DYNAMIC FONT SYSTEM
+   ========================================== */
+
+:root {
+  --font-family: 'Pixellet TH', system-ui, sans-serif;
+  --font-size-base: 1rem;
+}
+
+/* Font Size Variants */
+[data-font-size="small"] {
+  --font-size-base: 0.875rem;
+  font-size: 14px;
+}
+
+[data-font-size="medium"] {
+  --font-size-base: 1rem;
+  font-size: 16px;
+}
+
+[data-font-size="large"] {
+  --font-size-base: 1.125rem;
+  font-size: 18px;
+}
+
+/* Dynamic Font Family Application */
+[data-font="pixellet"] * {
   font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+[data-font="inter"] * {
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+[data-font="jetbrains"] * {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+[data-font="fira-code"] * {
+  font-family: 'Fira Code', 'JetBrains Mono', monospace !important;
+}
+
+[data-font="roboto-mono"] * {
+  font-family: 'Roboto Mono', 'Consolas', monospace !important;
+}
+
+[data-font="system"] * {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
 /* Override for Recharts and other SVG text */
 svg text, svg tspan {
-  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+  font-family: var(--font-family) !important;
 }
 
 /* Override for any inline styles */
 [style*="font-family"] {
-  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+  font-family: var(--font-family) !important;
+}
+
+/* ==========================================
+   GLOW INTENSITY SYSTEM
+   ========================================== */
+
+/* Glow intensity multipliers */
+:root {
+  --glow-multiplier: 1;
+}
+
+[data-glow="none"] {
+  --glow-multiplier: 0;
+}
+
+[data-glow="subtle"] {
+  --glow-multiplier: 0.5;
+}
+
+[data-glow="normal"] {
+  --glow-multiplier: 1;
+}
+
+[data-glow="high"] {
+  --glow-multiplier: 1.5;
+}
+
+/* Disable glow when set to none */
+[data-glow="none"] .glow-primary,
+[data-glow="none"] .glow-success,
+[data-glow="none"] .glow-warning,
+[data-glow="none"] .glow-error,
+[data-glow="none"] .glow-info,
+[data-glow="none"] .glow-accent,
+[data-glow="none"] .glow-text {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* ==========================================
+   ANIMATION CONTROL SYSTEM
+   ========================================== */
+
+/* Disable animations when preference is set */
+[data-animations="false"] * {
+  animation: none !important;
+  transition: none !important;
+}
+
+[data-animations="false"] .animate-pulse,
+[data-animations="false"] .animate-spin,
+[data-animations="false"] .animate-bounce {
+  animation: none !important;
 }
 
 /* ==========================================
@@ -45,12 +153,12 @@ svg text, svg tspan {
 
 @keyframes pulse-glow {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(255, 140, 50, 0.3), 
-                0 0 40px rgba(255, 140, 50, 0.1);
+    box-shadow: 0 0 10px rgba(255, 140, 50, 0.15), 
+                0 0 20px rgba(255, 140, 50, 0.05);
   }
   50% { 
-    box-shadow: 0 0 30px rgba(255, 140, 50, 0.5), 
-                0 0 60px rgba(255, 140, 50, 0.2);
+    box-shadow: 0 0 15px rgba(255, 140, 50, 0.25), 
+                0 0 30px rgba(255, 140, 50, 0.1);
   }
 }
 
@@ -92,8 +200,8 @@ svg text, svg tspan {
 }
 
 @keyframes text-glow {
-  0%, 100% { text-shadow: 0 0 10px currentColor; }
-  50% { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
+  0%, 100% { text-shadow: 0 0 5px currentColor; }
+  50% { text-shadow: 0 0 8px currentColor, 0 0 12px currentColor; }
 }
 
 @keyframes aurora {
@@ -158,10 +266,10 @@ svg text, svg tspan {
     --input: 195 40% 22%;
     --ring: 30 100% 55%;
     
-    --glow-primary: 0 0 30px rgba(255, 140, 50, 0.4);
-    --glow-success: 0 0 30px rgba(45, 200, 160, 0.4);
-    --glow-warning: 0 0 30px rgba(255, 200, 50, 0.4);
-    --glow-accent: 0 0 30px rgba(240, 90, 100, 0.4);
+    --glow-primary: 0 0 12px rgba(255, 140, 50, 0.15);
+    --glow-success: 0 0 12px rgba(45, 200, 160, 0.15);
+    --glow-warning: 0 0 12px rgba(255, 200, 50, 0.15);
+    --glow-accent: 0 0 12px rgba(240, 90, 100, 0.15);
   }
 
   /* Light Theme - Warm Ocean */
@@ -341,28 +449,28 @@ svg text, svg tspan {
    ========================================== */
 
 .glow-primary {
-  box-shadow: 0 0 20px hsl(var(--primary) / 0.3),
-              0 0 40px hsl(var(--primary) / 0.1);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.15),
+              0 0 16px hsl(var(--primary) / 0.05);
 }
 
 .glow-success {
-  box-shadow: 0 0 20px rgba(45, 200, 160, 0.3),
-              0 0 40px rgba(45, 200, 160, 0.1);
+  box-shadow: 0 0 8px rgba(45, 200, 160, 0.15),
+              0 0 16px rgba(45, 200, 160, 0.05);
 }
 
 .glow-warning {
-  box-shadow: 0 0 20px rgba(255, 200, 50, 0.3),
-              0 0 40px rgba(255, 200, 50, 0.1);
+  box-shadow: 0 0 8px rgba(255, 200, 50, 0.15),
+              0 0 16px rgba(255, 200, 50, 0.05);
 }
 
 .glow-accent {
-  box-shadow: 0 0 20px hsl(var(--accent) / 0.3),
-              0 0 40px hsl(var(--accent) / 0.1);
+  box-shadow: 0 0 8px hsl(var(--accent) / 0.15),
+              0 0 16px hsl(var(--accent) / 0.05);
 }
 
 .glow-text {
-  text-shadow: 0 0 10px currentColor,
-               0 0 20px currentColor;
+  text-shadow: 0 0 4px currentColor,
+               0 0 8px currentColor;
 }
 
 /* ==========================================
@@ -893,26 +1001,26 @@ time, mark, audio, video, button, input, select, textarea {
   @apply w-2 h-2 rounded-full bg-[hsl(30,100%,55%)];
 }
 
-/* Glow Effects */
+/* Glow Effects - Subtle */
 .glow-success {
-  box-shadow: 0 0 20px hsl(160 70% 45% / 0.4), 
-              0 0 40px hsl(160 70% 45% / 0.2);
+  box-shadow: 0 0 8px hsl(160 70% 45% / 0.15), 
+              0 0 16px hsl(160 70% 45% / 0.05);
 }
 .glow-warning {
-  box-shadow: 0 0 20px hsl(45 100% 55% / 0.4), 
-              0 0 40px hsl(45 100% 55% / 0.2);
+  box-shadow: 0 0 8px hsl(45 100% 55% / 0.15), 
+              0 0 16px hsl(45 100% 55% / 0.05);
 }
 .glow-error {
-  box-shadow: 0 0 20px hsl(0 72% 51% / 0.4), 
-              0 0 40px hsl(0 72% 51% / 0.2);
+  box-shadow: 0 0 8px hsl(0 72% 51% / 0.15), 
+              0 0 16px hsl(0 72% 51% / 0.05);
 }
 .glow-info {
-  box-shadow: 0 0 20px hsl(180 60% 50% / 0.4), 
-              0 0 40px hsl(180 60% 50% / 0.2);
+  box-shadow: 0 0 8px hsl(180 60% 50% / 0.15), 
+              0 0 16px hsl(180 60% 50% / 0.05);
 }
 .glow-primary {
-  box-shadow: 0 0 20px hsl(30 100% 55% / 0.4), 
-              0 0 40px hsl(30 100% 55% / 0.2);
+  box-shadow: 0 0 8px hsl(30 100% 55% / 0.15), 
+              0 0 16px hsl(30 100% 55% / 0.05);
 }
 
 /* Ring Focus States */
