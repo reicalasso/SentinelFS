@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 // THEME DEFINITIONS
 // ==========================================
 
-export type ThemeId = 'ocean-sunset' | 'midnight-blue' | 'forest-green' | 'purple-haze' | 'monochrome'
+export type ThemeId = 'ocean-sunset' | 'midnight-blue' | 'forest-green' | 'purple-haze' | 'monochrome' | 'christmas'
 
 export interface ThemeColors {
   primary: string       // Main accent color (HSL values)
@@ -216,30 +216,104 @@ const monochrome: Theme = {
   },
 }
 
-export const themes: Theme[] = [oceanSunset, midnightBlue, forestGreen, purpleHaze, monochrome]
+// Christmas - Festive holiday theme
+const christmas: Theme = {
+  id: 'christmas',
+  name: 'Christmas',
+  description: 'Festive red and green holiday theme',
+  colors: {
+    dark: {
+      primary: '0 85% 50%',         // Christmas Red
+      secondary: '140 60% 18%',      // Dark Pine Green
+      accent: '45 100% 50%',         // Gold
+      success: '140 70% 40%',        // Christmas Green
+      warning: '45 100% 55%',        // Gold warning
+      error: '0 72% 51%',
+      info: '200 70% 55%',           // Ice Blue
+      background: '150 40% 8%',      // Very dark green
+      foreground: '0 0% 95%',        // Snow white
+      card: '150 35% 12%',           // Dark forest
+      border: '0 60% 30%',           // Dark red border
+      muted: '140 20% 55%',
+    },
+    light: {
+      primary: '0 80% 45%',          // Christmas Red
+      secondary: '140 30% 90%',      // Light mint
+      accent: '45 90% 45%',          // Gold
+      success: '140 65% 35%',        // Christmas Green
+      warning: '45 100% 50%',
+      error: '0 84% 60%',
+      info: '200 70% 45%',
+      background: '140 25% 96%',     // Very light green tint
+      foreground: '150 50% 15%',     // Dark green text
+      card: '0 0% 100%',
+      border: '0 40% 85%',           // Light red border
+      muted: '140 25% 40%',
+    },
+  },
+}
+
+export const themes: Theme[] = [oceanSunset, midnightBlue, forestGreen, purpleHaze, monochrome, christmas]
 
 // ==========================================
 // FONT DEFINITIONS
 // ==========================================
 
-export type FontId = 'pixellet' | 'inter' | 'jetbrains' | 'fira-code' | 'roboto-mono' | 'system'
+export type FontId = 'pixellet' | 'plank' | 'super-croissant' | 'spicy-sale' | 'star' | 'playful-christmas' | 'inter' | 'jetbrains' | 'fira-code' | 'roboto-mono' | 'system'
 
 export interface Font {
   id: FontId
   name: string
   description: string
   family: string
-  category: 'pixel' | 'sans-serif' | 'monospace'
+  category: 'pixel' | 'display' | 'sans-serif' | 'monospace'
 }
 
 export const fonts: Font[] = [
+  // Local Fonts
   {
     id: 'pixellet',
-    name: 'Pixellet TH',
-    description: 'Retro pixel font (Current)',
-    family: "'Pixellet TH', system-ui, sans-serif",
+    name: 'Pixellet',
+    description: 'Retro pixel font',
+    family: "'Pixellet', system-ui, sans-serif",
     category: 'pixel',
   },
+  {
+    id: 'plank',
+    name: 'Plank',
+    description: 'Bold display font',
+    family: "'Plank', system-ui, sans-serif",
+    category: 'display',
+  },
+  {
+    id: 'super-croissant',
+    name: 'Super Croissant',
+    description: 'Playful rounded font',
+    family: "'Super Croissant', system-ui, sans-serif",
+    category: 'display',
+  },
+  {
+    id: 'spicy-sale',
+    name: 'Spicy Sale',
+    description: 'Fun decorative font',
+    family: "'Spicy Sale', system-ui, sans-serif",
+    category: 'display',
+  },
+  {
+    id: 'star',
+    name: 'Star',
+    description: 'Starry display font',
+    family: "'Star', system-ui, sans-serif",
+    category: 'display',
+  },
+  {
+    id: 'playful-christmas',
+    name: 'Playful Christmas',
+    description: 'Festive holiday font',
+    family: "'Playful Christmas', system-ui, sans-serif",
+    category: 'display',
+  },
+  // Web Fonts
   {
     id: 'inter',
     name: 'Inter',

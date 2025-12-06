@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key, Moon, Sun, Download, Upload, Plus, X, FileX } from 'lucide-react'
+import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key, Moon, Sun, Download, Upload, Plus, X, FileX, Palette, Type } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { useNotifications } from '../context/NotificationContext'
+import { useAppearance, themes, fonts, type ThemeId, type FontId } from '../context/AppearanceContext'
 
 interface SettingsProps {
   config: any
@@ -200,6 +201,12 @@ export function Settings({ config }: SettingsProps) {
                 label="General" 
             />
             <SettingsTab 
+                active={activeTab === 'appearance'} 
+                onClick={() => setActiveTab('appearance')} 
+                icon={<Palette className="w-4 h-4" />} 
+                label="Appearance" 
+            />
+            <SettingsTab 
                 active={activeTab === 'network'} 
                 onClick={() => setActiveTab('network')} 
                 icon={<Globe className="w-4 h-4" />} 
@@ -230,18 +237,6 @@ export function Settings({ config }: SettingsProps) {
                                 <span className="text-xs text-muted-foreground">Pause/resume file synchronization</span>
                             </div>
                             <Toggle checked={syncEnabled} onChange={handleSyncToggle} />
-                        </div>
-                    </Section>
-                    <Section title="Appearance">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                {theme === 'dark' ? <Moon className="w-5 h-5 text-blue-500" /> : <Sun className="w-5 h-5 text-yellow-500" />}
-                                <div>
-                                    <span className="text-sm font-medium block">Theme</span>
-                                    <span className="text-xs text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                                </div>
-                            </div>
-                            <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
                         </div>
                     </Section>
                     <Section title="Configuration">
@@ -286,6 +281,10 @@ export function Settings({ config }: SettingsProps) {
                         </div>
                     </Section>
                 </div>
+            )}
+
+            {activeTab === 'appearance' && (
+                <AppearanceSettings />
             )}
 
             {activeTab === 'network' && (
@@ -691,6 +690,216 @@ function Toggle({ checked, onChange }: any) {
             }`}
         >
             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${checked ? 'right-1' : 'left-1'}`}></div>
+        </div>
+    )
+}
+
+// ==========================================
+// APPEARANCE SETTINGS COMPONENT
+// ==========================================
+
+function AppearanceSettings() {
+    const { settings, setTheme, setFont, setColorMode, currentTheme, currentFont } = useAppearance()
+    const { theme, toggleTheme } = useTheme()
+    
+    // Helper to get the two most prominent colors for a theme
+    const getThemeGradient = (themeColors: any, isDark: boolean) => {
+        const colors = isDark ? themeColors.dark : themeColors.light
+        // Use primary and accent as the two main colors
+        return `linear-gradient(135deg, hsl(${colors.primary}) 0%, hsl(${colors.accent}) 100%)`
+    }
+
+    // Local fonts from public/fonts directory
+    const localFonts = [
+        {
+            id: 'pixellet' as FontId,
+            name: 'Pixellet',
+            description: 'Retro pixel style',
+            family: "'Pixellet', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'plank' as FontId,
+            name: 'Plank',
+            description: 'Bold display font',
+            family: "'Plank', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'super-croissant' as FontId,
+            name: 'Super Croissant',
+            description: 'Playful rounded font',
+            family: "'Super Croissant', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'spicy-sale' as FontId,
+            name: 'Spicy Sale',
+            description: 'Fun decorative font',
+            family: "'Spicy Sale', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'star' as FontId,
+            name: 'Star',
+            description: 'Starry display font',
+            family: "'Star', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'playful-christmas' as FontId,
+            name: 'Playful Christmas',
+            description: 'Festive holiday font',
+            family: "'Playful Christmas', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        }
+    ]
+
+    // Combined fonts list (local + web fonts)
+    const allFonts = [
+        ...localFonts,
+        {
+            id: 'inter' as FontId,
+            name: 'Inter',
+            description: 'Modern sans-serif',
+            family: "'Inter', system-ui, sans-serif",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'jetbrains' as FontId,
+            name: 'JetBrains Mono',
+            description: 'Developer monospace',
+            family: "'JetBrains Mono', monospace",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'fira-code' as FontId,
+            name: 'Fira Code',
+            description: 'Code with ligatures',
+            family: "'Fira Code', monospace",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'roboto-mono' as FontId,
+            name: 'Roboto Mono',
+            description: 'Clean monospace',
+            family: "'Roboto Mono', monospace",
+            preview: 'SentinelFS'
+        },
+        {
+            id: 'system' as FontId,
+            name: 'System Default',
+            description: 'Use system fonts',
+            family: "system-ui, -apple-system, sans-serif",
+            preview: 'SentinelFS'
+        }
+    ]
+
+    return (
+        <div className="space-y-6">
+            {/* Dark/Light Mode Toggle */}
+            <Section title="Color Mode">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        {theme === 'dark' ? <Moon className="w-5 h-5 status-info" /> : <Sun className="w-5 h-5 text-primary" />}
+                        <div>
+                            <span className="text-sm font-medium block">Theme Mode</span>
+                            <span className="text-xs text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                        </div>
+                    </div>
+                    <Toggle checked={theme === 'dark'} onChange={() => {
+                        toggleTheme()
+                        setColorMode(theme === 'dark' ? 'light' : 'dark')
+                    }} />
+                </div>
+            </Section>
+
+            {/* Theme Selection */}
+            <Section title="Color Theme">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {themes.map((t) => (
+                        <button
+                            key={t.id}
+                            onClick={() => setTheme(t.id)}
+                            className={`group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
+                                settings.themeId === t.id
+                                    ? 'border-primary bg-primary/10 shadow-sm'
+                                    : 'border-border/50 hover:border-border hover:bg-secondary/30'
+                            }`}
+                        >
+                            {/* Theme Gradient Preview */}
+                            <div 
+                                className="w-12 h-12 rounded-lg shadow-sm flex-shrink-0 border border-white/10"
+                                style={{ 
+                                    background: getThemeGradient(t.colors, theme === 'dark')
+                                }}
+                            />
+                            
+                            {/* Theme Info */}
+                            <div className="flex-1 text-left">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-semibold">{t.name}</span>
+                                    {settings.themeId === t.id && (
+                                        <Check className="w-3.5 h-3.5 text-primary" />
+                                    )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">{t.description}</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </Section>
+
+            {/* Font Selection */}
+            <Section title="Font Family">
+                <div className="grid grid-cols-1 gap-2">
+                    {allFonts.map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setFont(f.id)}
+                            className={`group flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 ${
+                                settings.fontId === f.id
+                                    ? 'border-primary bg-primary/10 shadow-sm'
+                                    : 'border-border/50 hover:border-border hover:bg-secondary/30'
+                            }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                {/* Font Preview */}
+                                <div 
+                                    className="w-28 text-lg font-medium font-preview"
+                                    style={{ '--preview-font': f.family } as React.CSSProperties}
+                                >
+                                    {f.preview}
+                                </div>
+                                
+                                {/* Font Info */}
+                                <div className="text-left">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-semibold">{f.name}</span>
+                                        {settings.fontId === f.id && (
+                                            <Check className="w-3.5 h-3.5 text-primary" />
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">{f.description}</span>
+                                </div>
+                            </div>
+                            
+                            {/* Selection indicator */}
+                            <div className={`w-4 h-4 rounded-full border-2 transition-all ${
+                                settings.fontId === f.id 
+                                    ? 'border-primary bg-primary' 
+                                    : 'border-border group-hover:border-muted-foreground'
+                            }`}>
+                                {settings.fontId === f.id && (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                                    </div>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </Section>
         </div>
     )
 }

@@ -12,19 +12,56 @@
    FONT DEFINITIONS
    ========================================== */
 
-/* Pixellet TH Font */
+/* Pixellet Font */
 @font-face {
-  font-family: 'Pixellet TH';
-  src: url('/fonts/PixelletTH.ttf') format('truetype');
+  font-family: 'Pixellet';
+  src: url('/fonts/pixellet.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
+/* Plank Font */
 @font-face {
-  font-family: 'Pixellet TH';
-  src: url('/fonts/PixelletTH-Bold.ttf') format('truetype');
-  font-weight: bold;
+  font-family: 'Plank';
+  src: url('/fonts/PLANK___.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Super Croissant Font */
+@font-face {
+  font-family: 'Super Croissant';
+  src: url('/fonts/Super Croissant.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Spicy Sale Font */
+@font-face {
+  font-family: 'Spicy Sale';
+  src: url('/fonts/Spicy Sale.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Star Font */
+@font-face {
+  font-family: 'Star';
+  src: url('/fonts/star.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Playful Christmas Font */
+@font-face {
+  font-family: 'Playful Christmas';
+  src: url('/fonts/Playful Christmas-Personal Use.otf') format('opentype');
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
@@ -34,7 +71,7 @@
    ========================================== */
 
 :root {
-  --font-family: 'Pixellet TH', system-ui, sans-serif;
+  --font-family: 'Pixellet', system-ui, sans-serif;
   --font-size-base: 1rem;
 }
 
@@ -54,11 +91,36 @@
   font-size: 18px;
 }
 
-/* Dynamic Font Family Application */
+/* Dynamic Font Family Application - Local Fonts */
 [data-font="pixellet"] * {
-  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+  font-family: 'Pixellet', system-ui, sans-serif !important;
 }
 
+[data-font="plank"] * {
+  font-family: 'Plank', system-ui, sans-serif !important;
+}
+
+[data-font="super-croissant"] * {
+  font-family: 'Super Croissant', system-ui, sans-serif !important;
+}
+
+[data-font="spicy-sale"] * {
+  font-family: 'Spicy Sale', system-ui, sans-serif !important;
+}
+
+[data-font="star"] * {
+  font-family: 'Star', system-ui, sans-serif !important;
+  font-size: 1.0em !important;
+  line-height: 1.0 !important;
+}
+
+[data-font="playful-christmas"] * {
+  font-family: 'Playful Christmas', system-ui, sans-serif !important;
+  font-size: 1.0em !important;
+  line-height: 1.0 !important;
+}
+
+/* Dynamic Font Family Application - Web Fonts */
 [data-font="inter"] * {
   font-family: 'Inter', system-ui, sans-serif !important;
 }
@@ -87,6 +149,11 @@ svg text, svg tspan {
 /* Override for any inline styles */
 [style*="font-family"] {
   font-family: var(--font-family) !important;
+}
+
+/* Font Preview Override */
+.font-preview {
+  font-family: var(--preview-font) !important;
 }
 
 /* ==========================================
