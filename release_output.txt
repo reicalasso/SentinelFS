@@ -1,7 +1,0 @@
-[1;32mzsh[0m: command [1;35mNOT[0m found: [0;1m'gh'[0m
-[0;1mSearching for packages that provide '[0;1mgh[1;32m'...
-[0merror: blackarch database is inconsistent: version mismatch on package bluebox-ng
-error: blackarch database is inconsistent: version mismatch on package perl-http-parser-xs
-error: blackarch database is inconsistent: version mismatch on package python2-coloredlogs
-usr/bin/gh is owned by extra/github-cli 2.83.1-1
-[1;32m[ gh ] [0m might be provided by the above packages.
