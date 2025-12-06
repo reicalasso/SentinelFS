@@ -4,6 +4,12 @@ import net from 'node:net'
 import os from 'node:os'
 import { spawn, ChildProcess } from 'node:child_process'
 
+// Disable sandbox for AppImage compatibility
+// This is required because AppImage runs in a FUSE mount where SUID sandbox doesn't work
+if (process.env.APPIMAGE) {
+  app.commandLine.appendSwitch('no-sandbox')
+}
+
 // The built directory structure
 //
 // ├─┬─ dist
