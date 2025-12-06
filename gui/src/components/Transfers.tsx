@@ -50,9 +50,9 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                     </div>
                 </div>
             </div>
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-violet-500/20 transition-colors group">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-amber-500/20 transition-colors group">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors text-violet-500">
+                    <div className="p-3 rounded-xl bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors text-amber-500">
                         <Activity className="w-6 h-6" />
                     </div>
                     <div>

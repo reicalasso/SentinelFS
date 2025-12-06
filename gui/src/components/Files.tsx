@@ -226,12 +226,12 @@ export function Files({ files }: { files?: any[] }) {
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Folders</div>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-violet-500/15 to-violet-600/10 border border-violet-500/30 backdrop-blur-sm">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-600/10 border border-amber-500/30 backdrop-blur-sm">
               <div className="p-2 rounded-lg bg-background/50">
-                <File className="w-4 h-4 text-violet-400" />
+                <File className="w-4 h-4 text-amber-400" />
               </div>
               <div>
-                <div className="text-lg font-bold text-violet-400">{stats.totalFiles}</div>
+                <div className="text-lg font-bold text-amber-400">{stats.totalFiles}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Files</div>
               </div>
             </div>
@@ -354,8 +354,8 @@ function FileTreeItem({ item, level, expandedFolders, toggleFolder, formatSize, 
                     
                     <div className={`p-2 rounded-xl transition-all group-hover:scale-110 ${
                         item.isFolder 
-                            ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30' 
-                            : 'bg-gradient-to-br from-violet-500/20 to-violet-600/10 text-violet-400 border border-violet-500/30'
+                            ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 text-emerald-400 border border-emerald-500/30' 
+                            : 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30'
                     }`}>
                         {item.isFolder ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
                     </div>

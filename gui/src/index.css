@@ -45,12 +45,12 @@ svg text, svg tspan {
 
 @keyframes pulse-glow {
   0%, 100% { 
-    box-shadow: 0 0 20px rgba(99, 179, 237, 0.3), 
-                0 0 40px rgba(99, 179, 237, 0.1);
+    box-shadow: 0 0 20px rgba(255, 140, 50, 0.3), 
+                0 0 40px rgba(255, 140, 50, 0.1);
   }
   50% { 
-    box-shadow: 0 0 30px rgba(99, 179, 237, 0.5), 
-                0 0 60px rgba(99, 179, 237, 0.2);
+    box-shadow: 0 0 30px rgba(255, 140, 50, 0.5), 
+                0 0 60px rgba(255, 140, 50, 0.2);
   }
 }
 
@@ -66,8 +66,8 @@ svg text, svg tspan {
 }
 
 @keyframes border-glow {
-  0%, 100% { border-color: rgba(99, 179, 237, 0.3); }
-  50% { border-color: rgba(99, 179, 237, 0.6); }
+  0%, 100% { border-color: rgba(255, 140, 50, 0.3); }
+  50% { border-color: rgba(255, 140, 50, 0.6); }
 }
 
 @keyframes scan-line {
@@ -125,74 +125,74 @@ svg text, svg tspan {
 }
 
 @layer base {
-  /* Dark Theme (Default) - Cyberpunk Inspired */
+  /* Dark Theme (Default) - Ocean Sunset Inspired */
   :root, .dark {
-    --background: 230 25% 7%;      /* Ultra Deep Space */
-    --foreground: 210 40% 98%;
+    --background: 195 60% 12%;     /* Deep Teal Ocean */
+    --foreground: 45 100% 96%;
 
-    --card: 230 20% 12%;           /* Dark Card */
-    --card-foreground: 210 40% 98%;
+    --card: 195 50% 16%;           /* Teal Card */
+    --card-foreground: 45 100% 96%;
 
-    --popover: 230 25% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 195 55% 14%;
+    --popover-foreground: 45 100% 96%;
 
-    --primary: 200 100% 60%;       /* Neon Cyan */
-    --primary-foreground: 230 25% 7%;
+    --primary: 30 100% 55%;        /* Warm Amber/Orange */
+    --primary-foreground: 195 60% 12%;
 
-    --secondary: 230 20% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 195 45% 20%;
+    --secondary-foreground: 45 100% 96%;
 
-    --muted: 230 15% 20%;
-    --muted-foreground: 220 15% 55%;
+    --muted: 195 35% 25%;
+    --muted-foreground: 180 20% 60%;
 
-    --accent: 280 100% 70%;        /* Purple Accent */
-    --accent-foreground: 210 40% 98%;
+    --accent: 350 85% 60%;         /* Coral/Rose Accent */
+    --accent-foreground: 45 100% 96%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 45 100% 96%;
 
-    --success: 160 84% 39%;        /* Emerald */
-    --warning: 38 92% 50%;         /* Amber */
+    --success: 160 70% 45%;        /* Teal Green */
+    --warning: 45 100% 55%;        /* Golden Yellow */
     
-    --border: 230 15% 18%;
-    --input: 230 15% 18%;
-    --ring: 200 100% 60%;
+    --border: 195 40% 22%;
+    --input: 195 40% 22%;
+    --ring: 30 100% 55%;
     
-    --glow-primary: 0 0 30px rgba(56, 189, 248, 0.4);
-    --glow-success: 0 0 30px rgba(16, 185, 129, 0.4);
-    --glow-warning: 0 0 30px rgba(245, 158, 11, 0.4);
-    --glow-accent: 0 0 30px rgba(168, 85, 247, 0.4);
+    --glow-primary: 0 0 30px rgba(255, 140, 50, 0.4);
+    --glow-success: 0 0 30px rgba(45, 200, 160, 0.4);
+    --glow-warning: 0 0 30px rgba(255, 200, 50, 0.4);
+    --glow-accent: 0 0 30px rgba(240, 90, 100, 0.4);
   }
 
-  /* Light Theme - Clean & Modern */
+  /* Light Theme - Warm Ocean */
   .light {
-    --background: 220 20% 97%;
-    --foreground: 230 25% 10%;
+    --background: 180 30% 96%;
+    --foreground: 195 60% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 10%;
+    --card-foreground: 195 60% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 10%;
+    --popover-foreground: 195 60% 15%;
 
-    --primary: 210 100% 50%;
+    --primary: 25 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 230 25% 10%;
+    --secondary: 180 25% 90%;
+    --secondary-foreground: 195 60% 15%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 180 20% 90%;
+    --muted-foreground: 195 30% 40%;
 
-    --accent: 270 95% 60%;
+    --accent: 350 80% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 210 100% 50%;
+    --border: 180 20% 85%;
+    --input: 180 20% 85%;
+    --ring: 25 100% 50%;
   }
 }
 
@@ -219,16 +219,16 @@ svg text, svg tspan {
     font-family: 'Pixellet TH', system-ui, sans-serif !important;
   }
   
-  /* ULTRA MODERN DARK BACKGROUND - Animated Aurora */
+  /* ULTRA MODERN DARK BACKGROUND - Ocean Sunset */
   .dark body, body:not(.light) {
     background-color: hsl(var(--background));
     background-image: 
         /* Animated mesh gradient */
-        radial-gradient(ellipse 80% 50% at 20% -20%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse 50% 30% at 50% 100%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 50% at 20% -20%, rgba(255, 140, 50, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 0%, rgba(240, 90, 100, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 30% at 50% 100%, rgba(45, 200, 160, 0.08) 0%, transparent 50%),
         /* Base gradient */
-        linear-gradient(180deg, hsl(230 25% 7%) 0%, hsl(230 20% 10%) 50%, hsl(240 20% 8%) 100%);
+        linear-gradient(180deg, hsl(195 60% 12%) 0%, hsl(195 55% 15%) 50%, hsl(200 50% 13%) 100%);
     background-attachment: fixed;
     overflow-x: hidden;
   }
@@ -251,9 +251,9 @@ svg text, svg tspan {
   
   .light body {
     background-image: 
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
-      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 140, 50, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(45, 200, 160, 0.05) 0%, transparent 50%),
+      linear-gradient(180deg, #f0f9f9 0%, #e6f4f4 100%);
   }
   
   /* Enhanced Scrollbar */
@@ -346,13 +346,13 @@ svg text, svg tspan {
 }
 
 .glow-success {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3),
-              0 0 40px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 20px rgba(45, 200, 160, 0.3),
+              0 0 40px rgba(45, 200, 160, 0.1);
 }
 
 .glow-warning {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3),
-              0 0 40px rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 20px rgba(255, 200, 50, 0.3),
+              0 0 40px rgba(255, 200, 50, 0.1);
 }
 
 .glow-accent {

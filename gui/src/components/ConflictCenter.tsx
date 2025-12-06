@@ -143,11 +143,11 @@ export function ConflictCenter({
   const getChangeTypeColor = (type: string) => {
     switch (type) {
       case 'conflict': return 'text-red-400 bg-red-500/10'
-      case 'remote': return 'text-green-400 bg-green-500/10'
-      case 'modify': return 'text-blue-400 bg-blue-500/10'
-      case 'backup': return 'text-yellow-400 bg-yellow-500/10'
-      case 'create': return 'text-purple-400 bg-purple-500/10'
-      default: return 'text-gray-400 bg-gray-500/10'
+      case 'remote': return 'text-emerald-400 bg-emerald-500/10'
+      case 'modify': return 'text-teal-400 bg-teal-500/10'
+      case 'backup': return 'text-amber-400 bg-amber-500/10'
+      case 'create': return 'text-orange-400 bg-orange-500/10'
+      default: return 'text-slate-400 bg-slate-500/10'
     }
   }
 

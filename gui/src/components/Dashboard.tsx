@@ -99,7 +99,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               label="Upload Speed" 
               value={formatBytes(peakUpload) + '/s'} 
               icon={<TrendingUp className="w-4 h-4" />}
-              color="blue"
+              color="teal"
             />
             <QuickStat 
               label="Download Speed" 
@@ -111,7 +111,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               label="Connected Peers" 
               value={peersCount || 0} 
               icon={<Network className="w-4 h-4" />}
-              color="violet"
+              color="coral"
             />
             <QuickStat 
               label="Uptime" 
@@ -150,7 +150,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           title="Total Traffic" 
           value={formatBytes(totalDownloaded)} 
           sub={`↑ ${formatBytes(totalUploaded)}`}
-          icon={<HardDrive className="w-5 h-5 text-violet-500" />}
+          icon={<HardDrive className="w-5 h-5 text-amber-500" />}
         />
       </div>
 
@@ -175,8 +175,8 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               <p className="text-sm text-muted-foreground mt-1 ml-12">Real-time bandwidth monitoring</p>
             </div>
             <div className="flex gap-3 text-xs font-semibold">
-              <div className="flex items-center gap-2 bg-blue-500/15 px-3 py-1.5 rounded-lg border border-blue-500/30 text-blue-400 shadow-sm shadow-blue-500/10">
-                <div className="w-2 h-2 rounded-full bg-blue-400 shadow-sm shadow-blue-400"></div>
+              <div className="flex items-center gap-2 bg-amber-500/15 px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10">
+                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></div>
                 <span>Upload</span>
               </div>
               <div className="flex items-center gap-2 bg-emerald-500/15 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 shadow-sm shadow-emerald-500/10">
@@ -195,12 +195,12 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               </div>
               <div className="text-xl font-bold text-emerald-400 group-hover/stat:scale-105 transition-transform">{formatBytes(totalDownloaded)}</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-blue-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-amber-500/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <ArrowUp className="w-3 h-3 text-blue-400" />
+                <ArrowUp className="w-3 h-3 text-amber-400" />
                 Total Uploaded
               </div>
-              <div className="text-xl font-bold text-blue-400 group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
+              <div className="text-xl font-bold text-amber-400 group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
             </div>
             <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-emerald-500/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
@@ -209,24 +209,24 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               </div>
               <div className="text-xl font-bold text-emerald-300 group-hover/stat:scale-105 transition-transform">{formatBytes(peakDownload)}/s</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-blue-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-amber-500/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-blue-300" />
+                <Zap className="w-3 h-3 text-amber-300" />
                 Peak Upload
               </div>
-              <div className="text-xl font-bold text-blue-300 group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
+              <div className="text-xl font-bold text-amber-300 group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
             </div>
           </div>
           
           <div className="h-[240px] w-full relative">
             {/* Chart glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 via-transparent to-blue-500/5 rounded-xl pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 via-transparent to-amber-500/5 rounded-xl pointer-events-none"></div>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trafficHistory.length > 0 ? trafficHistory : [{ time: 'Now', upload: 0, download: 0 }]}>
                 <defs>
                   <linearGradient id="colorUp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorDown" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -263,7 +263,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
                 <Area 
                     type="monotone" 
                     dataKey="upload" 
-                    stroke="#3b82f6" 
+                    stroke="#f59e0b" 
                     fillOpacity={1} 
                     fill="url(#colorUp)" 
                     strokeWidth={2} 
@@ -409,11 +409,11 @@ function StatCard({ title, value, sub, icon, status, trend }: any) {
   )
 }
 
-function QuickStat({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: 'blue' | 'emerald' | 'violet' | 'amber' }) {
+function QuickStat({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: 'teal' | 'emerald' | 'coral' | 'amber' }) {
   const colorClasses = {
-    blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400',
+    teal: 'from-teal-500/20 to-teal-600/10 border-teal-500/30 text-teal-400',
     emerald: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400',
-    violet: 'from-violet-500/20 to-violet-600/10 border-violet-500/30 text-violet-400',
+    coral: 'from-rose-500/20 to-rose-600/10 border-rose-500/30 text-rose-400',
     amber: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400',
   }
   

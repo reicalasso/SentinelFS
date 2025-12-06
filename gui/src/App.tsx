@@ -376,8 +376,8 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20">
-                        <Terminal className="w-6 h-6 text-violet-400" />
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20">
+                        <Terminal className="w-6 h-6 text-amber-400" />
                     </div>
                     <div>
                         <h2 className="text-xl font-bold">Debug Console</h2>
@@ -409,28 +409,28 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
             {/* Terminal Window */}
             <div className="relative overflow-hidden rounded-2xl border border-border/30 shadow-xl">
                 {/* Terminal Header - macOS style */}
-                <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/90 border-b border-zinc-800/50">
+                <div className="flex items-center justify-between px-4 py-3 bg-teal-900/90 border-b border-teal-800/50">
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500/70 hover:bg-red-500 transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/70 hover:bg-yellow-500 transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-500/70 hover:bg-green-500 transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-amber-500/70 hover:bg-amber-500 transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-emerald-500/70 hover:bg-emerald-500 transition-colors cursor-pointer"></div>
                     </div>
-                    <div className="text-xs text-zinc-500 font-mono">sentinel-daemon.log</div>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <div className="text-xs text-teal-400/60 font-mono">sentinel-daemon.log</div>
+                    <div className="flex items-center gap-2 text-xs text-teal-400/60">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                         <span>Live</span>
                     </div>
                 </div>
                 
                 {/* Terminal Content */}
-                <div className="bg-zinc-950 font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-violet-500/30">
+                <div className="bg-teal-950 font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-amber-500/30">
                     {logs.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-zinc-600">
-                            <div className="p-4 rounded-2xl bg-zinc-900/50 mb-4">
+                        <div className="h-full flex flex-col items-center justify-center text-teal-700">
+                            <div className="p-4 rounded-2xl bg-teal-900/50 mb-4">
                                 <Terminal className="w-10 h-10 opacity-30" />
                             </div>
                             <p className="text-sm">Waiting for daemon logs...</p>
-                            <p className="text-xs text-zinc-700 mt-1">Logs will appear here in real-time</p>
+                            <p className="text-xs text-teal-800 mt-1">Logs will appear here in real-time</p>
                         </div>
                     ) : (
                         logs.map((log, i) => (
@@ -438,8 +438,8 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
                                 key={i} 
                                 className="group mb-0.5 break-all hover:bg-white/[0.02] px-3 py-1 rounded transition-colors flex gap-4"
                             >
-                                <span className="text-zinc-700 select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
-                                <span className="text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                <span className="text-teal-700 select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
+                                <span className="text-teal-300/70 group-hover:text-teal-200 transition-colors">
                                     {log.includes('ERROR') ? (
                                         <span className="text-red-400">{log}</span>
                                     ) : log.includes('WARN') ? (
@@ -447,7 +447,7 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
                                     ) : log.includes('SUCCESS') || log.includes('OK') ? (
                                         <span className="text-emerald-400">{log}</span>
                                     ) : log.includes('INFO') ? (
-                                        <span className="text-blue-400">{log}</span>
+                                        <span className="text-teal-400">{log}</span>
                                     ) : (
                                         log
                                     )}

@@ -213,10 +213,10 @@ export function Peers({ peers }: { peers?: any[] }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/20 via-card to-primary/10 border border-violet-500/20 p-8">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/20 via-card to-primary/10 border border-amber-500/20 p-8">
             {/* Animated Background */}
             <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
                 {/* Network Grid Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
@@ -224,15 +224,15 @@ export function Peers({ peers }: { peers?: any[] }) {
             
             <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-primary/20 backdrop-blur-sm border border-violet-500/30 shadow-lg shadow-violet-500/20">
-                        <Network className="w-8 h-8 text-violet-400" />
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-primary/20 backdrop-blur-sm border border-amber-500/30 shadow-lg shadow-amber-500/20">
+                        <Network className="w-8 h-8 text-amber-400" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                             Network Mesh
                         </h2>
                         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                             {displayPeers.length} devices connected
                         </p>
                     </div>
