@@ -144,6 +144,7 @@ private:
     void serverLoop();
     void handleClient(int clientSocket);
     std::string processCommand(const std::string& command);
+    std::string sanitizeResponse(const std::string& response);
     
     std::string socketPath_;
     int serverSocket_{-1};

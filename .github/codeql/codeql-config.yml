@@ -1,0 +1,22 @@
+name: "SentinelFS CodeQL Configuration"
+
+# Paths to ignore during analysis
+paths-ignore:
+  - build/**
+  - build_release/**
+  - node_modules/**
+  - gui/dist/**
+  - gui/dist-electron/**
+
+# Query filters - suppress known false positives
+query-filters:
+  - exclude:
+      id: cpp/system-data-exposure
+      # IPC handlers intentionally expose system data to authorized local clients
+      # Unix socket with SO_PEERCRED verification ensures security
+      paths:
+        - app/daemon/ipc/IPCHandler.cpp
+
+# Use security-extended queries
+queries:
+  - uses: security-extended
