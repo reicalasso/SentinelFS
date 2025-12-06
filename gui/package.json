@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Modern Desktop GUI for SentinelFS",
   "author": "SentinelFS Team",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/reicalasso/SentinelFS.git"
@@ -11,6 +12,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "build:linux": "tsc && vite build && electron-builder --linux",
+    "build:appimage": "tsc && vite build && electron-builder --linux AppImage",
+    "build:deb": "tsc && vite build && electron-builder --linux deb",
+    "build:all": "tsc && vite build && electron-builder --linux AppImage deb",
     "preview": "vite preview",
     "electron:dev": "vite",
     "electron:build": "vite build && tsc"
@@ -41,20 +46,55 @@
   "build": {
     "appId": "com.sentinelfs.gui",
     "productName": "SentinelFS",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
     "linux": {
-      "target": "AppImage",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
       "category": "Utility",
+      "icon": "assets/icons",
       "desktop": {
         "Name": "SentinelFS",
         "Comment": "Secure Distributed File System",
         "Categories": "Utility;FileTools;Network;",
-        "StartupWMClass": "SentinelFS"
+        "StartupWMClass": "SentinelFS",
+        "Keywords": "sync;p2p;file;cloud;backup;"
       },
-      "executableName": "sentinelfs"
+      "executableName": "sentinelfs",
+      "maintainer": "SentinelFS Team <team@sentinelfs.io>",
+      "vendor": "SentinelFS"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ],
+      "recommends": [
+        "libfuse2"
+      ],
+      "priority": "optional",
+      "packageCategory": "utils",
+      "afterInstall": "scripts/postinst.sh",
+      "afterRemove": "scripts/postrm.sh"
     },
     "appImage": {
       "license": "../LICENSE",
-      "synopsis": "Secure Delta-Sync File System with GUI and Daemon"
+      "synopsis": "Secure Delta-Sync File System with GUI and Daemon",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "extraResources": [
       {

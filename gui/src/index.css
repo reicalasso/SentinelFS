@@ -110,8 +110,6 @@
 
 [data-font="star"] * {
   font-family: 'Star', system-ui, sans-serif !important;
-  font-size: 1.0em !important;
-  line-height: 1.0 !important;
 }
 
 [data-font="playful-christmas"] * {
