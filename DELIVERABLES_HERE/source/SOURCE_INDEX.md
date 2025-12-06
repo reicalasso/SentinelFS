@@ -1,275 +1,527 @@
 # SentinelFS Kaynak Kod İndeksi
 
-Bu doküman projenin ana kaynak kod dosyalarını ve işlevlerini açıklar.
+**Versiyon:** 1.0.0  
+**Tarih:** Aralık 2025
 
 ---
 
-## 1. Daemon (app/daemon/)
+## İçindekiler
+
+1. [Genel Bakış](#1-genel-bakış)
+2. [Daemon Modülü](#2-daemon-modülü)
+3. [Core Kütüphaneler](#3-core-kütüphaneler)
+4. [Plugin Sistemi](#4-plugin-sistemi)
+5. [GUI Uygulaması](#5-gui-uygulaması)
+6. [Test Suite](#6-test-suite)
+7. [Build Sistemi](#7-build-sistemi)
+8. [Yapılandırma Dosyaları](#8-yapılandırma-dosyaları)
+
+---
+
+## 1. Genel Bakış
+
+### 1.1 Kod İstatistikleri
+
+| Kategori | Satır Sayısı | Dosya Sayısı |
+|:---------|:-------------|:-------------|
+| **C++ Core/Daemon** | ~16,600 | ~80 |
+| **TypeScript/React GUI** | ~3,000 | ~35 |
+| **Test Kodu** | ~1,500 | ~20 |
+| **Build/Config** | ~500 | ~15 |
+| **Toplam** | **~21,600** | **~150** |
+
+### 1.2 Dizin Yapısı Özeti
+
+```
+SentinelFS/
+├── app/                    # Uygulama giriş noktaları
+│   ├── daemon/             # Ana daemon (C++)
+│   └── cli/                # Komut satırı aracı
+├── core/                   # Core kütüphaneler
+│   ├── include/            # Header dosyaları
+│   ├── network/            # Ağ modülleri
+│   ├── security/           # Güvenlik modülleri
+│   ├── sync/               # Senkronizasyon mantığı
+│   ├── storage/            # Depolama arayüzleri
+│   └── utils/              # Yardımcı fonksiyonlar
+├── plugins/                # Plugin implementasyonları
+│   ├── filesystem/         # Dosya sistemi izleme
+│   ├── network/            # Ağ bağlantıları
+│   ├── storage/            # SQLite veritabanı
+│   └── ml/                 # Anomali tespiti
+├── gui/                    # Electron + React GUI
+│   ├── electron/           # Main process
+│   └── src/                # React komponetleri
+└── tests/                  # Test suite
+    ├── unit/               # Birim testleri
+    └── integration/        # Entegrasyon testleri
+```
+
+---
+
+## 2. Daemon Modülü
+
+### 2.1 Ana Giriş Noktası (`app/daemon/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `sentinel_daemon.cpp` | 419 | Ana giriş noktası, daemon başlatma |
-| `DaemonCore.cpp/h` | 620 | Daemon yaşam döngüsü, sinyal yönetimi |
-| `IPCHandler.cpp/h` | 1956 | GUI ile IPC iletişimi (Unix socket/Named Pipe) |
-| `MetricsServer.cpp/h` | 171 | Prometheus HTTP endpoint |
+|:------|:------|:---------|
+| `sentinel_daemon.cpp` | 419 | Main entry point, CLI argument parsing, daemon başlatma |
+| `DaemonCore.h` | 85 | Daemon core header |
+| `DaemonCore.cpp` | 535 | Plugin yükleme, EventBus kurulumu, yaşam döngüsü |
+| `MetricsServer.h` | 45 | Metrics server header |
+| `MetricsServer.cpp` | 126 | Prometheus-uyumlu HTTP endpoint |
 
-### Önemli Fonksiyonlar
+### 2.2 IPC Handler (`app/daemon/ipc/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `IPCHandler.h` | 156 | IPC handler header |
+| `IPCHandler.cpp` | 1800 | Unix socket server, JSON-RPC command routing |
+| `IPCCommands.h` | 95 | Komut tanımları |
+| `IPCCommands.cpp` | 450 | Komut implementasyonları |
+
+### 2.3 Event Handlers (`app/daemon/core/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `EventHandlers.h` | 78 | Event handler header |
+| `EventHandlers.cpp` | 537 | EventBus subscription'ları, olay işleme |
+
+### 2.4 Önemli Fonksiyonlar
 
 ```cpp
 // sentinel_daemon.cpp
-int main(int argc, char* argv[])  // Daemon başlatma
+int main(int argc, char* argv[])
+  → Daemon başlatma, argüman parsing, sinyal kurulumu
 
 // DaemonCore.cpp
-void DaemonCore::initialize()     // Plugin yükleme, EventBus kurulumu
-void DaemonCore::run()            // Ana döngü
-void DaemonCore::shutdown()       // Temiz kapanış
+void DaemonCore::initialize()
+  → Plugin loading, EventBus setup, network services başlatma
+
+void DaemonCore::run()
+  → Ana event loop, blocking call
+
+void DaemonCore::shutdown()
+  → Graceful shutdown, cleanup
 
 // IPCHandler.cpp
-void IPCHandler::handleRequest(const string& json)  // JSON-RPC işleme
+void IPCHandler::handleRequest(const std::string& json)
+  → JSON-RPC request parsing ve routing
+
+std::string IPCHandler::processCommand(const IPCCommand& cmd)
+  → Komut execution ve response oluşturma
 ```
 
 ---
 
-## 2. Core Modülleri (core/)
+## 3. Core Kütüphaneler
 
-### 2.1 Senkronizasyon (core/sync/)
+### 3.1 Senkronizasyon (`core/sync/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `DeltaSyncProtocolHandler.cpp/h` | 801 | Sync protokolü işleme |
-| `FileSyncHandler.cpp/h` | 614 | Dosya değişiklik broadcast |
-| `EventHandlers.cpp/h` | 615 | EventBus abonelikleri |
-| `ConflictResolver.cpp/h` | 399 | Çakışma çözme mantığı |
-| `OfflineQueue.cpp/h` | 308 | Çevrimdışı olay kuyruğu |
-
-### Önemli Fonksiyonlar
+|:------|:------|:---------|
+| `DeltaSyncProtocolHandler.h` | 125 | Delta sync protocol header |
+| `DeltaSyncProtocolHandler.cpp` | 676 | UPDATE_AVAILABLE, REQUEST_DELTA, DELTA_DATA işleme |
+| `FileSyncHandler.h` | 68 | File sync handler header |
+| `FileSyncHandler.cpp` | 546 | Dosya değişiklik broadcast, peer sync |
+| `ConflictResolver.h` | 54 | Conflict resolver header |
+| `ConflictResolver.cpp` | 345 | Last-write-wins, versioning stratejileri |
+| `OfflineQueue.h` | 42 | Offline queue header |
+| `OfflineQueue.cpp` | 266 | Çevrimdışı olay kuyruğu |
 
 ```cpp
-// DeltaSyncProtocolHandler.cpp
-void handleUpdateAvailable(const Message& msg)   // Güncelleme bildirimi
-void handleDeltaRequest(const Message& msg)      // Delta talep işleme
-void handleDeltaData(const Message& msg)         // Delta veri alma
-void handleFileData(const Message& msg)          // Tam dosya alma
+// Önemli fonksiyonlar
+void DeltaSyncProtocolHandler::handleUpdateAvailable(const Message& msg)
+  → Peer'dan gelen güncelleme bildirimi işleme
 
-// FileSyncHandler.cpp
-void FileSyncHandler::broadcastFileUpdate(const string& path)
-void FileSyncHandler::broadcastAllFilesToPeer(const string& peerId)
+void DeltaSyncProtocolHandler::handleDeltaRequest(const Message& msg)
+  → Delta signature request işleme
+
+void DeltaSyncProtocolHandler::handleDeltaData(const Message& msg)
+  → Gelen delta verisi işleme ve dosya güncelleme
+
+void FileSyncHandler::broadcastFileUpdate(const std::string& path)
+  → Dosya değişikliğini tüm peer'lara broadcast
+
+void FileSyncHandler::broadcastAllFilesToPeer(const std::string& peerId)
+  → Yeni peer'a tüm dosyaları gönder
 ```
 
-### 2.2 Güvenlik (core/security/)
+### 3.2 Güvenlik (`core/security/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `Crypto.cpp/h` | 413 | AES şifreleme, HMAC |
-| `SessionCode.h` | 54 | Oturum kodu yönetimi |
-
-### Önemli Fonksiyonlar
+|:------|:------|:---------|
+| `Crypto.h` | 78 | Crypto interface header |
+| `Crypto.cpp` | 335 | AES-256-CBC, HMAC-SHA256, PBKDF2 |
+| `SessionCode.h` | 54 | Session code management |
+| `KeyManager.h` | 92 | Key manager header |
+| `KeyManager.cpp` | 285 | Key derivation, storage |
 
 ```cpp
-// Crypto.cpp
-vector<uint8_t> Crypto::encrypt(const vector<uint8_t>& plaintext, 
-                                 const vector<uint8_t>& key)
-vector<uint8_t> Crypto::decrypt(const vector<uint8_t>& ciphertext, 
-                                 const vector<uint8_t>& key)
-string Crypto::hmac(const string& data, const vector<uint8_t>& key)
+// Önemli fonksiyonlar
+std::vector<uint8_t> Crypto::encrypt(
+    const std::vector<uint8_t>& plaintext,
+    const std::vector<uint8_t>& key)
+  → AES-256-CBC şifreleme
+
+std::vector<uint8_t> Crypto::decrypt(
+    const std::vector<uint8_t>& ciphertext,
+    const std::vector<uint8_t>& key)
+  → AES-256-CBC çözme
+
+std::string Crypto::hmac(
+    const std::string& data,
+    const std::vector<uint8_t>& key)
+  → HMAC-SHA256 hesaplama
+
+std::vector<uint8_t> Crypto::deriveKey(
+    const std::string& password,
+    const std::string& salt,
+    int iterations)
+  → PBKDF2 key derivation
 ```
 
-### 2.3 Network (core/network/)
+### 3.3 Network (`core/network/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `DeltaEngine.cpp/h` | 344 | Rolling checksum, delta hesaplama |
-| `BandwidthLimiter.cpp/h` | 390 | Rate limiting |
-| `AutoRemeshManager.cpp/h` | 214 | Otomatik ağ yeniden yapılandırma |
-| `NetworkManager.cpp/h` | 180 | Ağ yönetimi arayüzü |
-
-### Önemli Fonksiyonlar
+|:------|:------|:---------|
+| `DeltaEngine.h` | 86 | Delta engine header |
+| `DeltaEngine.cpp` | 258 | Rolling checksum (Adler-32), delta hesaplama |
+| `BandwidthLimiter.h` | 52 | Rate limiter header |
+| `BandwidthLimiter.cpp` | 338 | Token bucket rate limiting |
+| `AutoRemeshManager.h` | 45 | Auto-remesh header |
+| `AutoRemeshManager.cpp` | 169 | RTT-based topology optimization |
+| `NetworkManager.h` | 38 | Network manager interface |
+| `NetworkManager.cpp` | 142 | High-level network operations |
 
 ```cpp
-// DeltaEngine.cpp
-vector<BlockSignature> DeltaEngine::computeSignatures(const string& filepath)
-vector<DeltaInstruction> DeltaEngine::computeDelta(const string& newFile, 
-                                                    const vector<BlockSignature>& sigs)
-void DeltaEngine::applyDelta(const string& targetFile, 
-                             const vector<DeltaInstruction>& delta)
+// DeltaEngine önemli fonksiyonlar
+std::vector<BlockSignature> DeltaEngine::computeSignatures(
+    const std::string& filepath,
+    size_t blockSize = 4096)
+  → Dosya için block signature'ları hesapla
+
+std::vector<DeltaInstruction> DeltaEngine::computeDelta(
+    const std::string& newFile,
+    const std::vector<BlockSignature>& signatures)
+  → Yeni dosya ve signature'lar arasında delta hesapla
+
+void DeltaEngine::applyDelta(
+    const std::string& targetFile,
+    const std::vector<DeltaInstruction>& delta)
+  → Delta instructions uygula
 ```
 
-### 2.4 Utils (core/utils/)
+### 3.4 Utils (`core/utils/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `EventBus.cpp/h` | 154 | Pub/sub event sistemi |
-| `Logger.cpp/h` | 187 | Logging altyapısı |
-| `Config.cpp/h` | 193 | INI dosya okuma |
-| `ThreadPool.cpp/h` | 112 | Worker thread havuzu |
-| `MetricsCollector.cpp/h` | 494 | Metrik toplama |
-| `HealthEndpoint.cpp/h` | 354 | Sağlık kontrolü endpoint'i |
+|:------|:------|:---------|
+| `EventBus.h` | 65 | Event bus header |
+| `EventBus.cpp` | 89 | Pub/sub event distribution |
+| `Logger.h` | 52 | Logger header |
+| `Logger.cpp` | 135 | Logging altyapısı (file + console) |
+| `Config.h` | 48 | Config reader header |
+| `Config.cpp` | 145 | INI file parsing |
+| `ThreadPool.h` | 45 | Thread pool header |
+| `ThreadPool.cpp` | 67 | Worker thread management |
+| `MetricsCollector.h` | 85 | Metrics collector header |
+| `MetricsCollector.cpp` | 409 | Prometheus metric collection |
+| `HealthEndpoint.h` | 42 | Health check header |
+| `HealthEndpoint.cpp` | 312 | /healthz, /readyz endpoints |
+| `PathUtils.h` | 35 | Path utilities header |
+| `PathUtils.cpp` | 95 | XDG paths, path manipulation |
 
 ---
 
-## 3. Plugins (plugins/)
+## 4. Plugin Sistemi
 
-### 3.1 Network Plugin (plugins/network/)
+### 4.1 Network Plugin (`plugins/network/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `network_plugin.cpp` | 318 | Plugin ana sınıfı |
-| `TCPHandler.cpp/h` | 566 | TCP bağlantı yönetimi |
-| `UDPDiscovery.cpp/h` | 337 | Peer keşfi (broadcast) |
-| `TCPRelay.cpp/h` | 561 | TCP relay sunucusu |
-| `HandshakeProtocol.cpp/h` | 570 | Peer kimlik doğrulama |
-
-### Önemli Fonksiyonlar
+|:------|:------|:---------|
+| `network_plugin.cpp` | 318 | Plugin entry point, INetworkAPI implementation |
+| `TCPHandler.h` | 95 | TCP handler header |
+| `TCPHandler.cpp` | 471 | TCP connection management |
+| `UDPDiscovery.h` | 58 | UDP discovery header |
+| `UDPDiscovery.cpp` | 279 | Peer broadcast ve discovery |
+| `HandshakeProtocol.h` | 72 | Handshake header |
+| `HandshakeProtocol.cpp` | 498 | Challenge-response authentication |
+| `TCPRelay.h` | 65 | TCP relay header |
+| `TCPRelay.cpp` | 496 | NAT traversal relay |
 
 ```cpp
-// TCPHandler.cpp
-void TCPHandler::connect(const string& ip, int port)
-void TCPHandler::send(const string& peerId, const Message& msg)
-void TCPHandler::onMessage(const string& peerId, const Message& msg)
+// Önemli fonksiyonlar
+void TCPHandler::connect(const std::string& ip, int port)
+  → TCP bağlantısı kur
 
-// UDPDiscovery.cpp
+void TCPHandler::send(const std::string& peerId, const Message& msg)
+  → Peer'a mesaj gönder
+
+void TCPHandler::onMessage(const std::string& peerId, const Message& msg)
+  → Gelen mesaj callback
+
 void UDPDiscovery::startBroadcasting()
-void UDPDiscovery::onPeerDiscovered(const string& peerId, const string& ip, int port)
+  → Periyodik broadcast başlat
+
+void UDPDiscovery::onPeerDiscovered(
+    const std::string& peerId,
+    const std::string& ip,
+    int port)
+  → Yeni peer keşfedildi callback
 ```
 
-### 3.2 Storage Plugin (plugins/storage/)
+### 4.2 Storage Plugin (`plugins/storage/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `storage_plugin.cpp` | 148 | Plugin ana sınıfı |
-| `SQLiteHandler.cpp/h` | 256 | SQLite veritabanı işlemleri |
-| `FileMetadataManager.cpp/h` | 186 | Dosya metadata yönetimi |
-| `PeerManager.cpp/h` | 254 | Peer kayıtları yönetimi |
-| `ConflictManager.cpp/h` | 254 | Çakışma kayıtları yönetimi |
-
-### Önemli Fonksiyonlar
+|:------|:------|:---------|
+| `storage_plugin.cpp` | 148 | Plugin entry point, IStorageAPI implementation |
+| `SQLiteHandler.h` | 68 | SQLite handler header |
+| `SQLiteHandler.cpp` | 188 | Low-level SQLite operations |
+| `FileMetadataManager.h` | 52 | File metadata header |
+| `FileMetadataManager.cpp` | 134 | files tablosu CRUD |
+| `PeerManager.h` | 48 | Peer manager header |
+| `PeerManager.cpp` | 206 | peers tablosu CRUD |
+| `ConflictManager.h` | 45 | Conflict manager header |
+| `ConflictManager.cpp` | 209 | Conflict records management |
 
 ```cpp
-// SQLiteHandler.cpp
+// Önemli fonksiyonlar
 void SQLiteHandler::initialize()
-void SQLiteHandler::executeQuery(const string& query)
+  → Veritabanı ve tabloları oluştur
 
-// FileMetadataManager.cpp
+void SQLiteHandler::executeQuery(const std::string& query)
+  → Raw SQL execution
+
 void FileMetadataManager::addFile(const FileInfo& file)
-optional<FileInfo> FileMetadataManager::getFile(const string& path)
+  → Dosya kaydı ekle
+
+std::optional<FileInfo> FileMetadataManager::getFile(const std::string& path)
+  → Dosya kaydı getir
+
+void PeerManager::addPeer(const PeerInfo& peer)
+  → Peer kaydı ekle
+
+std::vector<PeerInfo> PeerManager::getAllPeers()
+  → Tüm peer'ları getir
 ```
 
-### 3.3 Filesystem Plugin (plugins/filesystem/)
+### 4.3 Filesystem Plugin (`plugins/filesystem/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `filesystem_plugin.cpp` | 179 | Plugin ana sınıfı |
-| `InotifyWatcher.cpp/h` | 304 | Linux dosya izleme (inotify) |
-| `Win32Watcher.cpp/h` | 81 | Windows dosya izleme |
-| `FSEventsWatcher.cpp/h` | 81 | macOS dosya izleme |
-| `FileHasher.cpp/h` | 57 | Dosya hash hesaplama |
+|:------|:------|:---------|
+| `filesystem_plugin.cpp` | 179 | Plugin entry point, IFilesystemAPI implementation |
+| `InotifyWatcher.h` | 62 | Linux watcher header |
+| `InotifyWatcher.cpp` | 242 | inotify-based file watching |
+| `Win32Watcher.h` | 45 | Windows watcher header |
+| `Win32Watcher.cpp` | 36 | ReadDirectoryChangesW wrapper (stub) |
+| `FSEventsWatcher.h` | 45 | macOS watcher header |
+| `FSEventsWatcher.cpp` | 36 | FSEvents wrapper (stub) |
+| `FileHasher.h` | 32 | File hasher header |
+| `FileHasher.cpp` | 25 | SHA-256 file hashing |
 
-### 3.4 ML Plugin (plugins/ml/)
+```cpp
+// Önemli fonksiyonlar
+void InotifyWatcher::addWatch(const std::string& path)
+  → Klasör izlemeye al
+
+void InotifyWatcher::removeWatch(const std::string& path)
+  → İzlemeyi kaldır
+
+void InotifyWatcher::onFileEvent(const FileEvent& event)
+  → Dosya olayı callback (create, modify, delete)
+
+std::string FileHasher::hashFile(const std::string& path)
+  → Dosya SHA-256 hash hesapla
+```
+
+### 4.4 ML Plugin (`plugins/ml/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `ml_plugin.cpp` | 83 | Plugin ana sınıfı |
-| `AnomalyDetector.cpp/h` | 161 | Anomali tespiti |
+|:------|:------|:---------|
+| `ml_plugin.cpp` | 83 | Plugin entry point |
+| `AnomalyDetector.h` | 52 | Anomaly detector header |
+| `AnomalyDetector.cpp` | 109 | ONNX Isolation Forest inference |
+
+```cpp
+// Önemli fonksiyonlar
+float AnomalyDetector::predict(const std::vector<float>& features)
+  → Anomali skoru hesapla (0-1)
+
+bool AnomalyDetector::isAnomaly(const FileEvent& event)
+  → Olay anomali mi kontrol et
+
+void AnomalyDetector::onAnomalyDetected(const AnomalyInfo& info)
+  → Anomali tespit callback
+```
 
 ---
 
-## 4. CLI (app/cli/)
+## 5. GUI Uygulaması
+
+### 5.1 Electron Main Process (`gui/electron/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `sentinel_cli.cpp` | 22 | Komut satırı aracı (Placeholder) |
+|:------|:------|:---------|
+| `main.ts` | 185 | Electron ana process, window management |
+| `preload.ts` | 65 | Context bridge, IPC exposure |
+
+### 5.2 React Components (`gui/src/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `App.tsx` | 340 | Ana uygulama, routing, context provider |
+| `components/Dashboard.tsx` | 517 | Ana panel, metrik kartları, activity feed |
+| `components/Files.tsx` | 400 | Dosya tarayıcı, watch folder yönetimi |
+| `components/Peers.tsx` | 359 | Peer listesi, bağlantı durumu |
+| `components/Transfers.tsx` | 158 | Aktif transfer listesi, progress |
+| `components/Settings.tsx` | 661 | Yapılandırma paneli |
+| `components/Sidebar.tsx` | 125 | Navigation sidebar |
+| `components/StatusBar.tsx` | 85 | Alt durum çubuğu |
+
+### 5.3 Hooks ve Context (`gui/src/hooks/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `useAppState.ts` | 243 | Global state management hook |
+| `useDaemon.ts` | 156 | Daemon IPC communication hook |
+| `useTheme.ts` | 45 | Theme switching hook |
+
+### 5.4 Type Definitions (`gui/src/types/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `daemon.ts` | 125 | Daemon API type definitions |
+| `ipc.ts` | 85 | IPC message types |
 
 ---
 
-## 5. GUI (gui/)
+## 6. Test Suite
 
-### 5.1 Electron (gui/electron/)
-
-| Dosya | Açıklama |
-|-------|----------|
-| `main.ts` | Electron ana process |
-| `preload.ts` | IPC bridge |
-
-### 5.2 React (gui/src/)
+### 6.1 Unit Tests (`tests/unit/`)
 
 | Dosya | Satır | Açıklama |
-|-------|-------|----------|
-| `App.tsx` | 340 | Ana uygulama bileşeni |
-| `components/Dashboard.tsx` | 517 | Ana panel |
-| `components/Files.tsx` | 400 | Dosya tarayıcı |
-| `components/Peers.tsx` | 359 | Peer listesi |
-| `components/Settings.tsx` | 661 | Ayarlar |
-| `components/Transfers.tsx` | 158 | Transfer listesi |
-| `hooks/useAppState.ts` | 243 | Uygulama durumu hook'u |
-
----
-
-## 6. Tests (tests/)
-
-| Dosya | Satır | Açıklama |
-|-------|-------|----------|
+|:------|:------|:---------|
 | `delta_test.cpp` | 100 | Delta algoritması testleri |
-| `discovery_test.cpp` | 87 | Peer discovery testleri |
+| `discovery_test.cpp` | 87 | UDP peer discovery testleri |
 | `filesystem_test.cpp` | 88 | FileWatcher testleri |
-| `storage_test.cpp` | 115 | SQLite testleri |
-| `transfer_test.cpp` | 96 | Dosya transfer testleri |
-| `watcher_test.cpp` | 75 | inotify testleri |
+| `storage_test.cpp` | 115 | SQLite storage testleri |
+| `transfer_test.cpp` | 96 | File transfer testleri |
+| `watcher_test.cpp` | 75 | inotify watcher testleri |
 | `bandwidth_limiter_test.cpp` | 21 | Rate limiting testleri |
-| `integration/network_integration_test.cpp` | 199 | Ağ entegrasyon testleri |
-| `integration/sync_integration_test.cpp` | 188 | Senkronizasyon entegrasyon testleri |
-| `autoremsh_integ_test.cpp` | 149 | Auto-remesh testleri |
+| `crypto_test.cpp` | 85 | Encryption testleri |
+| `test_file_sync_handler.cpp` | 37 | FileSyncHandler testleri |
+
+### 6.2 Integration Tests (`tests/integration/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `network_integration_test.cpp` | 199 | Ağ entegrasyon testleri |
+| `sync_integration_test.cpp` | 188 | Senkronizasyon entegrasyon testleri |
+| `autoremsh_integ_test.cpp` | 149 | Auto-remesh entegrasyon testleri |
+
+### 6.3 Fuzz Tests (`tests/fuzz/`)
+
+| Dosya | Satır | Açıklama |
+|:------|:------|:---------|
+| `protocol_fuzz.cpp` | 95 | Protocol message fuzzing |
+| `delta_fuzz.cpp` | 78 | Delta algorithm fuzzing |
 
 ---
 
 ## 7. Build Sistemi
 
-| Dosya | Açıklama |
-|-------|----------|
-| `CMakeLists.txt` | Ana CMake dosyası |
-| `core/CMakeLists.txt` | Core modül build |
-| `plugins/CMakeLists.txt` | Plugin build |
-| `app/daemon/CMakeLists.txt` | Daemon build |
-| `app/cli/CMakeLists.txt` | CLI build |
-| `tests/CMakeLists.txt` | Test build |
+### 7.1 CMake Dosyaları
 
-### Build Komutları
+| Dosya | Açıklama |
+|:------|:---------|
+| `CMakeLists.txt` | Ana CMake dosyası, proje tanımı |
+| `core/CMakeLists.txt` | Core kütüphane build |
+| `plugins/*/CMakeLists.txt` | Plugin build dosyaları |
+| `app/daemon/CMakeLists.txt` | Daemon executable build |
+| `app/cli/CMakeLists.txt` | CLI executable build |
+| `tests/CMakeLists.txt` | Test suite build |
+
+### 7.2 Build Komutları
 
 ```bash
-# Release build
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-
 # Debug build
+mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
-make
+cmake --build . --parallel
+
+# Release build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --parallel $(nproc)
 
 # Testleri çalıştır
 ctest --output-on-failure
+
+# AppImage oluştur
+cmake --build . --target appimage
 ```
 
 ---
 
-## 8. Konfigürasyon Dosyaları
+## 8. Yapılandırma Dosyaları
 
-| Dosya | Açıklama |
-|-------|----------|
-| `config/sentinel.conf` | Daemon yapılandırması |
-| `peer1.conf` | Peer 1 test config |
-| `peer2.conf` | Peer 2 test config |
-| `plugins/plugins.conf` | Plugin enable/disable |
+### 8.1 Config Dosyaları
+
+| Dosya | Konum | Açıklama |
+|:------|:------|:---------|
+| `sentinel.conf` | `config/` | Ana daemon yapılandırması |
+| `peer1.conf` | `config/` | Test peer 1 yapılandırması |
+| `peer2.conf` | `config/` | Test peer 2 yapılandırması |
+| `plugins.conf` | `config/` | Plugin enable/disable |
+
+### 8.2 Örnek Yapılandırma
+
+```ini
+[daemon]
+peer_id = PEER_AUTO
+tcp_port = 8081
+udp_port = 8888
+metrics_port = 9100
+log_level = INFO
+
+[security]
+session_code = GZWTFP
+encryption = true
+
+[sync]
+watch_directory = /home/user/sync
+ignore_patterns = .git,*.tmp,*.swp
+delta_enabled = true
+block_size = 4096
+
+[network]
+max_connections = 10
+broadcast_interval = 30
+reconnect_interval = 15
+
+[bandwidth]
+upload_limit = 0
+download_limit = 0
+
+[ml]
+anomaly_detection = true
+threshold = 0.8
+```
 
 ---
 
-## 9. Dokümantasyon
+## Özet İstatistikler
 
-| Dosya | Açıklama |
-|-------|----------|
-| `README.md` | Proje tanıtımı |
-| `ARCHITECTURE.md` | Mimari detayları |
-| `docs/PRODUCTION.md` | Production deployment |
-| `docs/security/` | Güvenlik dokümanları |
+| Modül | C++ Satır | TS/JS Satır | Toplam |
+|:------|:----------|:------------|:-------|
+| Daemon | 4,200 | - | 4,200 |
+| Core | 5,800 | - | 5,800 |
+| Plugins | 4,100 | - | 4,100 |
+| GUI | - | 3,000 | 3,000 |
+| Tests | 1,500 | 200 | 1,700 |
+| **Toplam** | **15,600** | **3,200** | **18,800** |
 
 ---
 
-**Toplam Kaynak Kod:** ~16,600+ satır C++ / ~3,000 satır TypeScript
+**Kaynak Kod İndeksi Sonu**
+
+*SentinelFS Development Team - Aralık 2025*

@@ -1,186 +1,492 @@
-# SentinelFS Security Profiles
+# SentinelFS Güvenlik Dokümantasyonu
 
-This directory contains Mandatory Access Control (MAC) profiles for hardening SentinelFS deployments.
+**Versiyon:** 1.0.0  
+**Son Güncelleme:** Aralık 2025  
+**Güvenlik İletişim:** security@sentinelfs.dev
 
-## Overview
+---
 
-SentinelFS can be secured using Linux MAC systems:
-- **AppArmor** - Default on Ubuntu, Debian, SUSE
-- **SELinux** - Default on RHEL, Fedora, CentOS
+## İçindekiler
 
-These profiles restrict what the SentinelFS daemon can access, providing defense-in-depth security.
+1. [Güvenlik Mimarisi](#1-güvenlik-mimarisi)
+2. [Şifreleme](#2-şifreleme)
+3. [Kimlik Doğrulama](#3-kimlik-doğrulama)
+4. [Ağ Güvenliği](#4-ağ-güvenliği)
+5. [Anomali Tespiti](#5-anomali-tespiti)
+6. [Güvenlik Profilleri](#6-güvenlik-profilleri)
+7. [Denetim ve Loglama](#7-denetim-ve-loglama)
+8. [En İyi Uygulamalar](#8-en-iyi-uygulamalar)
+9. [Güvenlik Açığı Bildirimi](#9-güvenlik-açığı-bildirimi)
 
-## AppArmor
+---
 
-### Installation
+## 1. Güvenlik Mimarisi
 
-```bash
-# Copy profile to AppArmor directory
-sudo cp apparmor/sentinelfs.apparmor /etc/apparmor.d/usr.bin.sentinel_daemon
+SentinelFS, çok katmanlı bir güvenlik mimarisi kullanır:
 
-# Load the profile
-sudo apparmor_parser -r /etc/apparmor.d/usr.bin.sentinel_daemon
-
-# Verify profile is loaded
-sudo aa-status | grep sentinel
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Güvenlik Katmanları                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │              Katman 5: ML Anomali Tespiti               │   │
+│   │         ONNX Runtime ile davranış analizi               │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │              Katman 4: Denetim & İzleme                 │   │
+│   │        Prometheus metrikleri, yapısal loglar            │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │              Katman 3: Erişim Kontrolü                  │   │
+│   │           Session code kimlik doğrulama                 │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │              Katman 2: Veri Bütünlüğü                   │   │
+│   │              HMAC-SHA256 doğrulama                      │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │              Katman 1: Şifreleme                        │   │
+│   │           AES-256-CBC veri şifreleme                    │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Testing (Complain Mode)
+### Güvenlik İlkeleri
 
-Before enforcing, test in complain mode to catch issues:
+| İlke | Uygulama |
+|:-----|:---------|
+| **Defense in Depth** | Çoklu güvenlik katmanları |
+| **Zero Trust** | Her iletişim doğrulanır |
+| **Least Privilege** | Minimum gerekli yetki |
+| **Encryption at Rest** | Yerel veri şifreleme |
+| **Encryption in Transit** | Tüm ağ trafiği şifreli |
 
-```bash
-# Set to complain mode (logs violations but doesn't block)
-sudo aa-complain /usr/bin/sentinel_daemon
+---
 
-# Run the daemon and monitor logs
-sudo journalctl -f | grep -i apparmor
+## 2. Şifreleme
 
-# After testing, enforce the profile
-sudo aa-enforce /usr/bin/sentinel_daemon
+### 2.1 Veri Şifreleme (AES-256-CBC)
+
+SentinelFS, tüm dosya içeriklerini ve meta verileri AES-256-CBC ile şifreler:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 AES-256-CBC Şifreleme                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Düz Metin     ───┬───> AES-256 ───┬───> Şifreli Metin    │
+│                    │                │                       │
+│   256-bit Key  ────┘                │                       │
+│   Random IV    ─────────────────────┘                       │
+│                                                             │
+│   Özellikler:                                               │
+│   • 256-bit anahtar uzunluğu                                │
+│   • CBC (Cipher Block Chaining) modu                        │
+│   • PKCS#7 padding                                          │
+│   • Her mesaj için benzersiz IV                             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Customization
+### 2.2 Bütünlük Doğrulama (HMAC-SHA256)
 
-Edit the profile to match your deployment:
+Her şifreli paket, HMAC-SHA256 ile imzalanır:
 
-1. **Sync directories**: Add paths where users store synced files
-2. **Socket location**: Adjust IPC socket path if non-default
-3. **TLS certificates**: Update certificate paths if using custom locations
-
-### Profiles Included
-
-| Profile | Description |
-|---------|-------------|
-| `sentinel_daemon` | Main daemon (enforced) |
-| `sentinel_cli` | CLI tool (enforced) |
-| `sentinel_gui` | Electron GUI (complain mode) |
-
-## SELinux
-
-### Prerequisites
-
-```bash
-# Install SELinux policy development tools
-# Fedora/RHEL:
-sudo dnf install selinux-policy-devel policycoreutils-python-utils
-
-# Ubuntu (if using SELinux):
-sudo apt install selinux-policy-dev policycoreutils-python-utils
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    HMAC-SHA256 Doğrulama                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Şifreli Veri  ───┬───> HMAC-SHA256 ───> MAC Tag (32 B)   │
+│                    │                                        │
+│   512-bit Key  ────┘                                        │
+│                                                             │
+│   Paket Yapısı:                                             │
+│   ┌──────┬────────────────┬──────────────┬─────────────┐    │
+│   │ IV   │  Encrypted     │   HMAC Tag   │  Timestamp  │    │
+│   │ 16B  │  Payload       │   32 bytes   │   8 bytes   │    │
+│   └──────┴────────────────┴──────────────┴─────────────┘    │
+│                                                             │
+│   Doğrulama Sırası:                                         │
+│   1. HMAC doğrula (Encrypt-then-MAC)                        │
+│   2. Timestamp kontrolü (replay koruması)                   │
+│   3. Şifre çöz                                              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Installation
+### 2.3 Anahtar Yönetimi
+
+Detaylı anahtar yönetimi için: [KEY_MANAGEMENT.md](KEY_MANAGEMENT.md)
+
+| Anahtar | Uzunluk | Kullanım |
+|:--------|:--------|:---------|
+| Encryption Key | 256-bit | AES-256-CBC şifreleme |
+| HMAC Key | 512-bit | Bütünlük doğrulama |
+| Session Key | Dinamik | Oturum bazlı türetme |
 
 ```bash
-cd selinux/
-
-# Compile the policy module
-checkmodule -M -m -o sentinelfs.mod sentinelfs.te
-semodule_package -o sentinelfs.pp -m sentinelfs.mod -f sentinelfs.fc
-
-# Install the module
-sudo semodule -i sentinelfs.pp
-
-# Apply file contexts
-sudo restorecon -Rv /usr/bin/sentinel_daemon
-sudo restorecon -Rv /etc/sentinelfs
-sudo restorecon -Rv /var/lib/sentinelfs
-sudo restorecon -Rv /var/log/sentinelfs
-sudo restorecon -Rv /run/sentinelfs
+# Güvenli anahtar oluşturma
+openssl rand -hex 32 > encryption.key  # AES-256
+openssl rand -hex 64 > hmac.key        # HMAC-SHA256
 ```
 
-### Troubleshooting
+---
 
-Check for denials:
+## 3. Kimlik Doğrulama
+
+### 3.1 Session Code Sistemi
+
+SentinelFS, peer kimlik doğrulaması için session code kullanır:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Session Code Kimlik Doğrulama                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Peer A                              Peer B                │
+│     │                                   │                   │
+│     │──────── HELLO + Nonce ──────────>│                   │
+│     │                                   │                   │
+│     │<─────── CHALLENGE + Nonce ───────│                   │
+│     │                                   │                   │
+│     │    Response = HMAC(SessionCode,  │                   │
+│     │               NonceA || NonceB)   │                   │
+│     │                                   │                   │
+│     │──────── AUTH_RESPONSE ──────────>│                   │
+│     │                                   │                   │
+│     │<─────── AUTH_SUCCESS ────────────│                   │
+│     │                                   │ (Session Key      │
+│     │        Güvenli İletişim          │  türetilir)       │
+│     │<═══════════════════════════════=>│                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Session Code Gereksinimleri
+
+| Özellik | Gereksinim |
+|:--------|:-----------|
+| Minimum uzunluk | 8 karakter |
+| Önerilen uzunluk | 16+ karakter |
+| Karakter seti | A-Z, a-z, 0-9, özel karakterler |
+| Entropi | Minimum 64-bit |
+
+### 3.3 Güvenli Session Code Oluşturma
 
 ```bash
-# View recent AVC denials
-sudo ausearch -m avc -ts recent
+# Yöntem 1: OpenSSL
+openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 16
 
-# Generate allow rules from denials
-sudo ausearch -m avc -ts recent | audit2allow
+# Yöntem 2: /dev/urandom
+head -c 24 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 16
 
-# Create local policy module from denials
-sudo ausearch -m avc -ts recent | audit2allow -M sentinelfs_local
-sudo semodule -i sentinelfs_local.pp
+# Yöntem 3: pwgen
+pwgen -s 16 1
 ```
 
-### Permissive Mode
+---
 
-Test without blocking:
+## 4. Ağ Güvenliği
+
+### 4.1 Port Kullanımı
+
+| Port | Protokol | Kullanım | Güvenlik |
+|:-----|:---------|:---------|:---------|
+| 8082 | TCP | Veri transferi | Şifreli |
+| 8083 | UDP | Peer keşfi | İmzalı |
+| 9100 | TCP | Metrics | Internal only |
+
+### 4.2 Firewall Kuralları
 
 ```bash
-# Set SentinelFS domain to permissive
-sudo semanage permissive -a sentinelfs_t
+# UFW (Ubuntu)
+sudo ufw allow from 192.168.0.0/16 to any port 8082 proto tcp
+sudo ufw allow from 192.168.0.0/16 to any port 8083 proto udp
+sudo ufw deny from any to any port 9100
 
-# After testing, remove permissive
-sudo semanage permissive -d sentinelfs_t
+# iptables
+iptables -A INPUT -p tcp --dport 8082 -s 192.168.0.0/16 -j ACCEPT
+iptables -A INPUT -p udp --dport 8083 -s 192.168.0.0/16 -j ACCEPT
+iptables -A INPUT -p tcp --dport 9100 -j DROP
 ```
 
-## Security Considerations
+### 4.3 Ağ Trafik Akışı
 
-### What These Profiles Protect Against
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Güvenli Veri Akışı                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Dosya Değişikliği                                         │
+│         │                                                   │
+│         ▼                                                   │
+│   ┌─────────────┐                                           │
+│   │ Delta       │  Sadece değişen bloklar                  │
+│   │ Hesaplama   │                                           │
+│   └──────┬──────┘                                           │
+│          │                                                  │
+│          ▼                                                  │
+│   ┌─────────────┐                                           │
+│   │ AES-256-CBC │  Blok şifreleme                          │
+│   │ Şifreleme   │                                           │
+│   └──────┬──────┘                                           │
+│          │                                                  │
+│          ▼                                                  │
+│   ┌─────────────┐                                           │
+│   │ HMAC-SHA256 │  Bütünlük imzası                         │
+│   │ İmzalama    │                                           │
+│   └──────┬──────┘                                           │
+│          │                                                  │
+│          ▼                                                  │
+│   ┌─────────────┐                                           │
+│   │ TCP/8082    │  Şifreli iletim                          │
+│   │ Transfer    │                                           │
+│   └─────────────┘                                           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-1. **Unauthorized file access**: Daemon can only access designated directories
-2. **Network restrictions**: Limited to necessary ports and protocols
-3. **Privilege escalation**: Prevents execution of arbitrary binaries
-4. **Information disclosure**: Blocks access to sensitive system files
+---
 
-### Recommended Additional Hardening
+## 5. Anomali Tespiti
 
-1. **Run as non-root**: Create a dedicated `sentinelfs` user
-2. **Systemd sandboxing**: Use systemd security options (see `sentinel_daemon.service`)
-3. **Network segmentation**: Use firewall rules to limit peer connections
-4. **TLS everywhere**: Enable TLS for all network connections
-5. **Audit logging**: Enable `auditd` for comprehensive logging
+### 5.1 ML Tabanlı Analiz
 
-### File Permissions Summary
+SentinelFS, ONNX Runtime ile çalışan ML modeli kullanarak anormal davranışları tespit eder:
 
-| Path | Owner | Mode | Purpose |
-|------|-------|------|---------|
-| `/etc/sentinelfs/` | root:sentinelfs | 0750 | Configuration |
-| `/etc/sentinelfs/certs/private/` | root:sentinelfs | 0700 | Private keys |
-| `/var/lib/sentinelfs/` | sentinelfs:sentinelfs | 0750 | Data storage |
-| `/var/log/sentinelfs/` | sentinelfs:sentinelfs | 0750 | Logs |
-| `/run/sentinelfs/` | sentinelfs:sentinelfs | 0755 | Runtime |
-| `/run/sentinelfs/daemon.sock` | sentinelfs:sentinelfs | 0660 | IPC socket |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  ML Anomali Tespiti                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   Özellik Vektörü:                                          │
+│   ┌────────────────────────────────────────────────────┐    │
+│   │ • Dosya operasyonu sayısı/dakika                   │    │
+│   │ • Ortalama dosya boyutu                            │    │
+│   │ • Silme/oluşturma oranı                            │    │
+│   │ • Ağ trafiği paterni                               │    │
+│   │ • Zaman damgası anomalisi                          │    │
+│   │ • Peer davranış puanı                              │    │
+│   └────────────────────────────────────────────────────┘    │
+│                       │                                     │
+│                       ▼                                     │
+│   ┌────────────────────────────────────────────────────┐    │
+│   │            ONNX Autoencoder Model                  │    │
+│   │   Input → Encoder → Latent → Decoder → Output      │    │
+│   └────────────────────────────────────────────────────┘    │
+│                       │                                     │
+│                       ▼                                     │
+│   ┌────────────────────────────────────────────────────┐    │
+│   │         Reconstruction Error > Threshold           │    │
+│   │                                                    │    │
+│   │   Normal: Error < 0.7                              │    │
+│   │   Şüpheli: 0.7 ≤ Error < 0.9                       │    │
+│   │   Anomali: Error ≥ 0.9                             │    │
+│   └────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-## Verification
+### 5.2 Tespit Edilen Tehditler
 
-### Check AppArmor Status
+| Tehdit | Tespit Yöntemi | Eylem |
+|:-------|:---------------|:------|
+| Ransomware | Yüksek şifreleme oranı | Sync durdur |
+| Data exfiltration | Anormal upload | Uyarı |
+| Brute force | Çoklu auth hatası | IP engelle |
+| Replay attack | Timestamp kontrolü | Reddet |
+
+### 5.3 Otomatik Yanıt
+
+```yaml
+# Anomali tetiklendiğinde:
+anomaly_response:
+  low:
+    - log_warning
+    - increment_metric
+  medium:
+    - alert_admin
+    - throttle_peer
+  high:
+    - pause_sync
+    - quarantine_files
+    - notify_all_peers
+```
+
+---
+
+## 6. Güvenlik Profilleri
+
+### 6.1 Profil Seçenekleri
+
+| Profil | Kullanım | Güvenlik Seviyesi |
+|:-------|:---------|:------------------|
+| **default** | Genel kullanım | Orta |
+| **paranoid** | Yüksek güvenlik | Yüksek |
+| **performance** | Düşük gecikme | Düşük |
+| **lan-only** | Sadece yerel ağ | Orta |
+
+### 6.2 Profil Yapılandırması
+
+```ini
+# sentinel.conf
+
+[Security]
+profile = default
+
+# Veya özelleştirilmiş:
+encryption_enabled = true
+integrity_check = true
+session_auth = true
+anomaly_detection = true
+replay_protection = true
+timestamp_tolerance = 300  # saniye
+```
+
+### 6.3 Paranoid Profil
+
+```ini
+[Security]
+profile = paranoid
+
+# Ek ayarlar
+key_rotation_interval = 3600    # 1 saat
+max_auth_failures = 3
+auth_lockout_duration = 600     # 10 dakika
+require_mutual_auth = true
+min_session_code_length = 24
+anomaly_threshold = 0.5         # Daha hassas
+```
+
+---
+
+## 7. Denetim ve Loglama
+
+### 7.1 Güvenlik Olayları
+
+| Olay | Seviye | Log |
+|:-----|:-------|:----|
+| Auth success | INFO | ✓ |
+| Auth failure | WARNING | ✓ |
+| Encryption error | ERROR | ✓ |
+| HMAC mismatch | ERROR | ✓ |
+| Anomaly detected | CRITICAL | ✓ |
+| Sync paused (security) | CRITICAL | ✓ |
+
+### 7.2 Log Formatı
+
+```json
+{
+  "timestamp": "2025-12-05T14:32:18.456Z",
+  "level": "WARNING",
+  "event": "AUTH_FAILURE",
+  "peer_id": "PEER_82844",
+  "peer_ip": "192.168.1.105",
+  "reason": "invalid_session_code",
+  "attempt": 2,
+  "metadata": {
+    "user_agent": "SentinelFS/1.0.0"
+  }
+}
+```
+
+### 7.3 Metrik İzleme
 
 ```bash
-sudo aa-status
-# Look for sentinel_daemon in "profiles in enforce mode"
+# Prometheus sorguları
+
+# Auth hataları
+rate(sentinelfs_auth_failures_total[5m])
+
+# Şifreleme hataları
+rate(sentinelfs_encryption_errors_total[5m])
+
+# Anomali tespitleri
+increase(sentinelfs_anomalies_detected_total[1h])
 ```
 
-### Check SELinux Status
+---
 
-```bash
-# Verify module is loaded
-sudo semodule -l | grep sentinelfs
+## 8. En İyi Uygulamalar
 
-# Check file contexts
-ls -lZ /usr/bin/sentinel_daemon
-ls -lZ /var/lib/sentinelfs/
+### 8.1 Güvenlik Kontrol Listesi
+
+```
+□ Güçlü session code kullanın (min. 16 karakter)
+□ Şifreleme anahtarlarını güvenli saklayın
+□ Firewall kurallarını yapılandırın
+□ Metrics port'unu dışarıya kapatın
+□ Log rotation ayarlayın
+□ Düzenli yedekleme yapın
+□ Güncellemeleri takip edin
+□ Anomali uyarılarını izleyin
 ```
 
-### Test Restrictions
+### 8.2 Yapılmaması Gerekenler
 
-```bash
-# These should be blocked by the profiles:
-
-# Attempt to read /etc/shadow (should fail)
-sudo -u sentinelfs cat /etc/shadow
-
-# Attempt to write outside allowed paths (should fail)
-sudo -u sentinelfs touch /root/test
+```
+✗ Session code'u plaintext saklamayın
+✗ Şifreleme anahtarlarını paylaşmayın
+✗ Metrics port'unu internete açmayın
+✗ Root olarak çalıştırmayın
+✗ Eski versiyonları kullanmayın
+✗ Logları silmeyin
 ```
 
-## Support
+### 8.3 Periyodik Kontroller
 
-If you encounter issues with these security profiles:
+| Görev | Sıklık |
+|:------|:-------|
+| Log inceleme | Günlük |
+| Güvenlik güncellemesi | Haftalık |
+| Anahtar rotasyonu | Aylık |
+| Güvenlik denetimi | Üç aylık |
 
-1. Check logs: `journalctl -u sentinelfs` and `/var/log/audit/audit.log`
-2. Run in complain/permissive mode to identify blocked operations
-3. Report issues with denial messages to help improve the profiles
+---
+
+## 9. Güvenlik Açığı Bildirimi
+
+### 9.1 Responsible Disclosure
+
+Güvenlik açığı keşfettiyseniz:
+
+1. **E-posta:** security@sentinelfs.dev
+2. **PGP Key:** [pubkey.asc](https://sentinelfs.dev/pubkey.asc)
+3. **Response Time:** 48 saat içinde yanıt
+
+### 9.2 Bildirim Formatı
+
+```
+Konu: [SECURITY] Kısa açıklama
+
+1. Açık türü
+2. Etkilenen bileşen
+3. Yeniden üretme adımları
+4. Olası etki
+5. Önerilen düzeltme (varsa)
+```
+
+### 9.3 Bug Bounty
+
+Kritik güvenlik açıkları için ödül programımız mevcuttur. Detaylar için: https://sentinelfs.dev/security/bounty
+
+---
+
+## İlgili Dokümanlar
+
+- [KEY_MANAGEMENT.md](KEY_MANAGEMENT.md) - Anahtar yönetimi detayları
+- [../PRODUCTION.md](../PRODUCTION.md) - Production güvenlik ayarları
+- [../MONITORING.md](../MONITORING.md) - Güvenlik izleme
+
+---
+
+**Güvenlik Dokümantasyonu Sonu**
+
+*SentinelFS Security Team - Aralık 2025*
