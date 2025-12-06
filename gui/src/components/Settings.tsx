@@ -180,26 +180,27 @@ export function Settings({ config }: SettingsProps) {
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Page Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
-          <Shield className="w-6 h-6 text-primary" />
+      <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
+          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Settings</h2>
-          <p className="text-sm text-muted-foreground">Configure your SentinelFS instance</p>
+          <h2 className="text-lg sm:text-xl font-bold">Settings</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Configure your SentinelFS instance</p>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Settings Navigation */}
-        <nav className="space-y-2 bg-card/30 p-3 rounded-2xl border border-border/30 h-fit sticky top-4">
-            <div className="text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-3">Navigation</div>
-            <SettingsTab 
-                active={activeTab === 'general'} 
-                onClick={() => setActiveTab('general')} 
-                icon={<Smartphone className="w-4 h-4" />} 
-                label="General" 
-            />
+        <nav className="space-y-1 sm:space-y-2 bg-card/30 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-border/30 h-fit lg:sticky lg:top-4 overflow-x-auto lg:overflow-x-visible">
+            <div className="flex lg:flex-col gap-1 sm:gap-2 min-w-max lg:min-w-0">
+              <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2">Navigation</div>
+              <SettingsTab 
+                  active={activeTab === 'general'} 
+                  onClick={() => setActiveTab('general')} 
+                  icon={<Smartphone className="w-4 h-4" />} 
+                  label="General" 
+              />
             <SettingsTab 
                 active={activeTab === 'appearance'} 
                 onClick={() => setActiveTab('appearance')} 
@@ -224,10 +225,11 @@ export function Settings({ config }: SettingsProps) {
                 icon={<Database className="w-4 h-4" />} 
                 label="Advanced" 
             />
+            </div>
         </nav>
 
         {/* Settings Content */}
-        <div className="md:col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-4 sm:space-y-6">
             {activeTab === 'general' && (
                 <div className="space-y-6">
                     <Section title="Synchronization">
@@ -290,34 +292,34 @@ export function Settings({ config }: SettingsProps) {
             {activeTab === 'network' && (
                 <div className="space-y-6">
                     <Section title="Manual Peer Connection">
-                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 mb-4">
-                            <div className="flex items-start gap-3 mb-4">
-                                <div className="p-2 rounded-lg bg-primary/10">
+                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 sm:p-4 mb-4">
+                            <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
                                     <Globe className="w-4 h-4 text-primary" />
                                 </div>
                                 <div>
-                                    <span className="text-sm font-semibold">Connect to a specific peer</span>
-                                    <p className="text-xs text-muted-foreground mt-1">Enter the IP address and port of a peer on a different network</p>
+                                    <span className="text-xs sm:text-sm font-semibold">Connect to a specific peer</span>
+                                    <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Enter the IP address and port of a peer on a different network</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
                                 <input 
                                     type="text" 
                                     value={peerIp}
                                     onChange={(e) => setPeerIp(e.target.value)}
                                     placeholder="192.168.1.100"
-                                    className="bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
+                                    className="bg-background/50 border border-border/50 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <input 
                                     type="number" 
                                     value={peerPort}
                                     onChange={(e) => setPeerPort(e.target.value)}
                                     placeholder="8080"
-                                    className="w-24 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
+                                    className="w-full sm:w-24 bg-background/50 border border-border/50 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
                                 />
                                 <button 
                                     onClick={handleAddPeer}
-                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
+                                    className="px-4 py-2 sm:py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Connect

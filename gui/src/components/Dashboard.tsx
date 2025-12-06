@@ -66,9 +66,9 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
   }, [metrics])
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Hero Section with Animated Stats */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-card to-accent/10 border border-primary/20 p-8 mb-8">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-primary/20 via-card to-accent/10 border border-primary/20 p-4 sm:p-6 lg:p-8 mb-4 sm:mb-8">
         {/* Animated Background Effects */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/30 to-transparent rounded-full blur-3xl animate-pulse"></div>
@@ -78,15 +78,15 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
         </div>
         
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-2xl bg-primary/20 backdrop-blur-sm border border-primary/30 shadow-lg shadow-primary/20">
-              <Shield className="w-8 h-8 text-primary" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-primary/20 backdrop-blur-sm border border-primary/30 shadow-lg shadow-primary/20 w-fit">
+              <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                 System Overview
               </h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
                 <span className="dot-success animate-pulse"></span>
                 All systems operational
               </p>
@@ -94,7 +94,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           </div>
           
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mt-4 sm:mt-6">
             <QuickStat 
               label="Upload Speed" 
               value={formatBytes(peakUpload) + '/s'} 
@@ -124,7 +124,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
       </div>
 
       {/* Top Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard 
           title="Network Status" 
           value={metrics ? "Online" : "Connecting"}
@@ -155,31 +155,31 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Chart Section */}
-        <div className="lg:col-span-2 card-modern p-6 group">
+        <div className="xl:col-span-2 card-modern p-4 sm:p-6 group">
           {/* Decorative top gradient */}
           <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
           
-          <div className="relative flex items-center justify-between mb-6">
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
             <div>
-              <h3 className="font-bold text-xl flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
-                  <Activity className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-lg sm:text-xl flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-primary/10 border border-primary/20">
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
                 <span className="bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                   Network Traffic
                 </span>
               </h3>
-              <p className="text-sm text-muted-foreground mt-1 ml-12">Real-time bandwidth monitoring</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 ml-8 sm:ml-12">Real-time bandwidth monitoring</p>
             </div>
-            <div className="flex gap-3 text-xs font-semibold">
-              <div className="flex items-center gap-2 bg-primary/15 px-3 py-1.5 rounded-lg border border-primary/30 text-primary">
+            <div className="flex gap-2 sm:gap-3 text-xs font-semibold">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-primary/15 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-primary/30 text-primary">
                 <div className="dot-primary"></div>
                 <span>Upload</span>
               </div>
-              <div className="flex items-center gap-2 bg-success-muted px-3 py-1.5 rounded-lg border border-success/30 status-success glow-success">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-success-muted px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-success/30 status-success glow-success">
                 <div className="dot-success"></div>
                 <span>Download</span>
               </div>
@@ -187,38 +187,38 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           </div>
           
           {/* Traffic Summary */}
-          <div className="relative grid grid-cols-4 gap-3 mb-6">
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
-              <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+          <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-lg sm:rounded-xl p-2 sm:p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
+              <div className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5">
                 <ArrowDown className="w-3 h-3 icon-success" />
-                Total Downloaded
+                <span className="hidden sm:inline">Total </span>Downloaded
               </div>
-              <div className="text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(totalDownloaded)}</div>
+              <div className="text-base sm:text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(totalDownloaded)}</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
-              <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-lg sm:rounded-xl p-2 sm:p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
+              <div className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5">
                 <ArrowUp className="w-3 h-3 icon-primary" />
-                Total Uploaded
+                <span className="hidden sm:inline">Total </span>Uploaded
               </div>
-              <div className="text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
+              <div className="text-base sm:text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
-              <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-lg sm:rounded-xl p-2 sm:p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
+              <div className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5">
                 <Zap className="w-3 h-3 icon-success" />
-                Peak Download
+                Peak<span className="hidden sm:inline"> Download</span>
               </div>
-              <div className="text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(peakDownload)}/s</div>
+              <div className="text-base sm:text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(peakDownload)}/s</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
-              <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-lg sm:rounded-xl p-2 sm:p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
+              <div className="text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5">
                 <Zap className="w-3 h-3 icon-primary" />
-                Peak Upload
+                Peak<span className="hidden sm:inline"> Upload</span>
               </div>
-              <div className="text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
+              <div className="text-base sm:text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
             </div>
           </div>
           
-          <div className="h-[240px] w-full relative">
+          <div className="h-[180px] sm:h-[240px] w-full relative">
             {/* Chart glow effect */}
             <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 via-transparent to-amber-500/5 rounded-xl pointer-events-none"></div>
             <ResponsiveContainer width="100%" height="100%">
@@ -284,25 +284,25 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
         </div>
 
         {/* Activity Feed - Matching Network Traffic height */}
-        <div className="card-modern p-6 flex flex-col group" style={{ height: 'fit-content' }}>
+        <div className="card-modern p-4 sm:p-6 flex flex-col group" style={{ height: 'fit-content' }}>
           {/* Decorative element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-accent/10 to-transparent rounded-bl-full opacity-50"></div>
+          <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-bl from-accent/10 to-transparent rounded-bl-full opacity-50"></div>
           
-          <div className="relative flex items-center justify-between mb-5">
-            <h3 className="font-bold text-lg flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-accent/10 border border-accent/20">
-                <Shield className="w-5 h-5 text-accent" />
+          <div className="relative flex items-center justify-between mb-4 sm:mb-5">
+            <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-accent/10 border border-accent/20">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
               </div>
               <span>Live Activity</span>
             </h3>
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/20 px-2 py-1 rounded-lg">
               <div className="dot-success animate-pulse"></div>
-              Real-time
+              <span className="hidden sm:inline">Real-time</span>
             </div>
           </div>
           
           {/* Activity List - Fixed height to match chart area */}
-          <div className="h-[360px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          <div className="h-[280px] sm:h-[360px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {recentActivity.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <div className="p-4 rounded-2xl bg-muted/20 mb-4">
@@ -327,7 +327,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
       </div>
 
       {/* Health Summary Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <HealthCard
           title="System Health"
           icon={<Shield className="w-5 h-5" />}
@@ -418,11 +418,11 @@ function QuickStat({ label, value, icon, color }: { label: string; value: string
   }
   
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r ${colorClasses[color]} border backdrop-blur-sm hover:scale-105 transition-transform cursor-default`}>
-      <div className="p-2 rounded-lg bg-background/50">{icon}</div>
-      <div>
-        <div className="text-lg font-bold">{value}</div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</div>
+    <div className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r ${colorClasses[color]} border backdrop-blur-sm hover:scale-105 transition-transform cursor-default`}>
+      <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-background/50">{icon}</div>
+      <div className="min-w-0">
+        <div className="text-sm sm:text-lg font-bold truncate">{value}</div>
+        <div className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider truncate">{label}</div>
       </div>
     </div>
   )

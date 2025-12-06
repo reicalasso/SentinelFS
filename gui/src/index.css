@@ -9,6 +9,74 @@
 @tailwind utilities;
 
 /* ==========================================
+   RESPONSIVE UTILITIES
+   ========================================== */
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve text readability on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Better touch scrolling */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Safe area padding for notched devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Responsive text truncation */
+.truncate-responsive {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .sm\:truncate-none {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* ==========================================
    FONT DEFINITIONS
    ========================================== */
 

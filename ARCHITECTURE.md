@@ -30,9 +30,9 @@
       │  │
       ▼  ▼
 ┌──────────────────────────────────────────────┐
-│              EventBus (Core)                  │
-│  • Pub/Sub event system                       │
-│  • Decouples components                       │
+│              EventBus (Core)                 │
+│  • Pub/Sub event system                      │
+│  • Decouples components                      │
 └───────┬──────────────────────────────────────┘
         │
         │  Publishes events to:
@@ -43,21 +43,21 @@
         │
         ▼
 ┌───────────────────────────────────────────────┐
-│            PluginLoader (Core)                 │
-│  • Dynamic .so loading                         │
-│  • Interface casting                           │
+│            PluginLoader (Core)                │
+│  • Dynamic .so loading                        │
+│  • Interface casting                          │
 └───────┬───────────────────────────────────────┘
         │
         │  Loads plugins:
         │
         ├─────────────┬──────────────┬─────────────┐
         ▼             ▼              ▼             ▼
-  ┌──────────┐ ┌──────────┐  ┌──────────┐  ┌──────────┐
-  │ Storage  │ │ Network  │  │Filesystem│  │    ML    │
-  │  Plugin  │ │  Plugin  │  │  Plugin  │  │  Plugin  │
-  └──────────┘ └──────────┘  └──────────┘  └──────────┘
-  │IStorageAPI│ │INetworkAPI│ │IFileAPI  │  │IPlugin   │
-  └──────────┘ └──────────┘  └──────────┘  └──────────┘
+  ┌────────────┐  ┌───────────┐  ┌──────────┐  ┌──────────┐
+  │ Storage    │  │ Network   │  │Filesystem│  │    ML    │
+  │  Plugin    │  │  Plugin   │  │  Plugin  │  │  Plugin  │
+  └────────────┘  └───────────┘  └──────────┘  └──────────┘
+  │IStorageAPI │  │INetworkAPI│  │IFileAPI  │  │IPlugin   │
+  └────────────┘  └───────────┘  └──────────┘  └──────────┘
 
 ```
 
@@ -173,34 +173,34 @@ Peer B: Receives delta
 
 ```
 ┌────────────────────────────────────────────────────┐
-│                   Main Thread                       │
+│                   Main Thread                      │
 │  • DaemonCore.run() - signal handling              │
 │  • Blocks until shutdown signal                    │
 └────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────┐
-│                   IPC Thread                        │
+│                   IPC Thread                       │
 │  • IPCHandler server loop                          │
 │  • Accept connections, process commands            │
 │  • Thread-safe via EventBus/Plugin interfaces      │
 └────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────┐
-│                   RTT Thread                        │
+│                   RTT Thread                       │
 │  • Periodic latency measurement (15s interval)     │
 │  • Update peer latencies in storage                │
 │  • Reconnect disconnected peers                    │
 └────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────┐
-│                  Status Thread                      │
+│                  Status Thread                     │
 │  • Broadcast presence (5s interval)                │
 │  • Display peer status (30s interval)              │
 │  • Non-blocking status updates                     │
 └────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────┐
-│             Plugin Internal Threads                 │
+│             Plugin Internal Threads                │
 │  • Network: TCP server, discovery listener         │
 │  • Filesystem: inotify watcher                     │
 │  • Each plugin manages own concurrency             │

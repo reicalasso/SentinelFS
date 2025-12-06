@@ -63,29 +63,29 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-card border border-border/60 rounded-3xl shadow-2xl w-full max-w-xl mx-4 relative overflow-hidden">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border/60 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-full bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-3 sm:right-4 top-3 sm:top-4 p-1.5 rounded-full bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground transition-colors z-10"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="px-6 pt-6 pb-4 border-b border-border/40 bg-gradient-to-r from-primary/10 via-background to-background">
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/70 mb-1">First-time setup</div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-border/40 bg-gradient-to-r from-primary/10 via-background to-background">
+          <div className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-primary/70 mb-1">First-time setup</div>
+          <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 pr-8">
             <span>Connect SentinelFS in 3 steps</span>
           </h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
             Follow this wizard to quickly create a secure mesh between two devices on the same network.
           </p>
 
-          <div className="flex items-center gap-2 mt-4 text-xs">
+          <div className="flex items-center gap-2 mt-3 sm:mt-4 text-xs">
             {[1, 2, 3].map(i => (
               <div
                 key={i}
-                className={`flex-1 h-1.5 rounded-full ${
+                className={`flex-1 h-1 sm:h-1.5 rounded-full ${
                   i <= step ? 'bg-primary' : 'bg-border'
                 }`}
               />
@@ -93,11 +93,11 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-primary/10 text-primary">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>

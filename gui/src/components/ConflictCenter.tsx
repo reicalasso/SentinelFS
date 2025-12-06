@@ -152,17 +152,17 @@ export function ConflictCenter({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-card border border-border rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border bg-gradient-to-r from-card to-secondary/30">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <AlertTriangle className="w-6 h-6 text-primary" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-5 border-b border-border bg-gradient-to-r from-card to-secondary/30">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
+              <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <div>
-              <h2 className="font-bold text-xl">Conflict Center</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <h2 className="font-bold text-lg sm:text-xl">Conflict Center</h2>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                 {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''} · {versionedFiles.size} files with versions
               </p>
             </div>
@@ -173,29 +173,29 @@ export function ConflictCenter({
             <div className="flex bg-secondary/50 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('conflicts')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   viewMode === 'conflicts' 
                     ? 'bg-primary text-primary-foreground shadow-sm' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <AlertTriangle className="w-4 h-4 inline mr-1.5" />
-                Conflicts
+                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />
+                <span className="hidden sm:inline">Conflicts</span>
               </button>
               <button
                 onClick={() => setViewMode('versions')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   viewMode === 'versions' 
                     ? 'bg-primary text-primary-foreground shadow-sm' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <History className="w-4 h-4 inline mr-1.5" />
-                Versions
+                <History className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />
+                <span className="hidden sm:inline">Versions</span>
               </button>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg ml-2">
-              <X className="w-5 h-5" />
+            <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-secondary rounded-lg ml-1 sm:ml-2">
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, cloneElement } from 'react'
-import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle } from 'lucide-react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle, Menu, X } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
@@ -31,6 +31,7 @@ export default function App() {
   const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles } = state
   const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict, deleteVersion } = actions
   const [showOnboarding, setShowOnboarding] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!window.api) return
@@ -74,14 +75,37 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans overflow-hidden selection:bg-primary/30">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
       {/* Ultra Modern Sidebar */}
-      <div className="w-[300px] flex-shrink-0 border-r border-border/30 bg-gradient-to-b from-card/80 to-card/40 flex flex-col backdrop-blur-2xl z-20 relative overflow-hidden">
+      <div className={`
+        fixed lg:relative inset-y-0 left-0 z-40
+        w-[280px] sm:w-[300px] flex-shrink-0 
+        border-r border-border/30 bg-gradient-to-b from-card/80 to-card/40 
+        flex flex-col backdrop-blur-2xl overflow-hidden
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"></div>
         <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none"></div>
         
         {/* Logo Section */}
-        <div className="p-6 flex items-center gap-4 select-none relative">
+        <div className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4 select-none relative">
+          {/* Close button for mobile */}
+          <button 
+            className="lg:hidden absolute right-4 top-4 p-2 rounded-xl hover:bg-secondary/50 transition-colors"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
+          
           <div className="relative group cursor-pointer">
             {/* Subtle glow effect */}
             <div className="absolute inset-0 bg-primary/40 blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
@@ -108,10 +132,10 @@ export default function App() {
               <div className="w-4 h-px bg-gradient-to-r from-primary/50 to-transparent"></div>
               Main
             </h3>
-            <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setTab('dashboard')} />
-            <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => setTab('files')} />
-            <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => setTab('peers')} badge={peers.length > 0 ? peers.length : undefined} />
-            <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => setTab('transfers')} />
+            <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setTab('dashboard'); setSidebarOpen(false); }} />
+            <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => { setTab('files'); setSidebarOpen(false); }} />
+            <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => { setTab('peers'); setSidebarOpen(false); }} badge={peers.length > 0 ? peers.length : undefined} />
+            <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => { setTab('transfers'); setSidebarOpen(false); }} />
           </div>
 
           <div className="space-y-1">
@@ -123,12 +147,12 @@ export default function App() {
               icon={<AlertTriangle />} 
               label="Conflict Center" 
               active={false} 
-              onClick={() => showConflictModal(true)} 
+              onClick={() => { showConflictModal(true); setSidebarOpen(false); }} 
               badge={conflicts.length > 0 ? conflicts.length : undefined}
               highlight={conflicts.length > 0}
             />
-            <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => setTab('settings')} />
-            <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => setTab('logs')} />
+            <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => { setTab('settings'); setSidebarOpen(false); }} />
+            <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => { setTab('logs'); setSidebarOpen(false); }} />
           </div>
         </div>
 
@@ -249,19 +273,27 @@ export default function App() {
         </div>
         
         {/* Header - Clean & Minimal */}
-        <header className="h-14 px-6 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-background/70 border-b border-border/20">
-          <div className="flex items-center gap-3">
+        <header className="h-14 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md bg-background/70 border-b border-border/20">
+          <div className="flex items-center gap-2 sm:gap-3">
+             {/* Mobile Menu Button */}
+             <button 
+               className="lg:hidden p-2 rounded-xl hover:bg-secondary/50 transition-colors"
+               onClick={() => setSidebarOpen(true)}
+             >
+               <Menu className="w-5 h-5" />
+             </button>
+             
              {/* Page Title - Simple */}
              <div className="flex items-center gap-2 text-sm">
-                <Command className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground/60">/</span>
+                <Command className="w-4 h-4 text-muted-foreground hidden sm:block" />
+                <span className="text-muted-foreground/60 hidden sm:inline">/</span>
                 <span className="font-medium text-foreground capitalize">{activeTab.replace('-', ' ')}</span>
              </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Sync Status Indicator - Minimal */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/40 rounded-lg border border-border/30 text-xs">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-secondary/40 rounded-lg border border-border/30 text-xs">
                <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-info' : 'bg-success'}`}></div>
                <span className={`font-medium ${isPaused ? 'status-info' : 'status-success'}`}>
                  {isPaused ? 'Paused' : 'Active'}
@@ -271,19 +303,19 @@ export default function App() {
             {/* Toggle Button - Clean & Minimal */}
             <button 
                 onClick={togglePause}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 border ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 border ${
                     isPaused 
                     ? 'bg-success-muted status-success border-success/20 hover:bg-success/20 hover:border-success/30' 
                     : 'bg-info-muted status-info border-info/20 hover:bg-info/20 hover:border-info/30'
                 }`}
             >
               {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-              <span>{isPaused ? 'Resume' : 'Pause'}</span>
+              <span className="hidden sm:inline">{isPaused ? 'Resume' : 'Pause'}</span>
             </button>
           </div>
         </header>
 
-        <main className="relative flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
+        <main className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} />}
             {activeTab === 'files' && <Files files={files} />}
@@ -379,34 +411,34 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
     }
   }
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
+        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
-                        <Terminal className="w-6 h-6 icon-primary" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
+                        <Terminal className="w-5 h-5 sm:w-6 sm:h-6 icon-primary" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold">Debug Console</h2>
-                        <p className="text-sm text-muted-foreground">Real-time daemon logs and system events</p>
+                        <h2 className="text-lg sm:text-xl font-bold">Debug Console</h2>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Real-time daemon logs and system events</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
+                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
                   >
                     <span>Copy</span>
                   </button>
                   <button
                     onClick={handleExport}
-                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
+                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
                   >
                     <span>Export</span>
                   </button>
                   <button
                     onClick={onClear}
-                    className="flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
+                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
                   >
                     <span>Clear</span>
                   </button>
@@ -414,39 +446,39 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
             </div>
             
             {/* Terminal Window */}
-            <div className="relative overflow-hidden rounded-2xl border border-border/30 shadow-xl">
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/30 shadow-xl">
                 {/* Terminal Header - macOS style */}
-                <div className="flex items-center justify-between px-4 py-3 terminal-header border-b border-info/30">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-error/70 hover:bg-error transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-warning/70 hover:bg-warning transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-success/70 hover:bg-success transition-colors cursor-pointer"></div>
+                <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 terminal-header border-b border-info/30">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-error/70 hover:bg-error transition-colors cursor-pointer"></div>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-warning/70 hover:bg-warning transition-colors cursor-pointer"></div>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-success/70 hover:bg-success transition-colors cursor-pointer"></div>
                     </div>
-                    <div className="text-xs terminal-text-dim font-mono">sentinel-daemon.log</div>
-                    <div className="flex items-center gap-2 text-xs terminal-text-dim">
+                    <div className="text-[10px] sm:text-xs terminal-text-dim font-mono hidden sm:block">sentinel-daemon.log</div>
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs terminal-text-dim">
                         <div className="dot-success animate-pulse"></div>
                         <span>Live</span>
                     </div>
                 </div>
                 
                 {/* Terminal Content */}
-                <div className="terminal-bg font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-primary/30">
+                <div className="terminal-bg font-mono text-[10px] sm:text-xs p-3 sm:p-4 h-[calc(100vh-320px)] sm:h-[calc(100vh-280px)] overflow-auto selection:bg-primary/30">
                     {logs.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-info-dark">
-                            <div className="p-4 rounded-2xl bg-info-muted mb-4">
-                                <Terminal className="w-10 h-10 opacity-30" />
+                            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-info-muted mb-3 sm:mb-4">
+                                <Terminal className="w-8 h-8 sm:w-10 sm:h-10 opacity-30" />
                             </div>
-                            <p className="text-sm">Waiting for daemon logs...</p>
-                            <p className="text-xs text-info/50 mt-1">Logs will appear here in real-time</p>
+                            <p className="text-xs sm:text-sm">Waiting for daemon logs...</p>
+                            <p className="text-[10px] sm:text-xs text-info/50 mt-1">Logs will appear here in real-time</p>
                         </div>
                     ) : (
                         logs.map((log, i) => (
                             <div 
                                 key={i} 
-                                className="group mb-0.5 break-all hover:bg-white/[0.02] px-3 py-1 rounded transition-colors flex gap-4"
+                                className="group mb-0.5 break-all hover:bg-white/[0.02] px-2 sm:px-3 py-0.5 sm:py-1 rounded transition-colors flex gap-2 sm:gap-4"
                             >
-                                <span className="terminal-text-dim select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
-                                <span className="terminal-text group-hover:text-info-light transition-colors">
+                                <span className="terminal-text-dim select-none w-6 sm:w-8 text-right flex-shrink-0">{(i + 1).toString().padStart(3, '0')}</span>
+                                <span className="terminal-text group-hover:text-info-light transition-colors break-words min-w-0">
                                     {log.includes('ERROR') ? (
                                         <span className="status-error">{log}</span>
                                     ) : log.includes('WARN') ? (
