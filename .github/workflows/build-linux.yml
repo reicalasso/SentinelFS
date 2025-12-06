@@ -74,7 +74,7 @@ jobs:
           cmake -S . -B build_release \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DSKIP_SYSTEM_INSTALL=ON \
+            -DSKIP_SYSTEM_INSTALL=OFF \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
@@ -411,3 +411,5 @@ jobs:
               echo "- **$f** ($SIZE)" >> $GITHUB_STEP_SUMMARY
             fi
           done
+
+          
