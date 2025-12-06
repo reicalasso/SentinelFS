@@ -20,8 +20,16 @@ bool SQLiteHandler::initialize(const std::string& dbPath) {
         if (const char* envPath = std::getenv("SENTINEL_DB_PATH")) {
             resolvedPath = envPath;
         } else {
-            // Force usage of 'data' directory
-            resolvedPath = "data/sentinel.db";
+            // Use XDG data directory for database (writable location)
+            std::filesystem::path dataDir;
+            if (const char* xdgData = std::getenv("XDG_DATA_HOME")) {
+                dataDir = std::filesystem::path(xdgData) / "sentinelfs";
+            } else if (const char* home = std::getenv("HOME")) {
+                dataDir = std::filesystem::path(home) / ".local" / "share" / "sentinelfs";
+            } else {
+                dataDir = "/tmp/sentinelfs";
+            }
+            resolvedPath = (dataDir / "sentinel.db").string();
         }
     }
 
@@ -212,6 +220,34 @@ bool SQLiteHandler::createTables() {
         sqlite3_free(errMsg);
         metrics.incrementSyncErrors();
         return false;
+    }
+    
+    // Migration: Add synced column if it doesn't exist (for older databases)
+    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check first
+    bool hasSyncedColumn = false;
+    sqlite3_stmt* pragmaStmt;
+    if (sqlite3_prepare_v2(db_, "PRAGMA table_info(files);", -1, &pragmaStmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(pragmaStmt) == SQLITE_ROW) {
+            const char* colName = reinterpret_cast<const char*>(sqlite3_column_text(pragmaStmt, 1));
+            if (colName && std::string(colName) == "synced") {
+                hasSyncedColumn = true;
+                break;
+            }
+        }
+        sqlite3_finalize(pragmaStmt);
+    }
+    
+    if (!hasSyncedColumn) {
+        logger.log(LogLevel::INFO, "Adding 'synced' column to files table (migration)", "SQLiteHandler");
+        const char* alterSql = "ALTER TABLE files ADD COLUMN synced INTEGER DEFAULT 0;";
+        if (sqlite3_exec(db_, alterSql, 0, 0, &errMsg) != SQLITE_OK) {
+            logger.log(LogLevel::WARN, "Failed to add synced column (may already exist): " + std::string(errMsg), "SQLiteHandler");
+            sqlite3_free(errMsg);
+        } else {
+            // Mark all existing files as synced since they were tracked before this feature
+            sqlite3_exec(db_, "UPDATE files SET synced = 1;", 0, 0, nullptr);
+            logger.log(LogLevel::INFO, "Migration complete: synced column added", "SQLiteHandler");
+        }
     }
     
     // One-time migration: Check if synced column migration has been done

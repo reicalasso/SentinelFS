@@ -24,10 +24,11 @@ int main(int argc, char* argv[]) {
     // Initialize logging
     auto& logger = Logger::instance();
     
-    // Create logs directory if it doesn't exist
-    std::filesystem::create_directories("./logs");
+    // Create logs directory in user data directory (XDG compliant)
+    auto logDir = PathUtils::getDataDir() / "logs";
+    PathUtils::ensureDirectory(logDir);
     
-    logger.setLogFile("./logs/sentinel_daemon.log");
+    logger.setLogFile((logDir / "sentinel_daemon.log").string());
     logger.setLevel(LogLevel::DEBUG);
     logger.setMaxFileSize(100); // 100MB max log file size
     logger.setComponent("Daemon");
@@ -202,13 +203,13 @@ int main(int argc, char* argv[]) {
         ? PathUtils::getSocketPath() 
         : std::filesystem::path(config.socketPath);
         
-    // Force simplified path: always use ./data/sentinel.db relative to CWD
+    // Use XDG data directory for database (writable location)
     std::filesystem::path dbPath = config.dbPath.empty()
-        ? std::filesystem::current_path() / "data" / "sentinel.db"
+        ? PathUtils::getDataDir() / "sentinel.db"
         : std::filesystem::path(config.dbPath);
 
     // Ensure the data directory exists
-    std::filesystem::create_directories(dbPath.parent_path());
+    PathUtils::ensureDirectory(dbPath.parent_path());
 
     setenv("SENTINEL_DB_PATH", dbPath.c_str(), 1);
     IPCHandler ipcHandler(
