@@ -95,7 +95,7 @@ export default function App() {
               <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 text-[10px] text-primary font-bold tracking-widest uppercase border border-primary/20">Neo</span>
             </h1>
             <p className="text-[11px] text-muted-foreground font-medium tracking-wider mt-1.5 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400"></span>
+              <span className="dot-success animate-pulse"></span>
               Distributed Sync Engine
             </p>
           </div>
@@ -144,13 +144,13 @@ export default function App() {
                 <div className="relative">
                   <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
                     status === 'connected' 
-                      ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50' 
+                      ? 'bg-success glow-success' 
                       : status === 'error' 
-                        ? 'bg-red-500 shadow-lg shadow-red-500/50' 
-                        : 'bg-amber-400 animate-pulse shadow-lg shadow-amber-400/50'
+                        ? 'bg-error glow-error' 
+                        : 'bg-warning animate-pulse glow-warning'
                   }`} />
                   {status === 'connected' && (
-                    <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-30"></div>
+                    <div className="absolute inset-0 rounded-full bg-success animate-ping opacity-30"></div>
                   )}
                 </div>
                 <div className="flex flex-col">
@@ -163,6 +163,13 @@ export default function App() {
               <button onClick={() => sendCommand('STATUS')} className="relative p-2 hover:bg-background/50 rounded-xl text-muted-foreground hover:text-primary transition-all hover:scale-110 active:scale-95">
                 <RefreshCw className="w-4 h-4" />
               </button>
+           </div>
+           
+           {/* Acknowledgement */}
+           <div className="mt-3 text-center">
+             <p className="text-[10px] text-muted-foreground/50 italic">
+               lifalif aldigi icin oralete'ye tesekkurler 💜
+             </p>
            </div>
         </div>
       </div>
@@ -255,8 +262,8 @@ export default function App() {
           <div className="flex items-center gap-3">
             {/* Sync Status Indicator - Minimal */}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/40 rounded-lg border border-border/30 text-xs">
-               <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-emerald-400'}`}></div>
-               <span className={`font-medium ${isPaused ? 'text-amber-400/80' : 'text-emerald-400/80'}`}>
+               <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-info' : 'bg-success'}`}></div>
+               <span className={`font-medium ${isPaused ? 'status-info' : 'status-success'}`}>
                  {isPaused ? 'Paused' : 'Active'}
                </span>
             </div>
@@ -266,8 +273,8 @@ export default function App() {
                 onClick={togglePause}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 border ${
                     isPaused 
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30' 
-                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30'
+                    ? 'bg-success-muted status-success border-success/20 hover:bg-success/20 hover:border-success/30' 
+                    : 'bg-info-muted status-info border-info/20 hover:bg-info/20 hover:border-info/30'
                 }`}
             >
               {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -376,8 +383,8 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20">
-                        <Terminal className="w-6 h-6 text-amber-400" />
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
+                        <Terminal className="w-6 h-6 icon-primary" />
                     </div>
                     <div>
                         <h2 className="text-xl font-bold">Debug Console</h2>
@@ -409,28 +416,28 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
             {/* Terminal Window */}
             <div className="relative overflow-hidden rounded-2xl border border-border/30 shadow-xl">
                 {/* Terminal Header - macOS style */}
-                <div className="flex items-center justify-between px-4 py-3 bg-teal-900/90 border-b border-teal-800/50">
+                <div className="flex items-center justify-between px-4 py-3 terminal-header border-b border-info/30">
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500/70 hover:bg-red-500 transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-amber-500/70 hover:bg-amber-500 transition-colors cursor-pointer"></div>
-                        <div className="w-3 h-3 rounded-full bg-emerald-500/70 hover:bg-emerald-500 transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-error/70 hover:bg-error transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-warning/70 hover:bg-warning transition-colors cursor-pointer"></div>
+                        <div className="w-3 h-3 rounded-full bg-success/70 hover:bg-success transition-colors cursor-pointer"></div>
                     </div>
-                    <div className="text-xs text-teal-400/60 font-mono">sentinel-daemon.log</div>
-                    <div className="flex items-center gap-2 text-xs text-teal-400/60">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <div className="text-xs terminal-text-dim font-mono">sentinel-daemon.log</div>
+                    <div className="flex items-center gap-2 text-xs terminal-text-dim">
+                        <div className="dot-success animate-pulse"></div>
                         <span>Live</span>
                     </div>
                 </div>
                 
                 {/* Terminal Content */}
-                <div className="bg-teal-950 font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-amber-500/30">
+                <div className="terminal-bg font-mono text-xs p-4 h-[calc(100vh-280px)] overflow-auto selection:bg-primary/30">
                     {logs.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-teal-700">
-                            <div className="p-4 rounded-2xl bg-teal-900/50 mb-4">
+                        <div className="h-full flex flex-col items-center justify-center text-info-dark">
+                            <div className="p-4 rounded-2xl bg-info-muted mb-4">
                                 <Terminal className="w-10 h-10 opacity-30" />
                             </div>
                             <p className="text-sm">Waiting for daemon logs...</p>
-                            <p className="text-xs text-teal-800 mt-1">Logs will appear here in real-time</p>
+                            <p className="text-xs text-info/50 mt-1">Logs will appear here in real-time</p>
                         </div>
                     ) : (
                         logs.map((log, i) => (
@@ -438,16 +445,16 @@ function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
                                 key={i} 
                                 className="group mb-0.5 break-all hover:bg-white/[0.02] px-3 py-1 rounded transition-colors flex gap-4"
                             >
-                                <span className="text-teal-700 select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
-                                <span className="text-teal-300/70 group-hover:text-teal-200 transition-colors">
+                                <span className="terminal-text-dim select-none w-8 text-right">{(i + 1).toString().padStart(3, '0')}</span>
+                                <span className="terminal-text group-hover:text-info-light transition-colors">
                                     {log.includes('ERROR') ? (
-                                        <span className="text-red-400">{log}</span>
+                                        <span className="status-error">{log}</span>
                                     ) : log.includes('WARN') ? (
-                                        <span className="text-amber-400">{log}</span>
+                                        <span className="status-warning">{log}</span>
                                     ) : log.includes('SUCCESS') || log.includes('OK') ? (
-                                        <span className="text-emerald-400">{log}</span>
+                                        <span className="status-success">{log}</span>
                                     ) : log.includes('INFO') ? (
-                                        <span className="text-teal-400">{log}</span>
+                                        <span className="status-info">{log}</span>
                                     ) : (
                                         log
                                     )}

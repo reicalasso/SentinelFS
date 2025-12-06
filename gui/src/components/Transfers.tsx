@@ -28,9 +28,9 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
 
         {/* Transfer Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-emerald-500/20 transition-colors group">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-success/20 transition-colors group">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors text-emerald-500">
+                    <div className="p-3 rounded-xl bg-success-muted group-hover:bg-success/20 transition-colors status-success">
                         <Download className="w-6 h-6" />
                     </div>
                     <div>
@@ -39,9 +39,9 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                     </div>
                 </div>
             </div>
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-blue-500/20 transition-colors group">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-info/20 transition-colors group">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors text-blue-500">
+                    <div className="p-3 rounded-xl bg-info-muted group-hover:bg-info/20 transition-colors status-info">
                         <Upload className="w-6 h-6" />
                     </div>
                     <div>
@@ -50,9 +50,9 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                     </div>
                 </div>
             </div>
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-amber-500/20 transition-colors group">
+            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-sm hover:border-primary/20 transition-colors group">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors text-amber-500">
+                    <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors text-primary">
                         <Activity className="w-6 h-6" />
                     </div>
                     <div>
@@ -78,7 +78,7 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                 <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${transfer.type === 'download' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                            <div className={`p-2 rounded-lg ${transfer.type === 'download' ? 'bg-success-muted status-success' : 'bg-info-muted status-info'}`}>
                                 {transfer.type === 'download' ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
                             </div>
                             <div>
@@ -99,7 +99,7 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                                 <button className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground">
                                     <Pause className="w-4 h-4" />
                                 </button>
-                                <button className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500">
+                                <button className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-error">
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
@@ -108,7 +108,7 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                     {/* Progress Bar */}
                     <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                         <div 
-                            className={`h-full rounded-full transition-all duration-500 ${transfer.type === 'download' ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                            className={`h-full rounded-full transition-all duration-500 ${transfer.type === 'download' ? 'bg-success' : 'bg-info'}`} 
                             style={{ width: `${transfer.progress}%` }}
                         ></div>
                     </div>
@@ -131,10 +131,10 @@ export function Transfers({ metrics, transfers, history }: { metrics?: any, tran
                                 <div className="flex items-center gap-3">
                                     <div className={`p-2 rounded-lg ${
                                         item.type === 'download' || item.type === 'pull' 
-                                            ? 'bg-emerald-500/10 text-emerald-500' 
+                                            ? 'bg-success-muted status-success' 
                                             : item.type === 'delete' 
-                                            ? 'bg-red-500/10 text-red-500'
-                                            : 'bg-blue-500/10 text-blue-500'
+                                            ? 'bg-error-muted status-error'
+                                            : 'bg-info-muted status-info'
                                     }`}>
                                         {item.type === 'download' || item.type === 'pull' 
                                             ? <ArrowDown className="w-4 h-4" /> 

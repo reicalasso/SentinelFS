@@ -41,6 +41,39 @@ module.exports = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        // Semantic Status Colors
+        success: {
+          DEFAULT: "hsl(160 70% 45%)",
+          light: "hsl(160 70% 60%)",
+          dark: "hsl(160 70% 35%)",
+          muted: "hsl(160 70% 45% / 0.15)",
+        },
+        warning: {
+          DEFAULT: "hsl(45 100% 55%)",
+          light: "hsl(45 100% 70%)",
+          dark: "hsl(45 100% 45%)",
+          muted: "hsl(45 100% 55% / 0.15)",
+        },
+        error: {
+          DEFAULT: "hsl(0 72% 51%)",
+          light: "hsl(0 72% 65%)",
+          dark: "hsl(0 72% 41%)",
+          muted: "hsl(0 72% 51% / 0.15)",
+        },
+        info: {
+          DEFAULT: "hsl(180 60% 50%)",
+          light: "hsl(180 60% 65%)",
+          dark: "hsl(180 60% 40%)",
+          muted: "hsl(180 60% 50% / 0.15)",
+        },
+        // Terminal Colors
+        terminal: {
+          bg: "hsl(180 50% 8%)",
+          header: "hsl(180 60% 35%)",
+          text: "hsl(180 60% 70%)",
+          dim: "hsl(180 40% 55%)",
+          prompt: "hsl(30 100% 55%)",
+        },
       },
     },
   },

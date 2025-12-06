@@ -129,7 +129,7 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
                   <span>Generate new session code</span>
                 </button>
                 {sessionCode && (
-                  <span className="text-xs text-emerald-500 flex items-center gap-1">
+                  <span className="text-xs status-success flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Code configured
                   </span>
                 )}
@@ -140,7 +140,7 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500">
+                <div className="p-3 rounded-2xl bg-success-muted status-success">
                   <FolderPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -171,7 +171,7 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
               <button
                 onClick={handleSelectFolder}
                 disabled={busy}
-                className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-xl bg-emerald-500 text-emerald-50 hover:bg-emerald-500/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-xl btn-success disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <FolderPlus className="w-3 h-3" />
                 <span>Select folder</span>
@@ -233,7 +233,7 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
             {step === 3 && (
               <button
                 onClick={finish}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500 text-emerald-50 hover:bg-emerald-500/90 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg btn-success flex items-center gap-1"
               >
                 Finish
                 <CheckCircle2 className="w-3 h-3" />

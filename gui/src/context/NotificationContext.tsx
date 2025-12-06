@@ -71,23 +71,23 @@ export function NotificationToast() {
 
   const getIcon = (type: NotificationType) => {
     switch (type) {
-      case 'success': return <CheckCircle className="w-5 h-5 text-emerald-500" />
-      case 'error': return <AlertTriangle className="w-5 h-5 text-red-500" />
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-amber-500" />
-      case 'peer': return <Users className="w-5 h-5 text-teal-500" />
-      case 'transfer': return <FileText className="w-5 h-5 text-coral-500" />
-      default: return <Info className="w-5 h-5 text-teal-500" />
+      case 'success': return <CheckCircle className="w-5 h-5 icon-success" />
+      case 'error': return <AlertTriangle className="w-5 h-5 icon-error" />
+      case 'warning': return <AlertTriangle className="w-5 h-5 icon-warning" />
+      case 'peer': return <Users className="w-5 h-5 icon-info" />
+      case 'transfer': return <FileText className="w-5 h-5 icon-primary" />
+      default: return <Info className="w-5 h-5 icon-info" />
     }
   }
 
   const getBgColor = (type: NotificationType) => {
     switch (type) {
-      case 'success': return 'bg-emerald-500/10 border-emerald-500/20'
-      case 'error': return 'bg-red-500/10 border-red-500/20'
-      case 'warning': return 'bg-amber-500/10 border-amber-500/20'
-      case 'peer': return 'bg-teal-500/10 border-teal-500/20'
-      case 'transfer': return 'bg-orange-500/10 border-orange-500/20'
-      default: return 'bg-teal-500/10 border-teal-500/20'
+      case 'success': return 'bg-success-muted border-success/20'
+      case 'error': return 'bg-error-muted border-error/20'
+      case 'warning': return 'bg-warning-muted border-warning/20'
+      case 'peer': return 'bg-info-muted border-info/20'
+      case 'transfer': return 'bg-primary/10 border-primary/20'
+      default: return 'bg-info-muted border-info/20'
     }
   }
 

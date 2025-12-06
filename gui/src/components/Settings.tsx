@@ -273,7 +273,7 @@ export function Settings({ config }: SettingsProps) {
                                                             if (window.api) await window.api.sendCommand(`REMOVE_WATCH ${folder}`)
                                                         }
                                                     }}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 text-red-500 rounded transition-opacity"
+                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error-muted status-error rounded transition-opacity"
                                                     title="Stop watching (files will NOT be deleted)"
                                                 >
                                                     <X className="w-3 h-3" />
@@ -395,7 +395,7 @@ export function Settings({ config }: SettingsProps) {
                                         className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border border-border/50"
                                         title="Copy to clipboard"
                                     >
-                                        {copied ? <Check className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
+                                        {copied ? <Check className="w-5 h-5 icon-success" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
                                     </button>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-3">Share this code with peers to allow them to connect.</p>
@@ -404,8 +404,8 @@ export function Settings({ config }: SettingsProps) {
                         
                         {/* No Code Warning */}
                         {!config?.sessionCode && (
-                            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                                <div className="flex items-center gap-2 text-amber-500 mb-2">
+                            <div className="mb-6 p-4 bg-warning-muted border border-warning/20 rounded-xl">
+                                <div className="flex items-center gap-2 status-warning mb-2">
                                     <Shield className="w-4 h-4" />
                                     <span className="text-sm font-semibold">No Session Code Set</span>
                                 </div>
@@ -469,8 +469,8 @@ export function Settings({ config }: SettingsProps) {
                             <Toggle checked={encryptionEnabled} onChange={handleEncryptionToggle} />
                         </div>
                         {encryptionEnabled ? (
-                            <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
-                                <div className="flex items-center gap-2 text-emerald-500 mb-2">
+                            <div className="bg-success-muted p-4 rounded-xl border border-success/20">
+                                <div className="flex items-center gap-2 status-success mb-2">
                                     <Shield className="w-4 h-4" />
                                     <span className="text-sm font-semibold">Encryption Active</span>
                                 </div>
@@ -600,8 +600,8 @@ export function Settings({ config }: SettingsProps) {
                         </button>
                     </Section>
                     <Section title="ML Anomaly Detection">
-                        <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
-                            <div className="flex items-center gap-2 text-amber-500 mb-2">
+                        <div className="bg-warning-muted p-4 rounded-xl border border-warning/20">
+                            <div className="flex items-center gap-2 status-warning mb-2">
                                 <Database className="w-4 h-4" />
                                 <span className="text-sm font-semibold">Experimental Feature</span>
                             </div>

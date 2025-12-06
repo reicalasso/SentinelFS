@@ -87,7 +87,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
                 System Overview
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="dot-success animate-pulse"></span>
                 All systems operational
               </p>
             </div>
@@ -129,7 +129,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           title="Network Status" 
           value={metrics ? "Online" : "Connecting"}
           sub="Direct P2P Mesh"
-          icon={<Wifi className="w-5 h-5 text-emerald-500" />}
+          icon={<Wifi className="w-5 h-5 icon-success" />}
           status={metrics ? "success" : "warning"}
           trend="Stable"
         />
@@ -137,7 +137,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           title="Sync Status" 
           value={syncStatus?.syncStatus || "Idle"} 
           sub={syncStatus?.pendingFiles ? `${syncStatus.pendingFiles} files pending` : "Up to date"}
-          icon={<Zap className="w-5 h-5 text-amber-500" />}
+          icon={<Zap className="w-5 h-5 text-primary" />}
           status={syncStatus?.syncStatus === 'ENABLED' ? "success" : "warning"}
         />
         <StatCard 
@@ -150,7 +150,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           title="Total Traffic" 
           value={formatBytes(totalDownloaded)} 
           sub={`↑ ${formatBytes(totalUploaded)}`}
-          icon={<HardDrive className="w-5 h-5 text-amber-500" />}
+          icon={<HardDrive className="w-5 h-5 icon-info" />}
         />
       </div>
 
@@ -175,12 +175,12 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               <p className="text-sm text-muted-foreground mt-1 ml-12">Real-time bandwidth monitoring</p>
             </div>
             <div className="flex gap-3 text-xs font-semibold">
-              <div className="flex items-center gap-2 bg-amber-500/15 px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/10">
-                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></div>
+              <div className="flex items-center gap-2 bg-primary/15 px-3 py-1.5 rounded-lg border border-primary/30 text-primary">
+                <div className="dot-primary"></div>
                 <span>Upload</span>
               </div>
-              <div className="flex items-center gap-2 bg-emerald-500/15 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 shadow-sm shadow-emerald-500/10">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></div>
+              <div className="flex items-center gap-2 bg-success-muted px-3 py-1.5 rounded-lg border border-success/30 status-success glow-success">
+                <div className="dot-success"></div>
                 <span>Download</span>
               </div>
             </div>
@@ -188,33 +188,33 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           
           {/* Traffic Summary */}
           <div className="relative grid grid-cols-4 gap-3 mb-6">
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-emerald-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <ArrowDown className="w-3 h-3 text-emerald-400" />
+                <ArrowDown className="w-3 h-3 icon-success" />
                 Total Downloaded
               </div>
-              <div className="text-xl font-bold text-emerald-400 group-hover/stat:scale-105 transition-transform">{formatBytes(totalDownloaded)}</div>
+              <div className="text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(totalDownloaded)}</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-amber-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <ArrowUp className="w-3 h-3 text-amber-400" />
+                <ArrowUp className="w-3 h-3 icon-primary" />
                 Total Uploaded
               </div>
-              <div className="text-xl font-bold text-amber-400 group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
+              <div className="text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(totalUploaded)}</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-emerald-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-success/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-emerald-300" />
+                <Zap className="w-3 h-3 icon-success" />
                 Peak Download
               </div>
-              <div className="text-xl font-bold text-emerald-300 group-hover/stat:scale-105 transition-transform">{formatBytes(peakDownload)}/s</div>
+              <div className="text-xl font-bold status-success group-hover/stat:scale-105 transition-transform">{formatBytes(peakDownload)}/s</div>
             </div>
-            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-amber-500/30 transition-colors group/stat">
+            <div className="bg-gradient-to-br from-background/80 to-background/40 rounded-xl p-4 border border-border/30 hover:border-primary/30 transition-colors group/stat">
               <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-amber-300" />
+                <Zap className="w-3 h-3 icon-primary" />
                 Peak Upload
               </div>
-              <div className="text-xl font-bold text-amber-300 group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
+              <div className="text-xl font-bold text-primary group-hover/stat:scale-105 transition-transform">{formatBytes(peakUpload)}/s</div>
             </div>
           </div>
           
@@ -296,7 +296,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
               <span>Live Activity</span>
             </h3>
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/20 px-2 py-1 rounded-lg">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+              <div className="dot-success animate-pulse"></div>
               Real-time
             </div>
           </div>
@@ -360,10 +360,10 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
 
       {/* Degraded Peers Warning */}
       {degradedPeers > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-500" />
+        <div className="bg-warning-muted border border-warning/30 rounded-xl p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 icon-warning" />
           <div>
-            <div className="font-medium text-amber-500">{degradedPeers} Degraded Peer{degradedPeers > 1 ? 's' : ''}</div>
+            <div className="font-medium status-warning">{degradedPeers} Degraded Peer{degradedPeers > 1 ? 's' : ''}</div>
             <div className="text-sm text-muted-foreground">High jitter or packet loss detected. Check network conditions.</div>
           </div>
         </div>
@@ -385,10 +385,10 @@ function StatCard({ title, value, sub, icon, status, trend }: any) {
         {status && (
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ${
             status === 'success' 
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm shadow-emerald-500/20' 
-                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-sm shadow-amber-500/20'
+                ? 'badge-success glow-success' 
+                : 'bg-warning-muted status-warning border border-warning/30'
           }`}>
-             <div className={`w-2 h-2 rounded-full ${status === 'success' ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+             <div className={`w-2 h-2 rounded-full ${status === 'success' ? 'bg-success glow-success' : 'bg-warning animate-pulse'}`} />
              {status === 'success' ? 'Online' : 'Warning'}
           </div>
         )}
@@ -411,10 +411,10 @@ function StatCard({ title, value, sub, icon, status, trend }: any) {
 
 function QuickStat({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: 'teal' | 'emerald' | 'coral' | 'amber' }) {
   const colorClasses = {
-    teal: 'from-teal-500/20 to-teal-600/10 border-teal-500/30 text-teal-400',
-    emerald: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400',
-    coral: 'from-rose-500/20 to-rose-600/10 border-rose-500/30 text-rose-400',
-    amber: 'from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400',
+    teal: 'from-info/20 to-info-dark/10 border-info/30 status-info',
+    emerald: 'from-success/20 to-success-dark/10 border-success/30 status-success',
+    coral: 'from-accent/20 to-accent/10 border-accent/30 text-accent',
+    amber: 'from-primary/20 to-primary/10 border-primary/30 text-primary',
   }
   
   return (
@@ -431,25 +431,25 @@ function QuickStat({ label, value, icon, color }: { label: string; value: string
 function HealthCard({ title, icon, status, value, sub }: any) {
   const statusStyles = {
     success: {
-      bg: 'from-emerald-500/10 to-emerald-600/5',
-      border: 'border-emerald-500/30 hover:border-emerald-400/50',
-      icon: 'text-emerald-400',
-      glow: 'shadow-emerald-500/10',
-      indicator: 'bg-emerald-400 shadow-emerald-400/50'
+      bg: 'from-success/10 to-success-dark/5',
+      border: 'border-success/30 hover:border-success/50',
+      icon: 'icon-success',
+      glow: 'glow-success',
+      indicator: 'bg-success glow-success'
     },
     warning: {
-      bg: 'from-amber-500/10 to-amber-600/5',
-      border: 'border-amber-500/30 hover:border-amber-400/50',
-      icon: 'text-amber-400',
-      glow: 'shadow-amber-500/10',
-      indicator: 'bg-amber-400 shadow-amber-400/50 animate-pulse'
+      bg: 'from-warning/10 to-warning-dark/5',
+      border: 'border-warning/30 hover:border-warning/50',
+      icon: 'icon-warning',
+      glow: 'glow-warning',
+      indicator: 'bg-warning glow-warning animate-pulse'
     },
     error: {
-      bg: 'from-red-500/10 to-red-600/5',
-      border: 'border-red-500/30 hover:border-red-400/50',
-      icon: 'text-red-400',
-      glow: 'shadow-red-500/10',
-      indicator: 'bg-red-400 shadow-red-400/50 animate-pulse'
+      bg: 'from-error/10 to-error-dark/5',
+      border: 'border-error/30 hover:border-error/50',
+      icon: 'icon-error',
+      glow: 'glow-error',
+      indicator: 'bg-error glow-error animate-pulse'
     },
   }
   
@@ -485,15 +485,15 @@ function ActivityItem({ type, file, time, details }: any) {
     switch(type) {
       case 'sync': return { 
         icon: <ArrowDown className="w-4 h-4" />, 
-        color: 'text-emerald-400',
-        bg: 'bg-emerald-500/10',
-        border: 'border-emerald-500/30'
+        color: 'status-success',
+        bg: 'bg-success-muted',
+        border: 'border-success/30'
       }
       case 'delete': return { 
         icon: <ArrowUp className="w-4 h-4" />, 
-        color: 'text-red-400',
-        bg: 'bg-red-500/10',
-        border: 'border-red-500/30'
+        color: 'status-error',
+        bg: 'bg-error-muted',
+        border: 'border-error/30'
       }
       case 'security': return { 
         icon: <Shield className="w-4 h-4" />, 

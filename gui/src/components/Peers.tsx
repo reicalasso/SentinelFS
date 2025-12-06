@@ -213,26 +213,26 @@ export function Peers({ peers }: { peers?: any[] }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/20 via-card to-primary/10 border border-amber-500/20 p-8">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-card to-accent/10 border border-primary/20 p-8">
             {/* Animated Background */}
             <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+                <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
                 {/* Network Grid Pattern */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
             </div>
             
             <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-primary/20 backdrop-blur-sm border border-amber-500/30 shadow-lg shadow-amber-500/20">
-                        <Network className="w-8 h-8 text-amber-400" />
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 backdrop-blur-sm border border-primary/30 glow-primary">
+                        <Network className="w-8 h-8 icon-primary" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                             Network Mesh
                         </h2>
                         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span className="dot-primary animate-pulse"></span>
                             {displayPeers.length} devices connected
                         </p>
                     </div>
@@ -299,9 +299,9 @@ export function Peers({ peers }: { peers?: any[] }) {
                     {/* Status Bar at Top */}
                     <div className={`h-1.5 rounded-t-[20px] transition-all ${
                         peer.status === 'Connected' 
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' 
+                            ? 'bg-gradient-to-r from-success to-success-light' 
                             : peer.status === 'Pending' 
-                                ? 'bg-gradient-to-r from-amber-500 to-amber-400 animate-pulse' 
+                                ? 'bg-gradient-to-r from-warning to-warning-light animate-pulse' 
                                 : 'bg-gradient-to-r from-zinc-600 to-zinc-500'
                     }`}></div>
                     
@@ -309,15 +309,15 @@ export function Peers({ peers }: { peers?: any[] }) {
                         <div className="flex items-center gap-4 mb-5">
                             <div className={`relative p-4 rounded-2xl transition-all ${
                                 peer.status === 'Connected' 
-                                    ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10' 
+                                    ? 'bg-gradient-to-br from-success/20 to-success-dark/10 status-success border border-success/30 glow-success' 
                                     : peer.status === 'Pending' 
-                                        ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30' 
+                                        ? 'bg-gradient-to-br from-warning/20 to-warning-dark/10 status-warning border border-warning/30' 
                                         : 'bg-secondary text-muted-foreground border border-border/50'
                             }`}>
                                 {peer.type === 'mobile' ? <Smartphone className="w-6 h-6" /> : <Laptop className="w-6 h-6" />}
                                 {peer.status === 'Connected' && (
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50">
-                                        <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-50"></div>
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-success glow-success">
+                                        <div className="absolute inset-0 rounded-full bg-success animate-ping opacity-50"></div>
                                     </div>
                                 )}
                             </div>
@@ -337,12 +337,12 @@ export function Peers({ peers }: { peers?: any[] }) {
                                     <Signal className="w-3 h-3" /> Status
                                 </div>
                                 <div className={`font-semibold flex items-center gap-2 ${
-                                    peer.status === 'Connected' ? 'text-emerald-400' : 
-                                    peer.status === 'Pending' ? 'text-amber-400' : 'text-muted-foreground'
+                                    peer.status === 'Connected' ? 'status-success' : 
+                                    peer.status === 'Pending' ? 'status-warning' : 'text-muted-foreground'
                                 }`}>
                                     <div className={`w-2 h-2 rounded-full ${
-                                        peer.status === 'Connected' ? 'bg-emerald-400' : 
-                                        peer.status === 'Pending' ? 'bg-amber-400 animate-pulse' : 'bg-zinc-500'
+                                        peer.status === 'Connected' ? 'bg-success' : 
+                                        peer.status === 'Pending' ? 'bg-warning animate-pulse' : 'bg-zinc-500'
                                     }`} />
                                     {peer.status}
                                 </div>
@@ -352,8 +352,8 @@ export function Peers({ peers }: { peers?: any[] }) {
                                     <Zap className="w-3 h-3" /> Latency
                                 </div>
                                 <div className={`font-semibold font-mono ${
-                                    peer.latency < 50 ? 'text-emerald-400' : 
-                                    peer.latency < 150 ? 'text-amber-400' : 'text-red-400'
+                                    peer.latency < 50 ? 'status-success' : 
+                                    peer.latency < 150 ? 'status-warning' : 'status-error'
                                 }`}>
                                     {peer.latency >= 0 ? `${peer.latency}ms` : 'N/A'}
                                 </div>
@@ -459,8 +459,8 @@ export function Peers({ peers }: { peers?: any[] }) {
                             {discoverySettings.tcp && (
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                     relayStatus.connected 
-                                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
-                                        : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse'
+                                        ? 'badge-success' 
+                                        : 'bg-warning-muted status-warning border border-warning/30 animate-pulse'
                                 }`}>
                                     {relayStatus.connected ? 'Connected' : 'Connecting...'}
                                 </span>
@@ -505,7 +505,7 @@ export function Peers({ peers }: { peers?: any[] }) {
                         onClick={copySessionCode}
                         className={`p-2.5 rounded-xl transition-all ${
                             sessionCodeCopied 
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                ? 'bg-success-muted status-success border border-success/30' 
                                 : 'bg-secondary hover:bg-secondary/80 border border-border/50'
                         }`}
                     >

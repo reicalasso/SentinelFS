@@ -178,10 +178,10 @@ export function Files({ files }: { files?: any[] }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/20 via-card to-primary/10 border border-emerald-500/20 p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-success/20 via-card to-primary/10 border border-success/20 p-8">
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-success/20 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-1/4 -right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
           {/* File Pattern */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
@@ -190,15 +190,15 @@ export function Files({ files }: { files?: any[] }) {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-primary/20 backdrop-blur-sm border border-emerald-500/30 shadow-lg shadow-emerald-500/20">
-                <FolderOpen className="w-8 h-8 text-emerald-400" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-success/20 to-primary/20 backdrop-blur-sm border border-success/30 glow-success">
+                <FolderOpen className="w-8 h-8 status-success" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                   SYNC Files
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="dot-success animate-pulse"></span>
                   Manage synchronized directories
                 </p>
               </div>
@@ -206,7 +206,7 @@ export function Files({ files }: { files?: any[] }) {
             
             <button 
               onClick={handleAddFolder}
-              className="relative overflow-hidden flex items-center gap-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 active:scale-95"
+              className="relative overflow-hidden flex items-center gap-2.5 bg-gradient-to-r from-success to-success-dark hover:from-success-light hover:to-success text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all glow-success hover:scale-105 active:scale-95"
             >
               {/* Shine effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-500"></div>
@@ -217,21 +217,21 @@ export function Files({ files }: { files?: any[] }) {
           
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-emerald-500/15 to-emerald-600/10 border border-emerald-500/30 backdrop-blur-sm">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-success/15 to-success-dark/10 border border-success/30 backdrop-blur-sm">
               <div className="p-2 rounded-lg bg-background/50">
-                <Folder className="w-4 h-4 text-emerald-400" />
+                <Folder className="w-4 h-4 status-success" />
               </div>
               <div>
-                <div className="text-lg font-bold text-emerald-400">{stats.totalFolders}</div>
+                <div className="text-lg font-bold status-success">{stats.totalFolders}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Folders</div>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-600/10 border border-amber-500/30 backdrop-blur-sm">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-accent/15 to-accent/10 border border-accent/30 backdrop-blur-sm">
               <div className="p-2 rounded-lg bg-background/50">
-                <File className="w-4 h-4 text-amber-400" />
+                <File className="w-4 h-4 text-accent" />
               </div>
               <div>
-                <div className="text-lg font-bold text-amber-400">{stats.totalFiles}</div>
+                <div className="text-lg font-bold text-accent">{stats.totalFiles}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Files</div>
               </div>
             </div>
@@ -294,7 +294,7 @@ export function Files({ files }: { files?: any[] }) {
             {!hasRealData && (
                 <div className="p-16 text-center flex flex-col items-center">
                     <div className="relative mb-6">
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full"></div>
+                        <div className="absolute inset-0 bg-success/20 blur-3xl rounded-full"></div>
                         <div className="relative p-6 rounded-3xl bg-gradient-to-br from-secondary to-secondary/50 border border-border/50">
                             <FolderOpen className="w-12 h-12 text-muted-foreground/30" />
                         </div>
@@ -303,7 +303,7 @@ export function Files({ files }: { files?: any[] }) {
                     <p className="text-muted-foreground max-w-sm">Add a folder to start synchronizing your files across devices.</p>
                     <button 
                         onClick={handleAddFolder}
-                        className="mt-6 px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl font-medium transition-all border border-emerald-500/20"
+                        className="mt-6 px-6 py-3 bg-success-muted hover:bg-success/20 status-success rounded-xl font-medium transition-all border border-success/20"
                     >
                         Add Your First Folder
                     </button>
@@ -354,8 +354,8 @@ function FileTreeItem({ item, level, expandedFolders, toggleFolder, formatSize, 
                     
                     <div className={`p-2 rounded-xl transition-all group-hover:scale-110 ${
                         item.isFolder 
-                            ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 text-emerald-400 border border-emerald-500/30' 
-                            : 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-400 border border-amber-500/30'
+                            ? 'bg-gradient-to-br from-success/20 to-success-dark/10 status-success border border-success/30' 
+                            : 'bg-gradient-to-br from-accent/20 to-accent/10 text-accent border border-accent/30'
                     }`}>
                         {item.isFolder ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
                     </div>
@@ -376,8 +376,8 @@ function FileTreeItem({ item, level, expandedFolders, toggleFolder, formatSize, 
                 <div className="col-span-2">
                      <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg uppercase font-bold tracking-wide ${
                         item.syncStatus === 'synced' || item.syncStatus === 'watching'
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
-                        : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse'
+                        ? 'badge-success' 
+                        : 'bg-warning-muted status-warning border border-warning/30 animate-pulse'
                     }`}>
                         {item.syncStatus === 'synced' || item.syncStatus === 'watching' ? (
                             <CheckCircle2 className="w-3 h-3" />

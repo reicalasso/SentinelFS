@@ -142,12 +142,12 @@ export function ConflictCenter({
 
   const getChangeTypeColor = (type: string) => {
     switch (type) {
-      case 'conflict': return 'text-red-400 bg-red-500/10'
-      case 'remote': return 'text-emerald-400 bg-emerald-500/10'
-      case 'modify': return 'text-teal-400 bg-teal-500/10'
-      case 'backup': return 'text-amber-400 bg-amber-500/10'
-      case 'create': return 'text-orange-400 bg-orange-500/10'
-      default: return 'text-slate-400 bg-slate-500/10'
+      case 'conflict': return 'change-delete'
+      case 'remote': return 'change-add'
+      case 'modify': return 'change-rename'
+      case 'backup': return 'change-conflict'
+      case 'create': return 'change-modify'
+      default: return 'text-muted-foreground bg-muted/10'
     }
   }
 
@@ -530,7 +530,7 @@ export function ConflictCenter({
                               {onDeleteVersion && (
                                 <button 
                                   onClick={() => onDeleteVersion(filePath, version.versionId)}
-                                  className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-colors"
+                                  className="p-2 hover:bg-error-muted status-error rounded-lg transition-colors"
                                   title="Delete this version"
                                 >
                                   <Trash2 className="w-4 h-4" />
