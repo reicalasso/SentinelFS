@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
             templateFile << "# SentinelFS configuration\n";
             templateFile << "tcp_port=8080\n";
             templateFile << "discovery_port=9999\n";
-            templateFile << "watch_directory=~/sentinel_sync\n";
+            templateFile << "watch_directory=~/SentinelFS\n";
             templateFile << "encryption_enabled=false\n";
             templateFile << "upload_limit_kbps=0\n";
             templateFile << "download_limit_kbps=0\n";
@@ -64,7 +64,22 @@ int main(int argc, char* argv[]) {
     DaemonConfig config;
     config.tcpPort = fileConfig.getInt("tcp_port", 8080);
     config.discoveryPort = fileConfig.getInt("discovery_port", 9999);
-    config.watchDirectory = fileConfig.get("watch_directory", "./watched_folder");
+    
+    // Default watch directory: ~/SentinelFS or configured value
+    // Expand ~ to home directory for portable paths
+    std::string defaultWatchDir = "~/SentinelFS";
+    std::string watchDirConfig = fileConfig.get("watch_directory", defaultWatchDir);
+    if (watchDirConfig.empty() || watchDirConfig == "./watched_folder") {
+        watchDirConfig = defaultWatchDir;
+    }
+    // Expand ~ to actual home directory
+    if (!watchDirConfig.empty() && watchDirConfig[0] == '~') {
+        const char* home = std::getenv("HOME");
+        if (home) {
+            watchDirConfig = std::string(home) + watchDirConfig.substr(1);
+        }
+    }
+    config.watchDirectory = watchDirConfig;
     config.metricsPort = fileConfig.getInt("metrics_port", config.metricsPort);
     config.sessionCode = fileConfig.get("session_code", "");
     config.encryptionEnabled = fileConfig.getBool("encryption_enabled", false);
@@ -142,7 +157,7 @@ int main(int argc, char* argv[]) {
             std::cout << "\nOptions:" << std::endl;
             std::cout << "  --port <PORT>              TCP port for data transfer (default: 8080)" << std::endl;
             std::cout << "  --discovery <PORT>         UDP port for peer discovery (default: 9999)" << std::endl;
-            std::cout << "  --dir <PATH>               Directory to watch (default: ./watched_folder)" << std::endl;
+            std::cout << "  --dir <PATH>               Directory to watch (default: ~/SentinelFS)" << std::endl;
             std::cout << "  --session-code <CODE>      6-character session code for peer authentication" << std::endl;
             std::cout << "  --generate-code            Generate a new session code and exit" << std::endl;
             std::cout << "  --encrypt                  Enable AES-256-CBC encryption (requires session code)" << std::endl;
