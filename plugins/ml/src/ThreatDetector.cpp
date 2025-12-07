@@ -433,6 +433,7 @@ ThreatDetector::ThreatAlert ThreatDetector::combineDetectionResults(
     
     ThreatAlert alert;
     alert.timestamp = std::chrono::system_clock::now();
+    alert.fileEntropy = entropyResult.entropy;  // Store file entropy in alert
     
     // Calculate weighted combined score
     double combinedScore = 0.0;

@@ -2,6 +2,7 @@
 #include "../../DaemonCore.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
+#include "MetricsCollector.h"
 #include <sstream>
 #include <fstream>
 #include <filesystem>
@@ -276,6 +277,9 @@ std::string FileCommands::handleRemoveWatch(const std::string& args) {
             if (ctx_.filesystem) {
                 ctx_.filesystem->stopWatching(cleanPath);
             }
+            
+            // Reset threat metrics since watched files changed
+            MetricsCollector::instance().resetThreatMetrics();
             
             return "Success: Stopped watching " + cleanPath + " (" + 
                    std::to_string(fileCount) + " files remain on disk and will no longer be monitored)\n";

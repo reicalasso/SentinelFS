@@ -129,10 +129,18 @@ private:
                 if (ec) {
                     break;
                 }
+                std::string itemPath = it->path().string();
+                if (isIgnoredPath(itemPath)) {
+                    continue;
+                }
+                
                 if (it->is_directory(ec)) {
-                    std::string dir = it->path().string();
-                    if (!isIgnoredPath(dir)) {
-                        watcher_->addWatch(dir);
+                    watcher_->addWatch(itemPath);
+                } else if (it->is_regular_file(ec)) {
+                    // Publish FILE_CREATED for existing files so ML plugin can analyze them
+                    if (eventBus_) {
+                        std::cout << "[FilesystemPlugin] Initial scan - Publishing FILE_CREATED: " << itemPath << std::endl;
+                        eventBus_->publish("FILE_CREATED", itemPath);
                     }
                 }
             }
@@ -144,6 +152,11 @@ private:
                 if (!isIgnoredPath(dir)) {
                     watcher_->addWatch(dir);
                 }
+            }
+            // Also publish FILE_CREATED for the file itself
+            if (eventBus_ && !isIgnoredPath(root)) {
+                std::cout << "[FilesystemPlugin] Initial scan - Publishing FILE_CREATED: " << root << std::endl;
+                eventBus_->publish("FILE_CREATED", root);
             }
         }
     }
@@ -168,12 +181,15 @@ private:
             switch (ev.type) {
                 case WatchEventType::Create:
                     eventType = "FILE_CREATED";
+                    std::cout << "[FilesystemPlugin] Publishing FILE_CREATED: " << ev.path << std::endl;
                     break;
                 case WatchEventType::Modify:
                     eventType = "FILE_MODIFIED";
+                    std::cout << "[FilesystemPlugin] Publishing FILE_MODIFIED: " << ev.path << std::endl;
                     break;
                 case WatchEventType::Delete:
                     eventType = "FILE_DELETED";
+                    std::cout << "[FilesystemPlugin] Publishing FILE_DELETED: " << ev.path << std::endl;
                     break;
                 case WatchEventType::Rename:
                     eventType = "FILE_RENAMED";

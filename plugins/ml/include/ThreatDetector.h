@@ -51,6 +51,7 @@ public:
         ThreatType type{ThreatType::NONE};
         Severity severity{Severity::NONE};
         double confidenceScore{0.0};         // 0-1
+        double fileEntropy{0.0};             // File entropy (0-8 bits)
         std::string description;
         std::string recommendedAction;
         std::vector<std::string> indicators;  // IOCs (Indicators of Compromise)

@@ -36,6 +36,8 @@ static const std::vector<std::string> RANSOMWARE_EXTENSIONS = {
 static const std::vector<std::string> RANSOM_NOTE_NAMES = {
     // Case insensitive patterns
     "readme.txt", "readme.html", "readme.hta",
+    "readme_encrypted.txt", "readme_encrypted.html",
+    "decrypt_your_files.txt", "decrypt_your_files.html",
     "how_to_decrypt.txt", "how_to_decrypt.html",
     "how_to_recover.txt", "how_to_recover.html",
     "decrypt_instructions.txt", "decrypt_instructions.html",

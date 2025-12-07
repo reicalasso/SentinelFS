@@ -52,10 +52,19 @@ namespace SentinelFS {
     void MetricsCollector::incrementHighEntropyFiles() { securityMetrics_.highEntropyFiles++; }
     void MetricsCollector::incrementMassOperationAlerts() { securityMetrics_.massOperationAlerts++; }
     void MetricsCollector::updateThreatScore(double score) { 
-        securityMetrics_.currentThreatScoreX100 = static_cast<uint64_t>(score * 100); 
+        // score is 0-1, convert to 0-100 percentage for storage and display
+        securityMetrics_.currentThreatScoreX100 = static_cast<uint64_t>(score * 100 * 100); 
     }
     void MetricsCollector::updateAvgFileEntropy(double entropy) { 
         securityMetrics_.avgFileEntropyX100 = static_cast<uint64_t>(entropy * 100); 
+    }
+    void MetricsCollector::resetThreatMetrics() {
+        securityMetrics_.threatsDetected = 0;
+        securityMetrics_.ransomwareAlerts = 0;
+        securityMetrics_.highEntropyFiles = 0;
+        securityMetrics_.massOperationAlerts = 0;
+        securityMetrics_.currentThreatScoreX100 = 0;
+        securityMetrics_.avgFileEntropyX100 = 0;
     }
 
     // Performance metrics

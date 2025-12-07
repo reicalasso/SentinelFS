@@ -164,6 +164,7 @@ namespace SentinelFS {
         void incrementMassOperationAlerts();
         void updateThreatScore(double score);
         void updateAvgFileEntropy(double entropy);
+        void resetThreatMetrics();  // Reset all threat-related metrics
 
         // Performance metrics
         void recordSyncLatency(uint64_t latencyMs);

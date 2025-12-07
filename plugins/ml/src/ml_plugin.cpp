@@ -153,12 +153,32 @@ private:
         try {
             std::string path = std::any_cast<std::string>(data);
             
+            auto& logger = Logger::instance();
+            auto& metrics = MetricsCollector::instance();
+            
+            logger.info("MLPlugin received event: " + action + " -> " + path, "MLPlugin");
+            
             // Process event through threat detector
             auto alert = detector_->processEvent(action, path);
             
+            // Update entropy metrics if we got a valid entropy value
+            if (alert.fileEntropy > 0) {
+                metrics.updateAvgFileEntropy(alert.fileEntropy);
+                
+                // Track high entropy files
+                if (alert.fileEntropy > 7.0) {
+                    metrics.incrementHighEntropyFiles();
+                }
+            }
+            
+            // Log detection results
+            logger.info("MLPlugin detection result: severity=" + 
+                       ThreatDetector::severityToString(alert.severity) + 
+                       ", score=" + std::to_string(alert.confidenceScore) +
+                       ", entropy=" + std::to_string(alert.fileEntropy), "MLPlugin");
+            
             // Log high-severity detections
             if (alert.severity >= ThreatDetector::Severity::MEDIUM) {
-                auto& logger = Logger::instance();
                 logger.warn("Threat detected: " + alert.description, "MLPlugin");
             }
             
