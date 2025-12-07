@@ -2,13 +2,15 @@ import { Shield, TrendingUp, Network, Clock } from 'lucide-react'
 import { QuickStat } from './QuickStat'
 
 interface HeroSectionProps {
+  currentUpload: number
+  currentDownload: number
   peakUpload: number
   peakDownload: number
   peersCount: number
   formatBytes: (bytes: number) => string
 }
 
-export function HeroSection({ peakUpload, peakDownload, peersCount, formatBytes }: HeroSectionProps) {
+export function HeroSection({ currentUpload, currentDownload, peakUpload, peakDownload, peersCount, formatBytes }: HeroSectionProps) {
   return (
     <div className="hero-section">
       {/* Animated Background Effects */}
@@ -39,13 +41,15 @@ export function HeroSection({ peakUpload, peakDownload, peersCount, formatBytes 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mt-4 sm:mt-6">
           <QuickStat 
             label="Upload Speed" 
-            value={formatBytes(peakUpload) + '/s'} 
+            value={formatBytes(currentUpload) + '/s'} 
+            sub={`Peak: ${formatBytes(peakUpload)}/s`}
             icon={<TrendingUp className="w-4 h-4" />}
             color="teal"
           />
           <QuickStat 
             label="Download Speed" 
-            value={formatBytes(peakDownload) + '/s'} 
+            value={formatBytes(currentDownload) + '/s'} 
+            sub={`Peak: ${formatBytes(peakDownload)}/s`}
             icon={<TrendingUp className="w-4 h-4" />}
             color="emerald"
           />

@@ -1,0 +1,39 @@
+/* Toast Component Styles */
+
+/* ==========================================
+   TOAST CONTAINER
+   ========================================== */
+
+.toast-container {
+  @apply absolute right-2 sm:right-6 top-2 sm:top-6 space-y-2 z-50;
+  width: calc(100% - 1rem);
+}
+
+@media (min-width: 640px) {
+  .toast-container {
+    width: 20rem;
+  }
+}
+
+/* ==========================================
+   TOAST ITEM
+   ========================================== */
+
+.toast-item {
+  @apply border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm text-white flex items-start justify-between gap-2 sm:gap-3 shadow-lg;
+  background: rgba(15, 23, 42, 0.9);
+  border-color: hsl(var(--border));
+}
+
+.toast-message {
+  @apply break-words text-xs leading-snug;
+}
+
+.toast-dismiss-btn {
+  @apply transition-colors;
+  color: hsl(var(--muted-foreground));
+}
+
+.toast-dismiss-btn:hover {
+  color: hsl(var(--foreground));
+}

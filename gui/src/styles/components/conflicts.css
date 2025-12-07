@@ -1,0 +1,443 @@
+/* Conflict Center Component Styles */
+
+/* ==========================================
+   MODAL OVERLAY
+   ========================================== */
+
+.conflict-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.conflict-modal {
+  @apply border rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  max-height: 95vh;
+  animation: zoom-in-95 0.2s ease-out;
+}
+
+@media (min-width: 640px) {
+  .conflict-modal {
+    max-height: 85vh;
+  }
+}
+
+@keyframes zoom-in-95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ==========================================
+   CONFLICT HEADER
+   ========================================== */
+
+.conflict-header {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-5 border-b;
+  border-color: hsl(var(--border));
+  background: linear-gradient(to right, hsl(var(--card)), hsl(var(--secondary) / 0.3));
+}
+
+.conflict-header-left {
+  @apply flex items-center gap-3 sm:gap-4;
+}
+
+.conflict-header-icon {
+  @apply p-1.5 sm:p-2 rounded-lg sm:rounded-xl;
+  background: hsl(var(--primary) / 0.1);
+}
+
+.conflict-header-title {
+  @apply font-bold text-lg sm:text-xl;
+}
+
+.conflict-header-subtitle {
+  @apply mt-0.5;
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+}
+
+@media (min-width: 640px) {
+  .conflict-header-subtitle {
+    font-size: 12px;
+  }
+}
+
+.conflict-view-toggle {
+  @apply flex rounded-lg p-1;
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.conflict-view-btn {
+  @apply px-3 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-view-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+.conflict-view-btn-active {
+  @apply shadow-sm;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.conflict-close-btn {
+  @apply p-1.5 sm:p-2 rounded-lg ml-1 sm:ml-2 transition-colors;
+}
+
+.conflict-close-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+/* ==========================================
+   CONFLICT SEARCH BAR
+   ========================================== */
+
+.conflict-search-bar {
+  @apply flex items-center gap-3 px-5 py-3 border-b;
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary) / 0.2);
+}
+
+.conflict-search-input-wrapper {
+  @apply flex-1 relative;
+}
+
+.conflict-search-icon {
+  @apply w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-search-input {
+  @apply w-full pl-10 pr-4 py-2 border rounded-lg text-sm outline-none;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+.conflict-search-input:focus {
+  @apply ring-2;
+  ring-color: hsl(var(--primary) / 0.5);
+}
+
+.conflict-filter-wrapper {
+  @apply flex items-center gap-2;
+}
+
+.conflict-filter-select {
+  @apply px-3 py-2 border rounded-lg text-sm outline-none;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+/* ==========================================
+   CONFLICT MAIN CONTENT
+   ========================================== */
+
+.conflict-main-content {
+  @apply flex;
+  height: 550px;
+}
+
+.conflict-list-panel {
+  @apply w-2/5 border-r overflow-y-auto;
+  border-color: hsl(var(--border));
+}
+
+.conflict-details-panel {
+  @apply flex-1 p-5 overflow-y-auto;
+  background: linear-gradient(to bottom right, transparent, hsl(var(--secondary) / 0.1));
+}
+
+/* ==========================================
+   CONFLICT LIST
+   ========================================== */
+
+.conflict-list-empty {
+  @apply h-full flex flex-col items-center justify-center p-6;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-list-item {
+  @apply p-4 cursor-pointer border-b transition-colors;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.conflict-list-item:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.conflict-list-item-selected {
+  @apply border-l-2;
+  background: hsl(var(--secondary));
+  border-left-color: hsl(var(--primary));
+}
+
+.conflict-list-item-icon {
+  @apply p-2 rounded-lg mt-0.5;
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.conflict-list-item-sizes {
+  @apply flex items-center gap-3 mt-2 text-xs;
+}
+
+.conflict-size-local {
+  @apply flex items-center gap-1;
+  color: rgb(96, 165, 250);
+}
+
+.conflict-size-remote {
+  @apply flex items-center gap-1;
+  color: rgb(74, 222, 128);
+}
+
+.conflict-list-item-meta {
+  @apply flex items-center gap-2 mt-2;
+}
+
+.conflict-time {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-peer-badge {
+  @apply px-1.5 py-0.5 rounded-full;
+  font-size: 10px;
+  background: hsl(var(--secondary));
+}
+
+/* ==========================================
+   CONFLICT DETAILS
+   ========================================== */
+
+.conflict-details-empty {
+  @apply h-full flex flex-col items-center justify-center;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-details-file-icon {
+  @apply p-3 rounded-xl;
+  background: hsl(var(--primary) / 0.1);
+}
+
+/* ==========================================
+   VERSION CARDS
+   ========================================== */
+
+.conflict-version-card {
+  @apply p-4 rounded-xl border-2;
+}
+
+.conflict-version-local {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.1));
+}
+
+.conflict-version-remote {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: linear-gradient(to bottom right, rgba(34, 197, 94, 0.05), rgba(34, 197, 94, 0.1));
+}
+
+.conflict-version-header {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.conflict-version-info {
+  @apply space-y-3 text-sm;
+}
+
+.conflict-version-row {
+  @apply flex justify-between items-center py-2 border-b;
+}
+
+.conflict-version-row-local {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.conflict-version-row-remote {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.conflict-version-row-last {
+  @apply flex justify-between items-center py-2;
+}
+
+.conflict-resolve-btn {
+  @apply w-full mt-4 py-2.5 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-lg;
+}
+
+.conflict-resolve-local {
+  background: rgb(37, 99, 235);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2);
+}
+
+.conflict-resolve-local:hover {
+  background: rgb(29, 78, 216);
+}
+
+.conflict-resolve-remote {
+  background: rgb(22, 163, 74);
+  box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.2);
+}
+
+.conflict-resolve-remote:hover {
+  background: rgb(21, 128, 61);
+}
+
+.conflict-keep-both-btn {
+  @apply w-full py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 border;
+  background: linear-gradient(to right, hsl(var(--secondary)), hsl(var(--secondary) / 0.6));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.conflict-keep-both-btn:hover {
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.8), hsl(var(--secondary) / 0.4));
+}
+
+/* ==========================================
+   VERSION HISTORY ITEM
+   ========================================== */
+
+.conflict-version-history-item {
+  @apply flex items-center justify-between p-3 rounded-lg text-sm;
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.conflict-version-action-btn {
+  @apply p-1.5 rounded-md transition-colors;
+}
+
+.conflict-version-action-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+/* ==========================================
+   STRATEGY INFO
+   ========================================== */
+
+.conflict-strategy-info {
+  @apply text-xs p-4 rounded-xl flex items-start gap-2;
+  background: hsl(var(--secondary) / 0.3);
+  color: hsl(var(--muted-foreground));
+}
+
+/* ==========================================
+   VERSIONS VIEW
+   ========================================== */
+
+.versions-main-content {
+  @apply overflow-y-auto p-5;
+  height: 550px;
+}
+
+.versions-view-empty {
+  @apply h-full flex flex-col items-center justify-center;
+  color: hsl(var(--muted-foreground));
+}
+
+.versions-file-card {
+  @apply border rounded-xl overflow-hidden;
+  border-color: hsl(var(--border));
+}
+
+.versions-file-header {
+  @apply w-full flex items-center gap-3 p-4 transition-colors;
+}
+
+.versions-file-header:hover {
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.versions-count-badge {
+  @apply px-2 py-1 rounded-full text-xs;
+  background: hsl(var(--secondary));
+}
+
+.versions-expanded {
+  @apply border-t p-4 space-y-2;
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary) / 0.1);
+}
+
+.version-item {
+  @apply flex items-center justify-between p-3 rounded-lg border transition-colors;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.version-item:hover {
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.version-item-meta {
+  @apply flex items-center gap-3 text-xs mt-0.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.version-action-btn {
+  @apply p-2 rounded-lg transition-colors;
+}
+
+.version-action-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+.version-action-restore {
+  color: hsl(var(--primary));
+}
+
+.version-action-restore:hover {
+  background: hsl(var(--primary) / 0.1);
+}
+
+.version-action-delete {
+  color: hsl(var(--destructive));
+}
+
+.version-action-delete:hover {
+  background: hsl(var(--destructive-muted, var(--destructive) / 0.15));
+}
+
+/* ==========================================
+   CONFLICT FOOTER
+   ========================================== */
+
+.conflict-footer {
+  @apply flex items-center justify-between px-5 py-3 border-t;
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary) / 0.2);
+}
+
+.conflict-footer-info {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+.conflict-resolve-all-btn {
+  @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+  background: hsl(var(--secondary));
+}
+
+.conflict-resolve-all-btn:hover {
+  background: hsl(var(--secondary) / 0.8);
+}
+
+.conflict-done-btn {
+  @apply px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.conflict-done-btn:hover {
+  background: hsl(var(--primary) / 0.9);
+}

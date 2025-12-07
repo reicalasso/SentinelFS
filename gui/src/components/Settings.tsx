@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Database, Globe, Lock, Shield, Smartphone, Save, RefreshCw, Copy, Check, Key, Moon, Sun, Download, Upload, Plus, X, FileX, Palette, Type } from 'lucide-react'
-import { useTheme } from '../context/ThemeContext'
+import { Shield, Smartphone, Globe, Lock, Database, Palette } from 'lucide-react'
 import { useNotifications } from '../context/NotificationContext'
-import { useAppearance, themes, fonts, type ThemeId, type FontId } from '../context/AppearanceContext'
+import {
+  SettingsTab,
+  GeneralSettings,
+  NetworkSettings,
+  SecuritySettings,
+  AdvancedSettings,
+  AppearanceSettings
+} from './settings'
 
 interface SettingsProps {
   config: any
@@ -10,7 +16,6 @@ interface SettingsProps {
 
 export function Settings({ config }: SettingsProps) {
   const [activeTab, setActiveTab] = useState('general')
-  const { theme, toggleTheme } = useTheme()
   const { addNotification } = useNotifications()
   
   // Local state for form inputs
@@ -30,18 +35,11 @@ export function Settings({ config }: SettingsProps) {
   const [peerIp, setPeerIp] = useState('')
   const [peerPort, setPeerPort] = useState('8080')
   
-  // Format session code as ABC-123
-  const formatCode = (code: string) => {
-    if (!code || code.length !== 6) return code
-    return `${code.slice(0, 3)}-${code.slice(3)}`
-  }
-  
   // Load ignore patterns
   useEffect(() => {
     const loadPatterns = async () => {
       if (window.api) {
-        const res = await window.api.sendCommand('LIST_IGNORE')
-        // Parse response - it will be handled by daemon-data event
+        await window.api.sendCommand('LIST_IGNORE')
       }
     }
     loadPatterns()
@@ -63,18 +61,13 @@ export function Settings({ config }: SettingsProps) {
     }
   }
   
-  const handleUploadLimitChange = () => {
-    sendConfig('uploadLimit', uploadLimit)
-  }
-  
-  const handleDownloadLimitChange = () => {
-    sendConfig('downloadLimit', downloadLimit)
-  }
+  const handleUploadLimitChange = () => sendConfig('uploadLimit', uploadLimit)
+  const handleDownloadLimitChange = () => sendConfig('downloadLimit', downloadLimit)
   
   const handleSessionCodeChange = () => {
     if (newSessionCode.length === 6) {
       sendConfig('sessionCode', newSessionCode)
-      setNewSessionCode('') // Clear after setting
+      setNewSessionCode('')
     }
   }
   
@@ -124,11 +117,9 @@ export function Settings({ config }: SettingsProps) {
     }
   }
   
-  // Export config
   const handleExportConfig = async () => {
     if (window.api) {
-      const res = await window.api.sendCommand('EXPORT_CONFIG')
-      // Create download
+      await window.api.sendCommand('EXPORT_CONFIG')
       const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -140,25 +131,21 @@ export function Settings({ config }: SettingsProps) {
     }
   }
   
-  // Import config
   const handleImportConfig = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json'
     input.onchange = async (e: any) => {
       const file = e.target.files[0]
-      if (file) {
+      if (file && window.api) {
         const text = await file.text()
-        if (window.api) {
-          await window.api.sendCommand(`IMPORT_CONFIG ${text}`)
-          addNotification('success', 'Config Imported', 'Configuration loaded successfully')
-        }
+        await window.api.sendCommand(`IMPORT_CONFIG ${text}`)
+        addNotification('success', 'Config Imported', 'Configuration loaded successfully')
       }
     }
     input.click()
   }
   
-  // Add ignore pattern
   const handleAddPattern = async () => {
     if (newPattern.trim() && window.api) {
       await window.api.sendCommand(`ADD_IGNORE ${newPattern.trim()}`)
@@ -168,7 +155,6 @@ export function Settings({ config }: SettingsProps) {
     }
   }
   
-  // Remove ignore pattern
   const handleRemovePattern = async (pattern: string) => {
     if (window.api) {
       await window.api.sendCommand(`REMOVE_IGNORE ${pattern}`)
@@ -177,11 +163,36 @@ export function Settings({ config }: SettingsProps) {
     }
   }
 
+  const handleExportSupportBundle = async () => {
+    if (window.api) {
+      addNotification('info', 'Generating...', 'Creating support bundle, please wait...')
+      const res = await window.api.sendCommand('EXPORT_SUPPORT_BUNDLE')
+      if (res.success) {
+        const output = (res as any).output || ''
+        const pathMatch = output.match(/BUNDLE_PATH:(.+)/)
+        const bundlePath = pathMatch ? pathMatch[1].trim() : 'support folder'
+        addNotification('success', 'Support Bundle Created', `Bundle saved to: ${bundlePath}`)
+      } else {
+        addNotification('error', 'Export Failed', res.error || 'Unknown error')
+      }
+    }
+  }
+
+  const handleRefreshStatus = () => window.api?.sendCommand('STATUS')
+
+  const handleResetDefaults = () => {
+    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+      sendConfig('uploadLimit', '0')
+      sendConfig('downloadLimit', '0')
+      addNotification('warning', 'Settings Reset', 'All settings have been reset to defaults')
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Page Header */}
-      <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
+      <div className="settings-header">
+        <div className="settings-header-icon">
           <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
         </div>
         <div>
@@ -192,716 +203,77 @@ export function Settings({ config }: SettingsProps) {
       
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Settings Navigation */}
-        <nav className="space-y-1 sm:space-y-2 bg-card/30 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-border/30 h-fit lg:sticky lg:top-4 overflow-x-auto lg:overflow-x-visible">
-            <div className="flex lg:flex-col gap-1 sm:gap-2 min-w-max lg:min-w-0">
-              <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2">Navigation</div>
-              <SettingsTab 
-                  active={activeTab === 'general'} 
-                  onClick={() => setActiveTab('general')} 
-                  icon={<Smartphone className="w-4 h-4" />} 
-                  label="General" 
-              />
-            <SettingsTab 
-                active={activeTab === 'appearance'} 
-                onClick={() => setActiveTab('appearance')} 
-                icon={<Palette className="w-4 h-4" />} 
-                label="Appearance" 
-            />
-            <SettingsTab 
-                active={activeTab === 'network'} 
-                onClick={() => setActiveTab('network')} 
-                icon={<Globe className="w-4 h-4" />} 
-                label="Network" 
-            />
-            <SettingsTab 
-                active={activeTab === 'security'} 
-                onClick={() => setActiveTab('security')} 
-                icon={<Lock className="w-4 h-4" />} 
-                label="Security" 
-            />
-            <SettingsTab 
-                active={activeTab === 'advanced'} 
-                onClick={() => setActiveTab('advanced')} 
-                icon={<Database className="w-4 h-4" />} 
-                label="Advanced" 
-            />
-            </div>
+        <nav className="settings-nav">
+          <div className="flex lg:flex-col gap-1 sm:gap-2 min-w-max lg:min-w-0">
+            <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2">Navigation</div>
+            <SettingsTab active={activeTab === 'general'} onClick={() => setActiveTab('general')} icon={<Smartphone className="w-4 h-4" />} label="General" />
+            <SettingsTab active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')} icon={<Palette className="w-4 h-4" />} label="Appearance" />
+            <SettingsTab active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Globe className="w-4 h-4" />} label="Network" />
+            <SettingsTab active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<Lock className="w-4 h-4" />} label="Security" />
+            <SettingsTab active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} icon={<Database className="w-4 h-4" />} label="Advanced" />
+          </div>
         </nav>
 
         {/* Settings Content */}
         <div className="lg:col-span-3 space-y-4 sm:space-y-6">
-            {activeTab === 'general' && (
-                <div className="space-y-6">
-                    <Section title="Synchronization">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <span className="text-sm font-medium block">Enable Sync</span>
-                                <span className="text-xs text-muted-foreground">Pause/resume file synchronization</span>
-                            </div>
-                            <Toggle checked={syncEnabled} onChange={handleSyncToggle} />
-                        </div>
-                    </Section>
-                    <Section title="Configuration">
-                        <div className="space-y-2 text-xs">
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">TCP Port:</span>
-                                <span className="font-mono">{config?.tcpPort || 8080}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Discovery Port:</span>
-                                <span className="font-mono">{config?.discoveryPort || 9999}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Watch Directory:</span>
-                                <span className="font-mono text-xs">{config?.watchDirectory || '~/sentinel_sync'}</span>
-                            </div>
-                            
-                            {/* Display additional watched folders */}
-                            {config?.watchedFolders && config.watchedFolders.length > 0 && (
-                                <div className="pt-2 mt-2 border-t border-border/50">
-                                    <span className="text-muted-foreground block mb-1">Additional Watch Folders:</span>
-                                    <div className="space-y-1 pl-1">
-                                        {config.watchedFolders.map((folder: string, i: number) => (
-                                            <div key={i} className="flex justify-between items-center group">
-                                                <span className="font-mono text-xs break-all">{folder}</span>
-                                                <button 
-                                                    onClick={async () => {
-                                                        if (confirm(`Stop watching ${folder}?\n\nFiles will remain on disk, only monitoring will stop.`)) {
-                                                            if (window.api) await window.api.sendCommand(`REMOVE_WATCH ${folder}`)
-                                                        }
-                                                    }}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error-muted status-error rounded transition-opacity"
-                                                    title="Stop watching (files will NOT be deleted)"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </Section>
-                </div>
-            )}
+          {activeTab === 'general' && (
+            <GeneralSettings
+              config={config}
+              syncEnabled={syncEnabled}
+              onSyncToggle={handleSyncToggle}
+            />
+          )}
 
-            {activeTab === 'appearance' && (
-                <AppearanceSettings />
-            )}
+          {activeTab === 'appearance' && <AppearanceSettings />}
 
-            {activeTab === 'network' && (
-                <div className="space-y-6">
-                    <Section title="Manual Peer Connection">
-                        <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 sm:p-4 mb-4">
-                            <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
-                                    <Globe className="w-4 h-4 text-primary" />
-                                </div>
-                                <div>
-                                    <span className="text-xs sm:text-sm font-semibold">Connect to a specific peer</span>
-                                    <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Enter the IP address and port of a peer on a different network</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
-                                <input 
-                                    type="text" 
-                                    value={peerIp}
-                                    onChange={(e) => setPeerIp(e.target.value)}
-                                    placeholder="192.168.1.100"
-                                    className="bg-background/50 border border-border/50 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
-                                />
-                                <input 
-                                    type="number" 
-                                    value={peerPort}
-                                    onChange={(e) => setPeerPort(e.target.value)}
-                                    placeholder="8080"
-                                    className="w-full sm:w-24 bg-background/50 border border-border/50 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
-                                />
-                                <button 
-                                    onClick={handleAddPeer}
-                                    className="px-4 py-2 sm:py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Connect
-                                </button>
-                            </div>
-                        </div>
-                    </Section>
-                    
-                    <Section title="Bandwidth Limits">
-                        <div className="mb-5">
-                            <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Upload Limit (KB/s)</label>
-                            <div className="flex gap-2">
-                                <input 
-                                    type="number" 
-                                    value={uploadLimit}
-                                    onChange={(e) => setUploadLimit(e.target.value)}
-                                    placeholder="0 = Unlimited"
-                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
-                                />
-                                <button 
-                                    onClick={handleUploadLimitChange}
-                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    Apply
-                                </button>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1.5">0 = Unlimited</div>
-                        </div>
-                        <div className="mb-4">
-                            <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Download Limit (KB/s)</label>
-                            <div className="flex gap-2">
-                                <input 
-                                    type="number" 
-                                    value={downloadLimit}
-                                    onChange={(e) => setDownloadLimit(e.target.value)}
-                                    placeholder="0 = Unlimited"
-                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
-                                />
-                                <button 
-                                    onClick={handleDownloadLimitChange}
-                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    Apply
-                                </button>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1.5">0 = Unlimited</div>
-                        </div>
-                    </Section>
-                </div>
-            )}
-            
-            {activeTab === 'security' && (
-                <div className="space-y-6">
-                    <Section title="Session Code">
-                        {/* Current Code Display */}
-                        {config?.sessionCode && (
-                            <div className="mb-6 p-5 bg-primary/5 border border-primary/15 rounded-xl">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
-                                            <Key className="w-5 h-5 text-primary" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-muted-foreground uppercase tracking-wider">Current Session Code</div>
-                                            <div className="font-mono text-2xl font-bold tracking-widest text-primary mt-1">
-                                                {formatCode(config.sessionCode)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={handleCopyCode}
-                                        className="p-2.5 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors border border-border/50"
-                                        title="Copy to clipboard"
-                                    >
-                                        {copied ? <Check className="w-5 h-5 icon-success" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-3">Share this code with peers to allow them to connect.</p>
-                            </div>
-                        )}
-                        
-                        {/* No Code Warning */}
-                        {!config?.sessionCode && (
-                            <div className="mb-6 p-4 bg-warning-muted border border-warning/20 rounded-xl">
-                                <div className="flex items-center gap-2 status-warning mb-2">
-                                    <Shield className="w-4 h-4" />
-                                    <span className="text-sm font-semibold">No Session Code Set</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">Any peer can connect to your device. Set a session code for secure pairing.</p>
-                            </div>
-                        )}
-                        
-                        {/* Generate or Set Code */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Quick Generate</label>
-                                <button 
-                                    onClick={handleGenerateCode}
-                                    disabled={isGenerating}
-                                    className="w-full py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
-                                >
-                                    <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                                    {isGenerating ? 'Generating...' : 'Generate New Code'}
-                                </button>
-                            </div>
-                            
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-border/50"></div>
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-3 text-muted-foreground">or enter manually</span>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <label className="block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Manual Entry</label>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        value={newSessionCode}
-                                        onChange={(e) => setNewSessionCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                                        maxLength={6}
-                                        placeholder="ABC123"
-                                        className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all tracking-widest text-center" 
-                                    />
-                                    <button 
-                                        onClick={handleSessionCodeChange}
-                                        disabled={newSessionCode.length !== 6}
-                                        className="px-4 py-2.5 bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2"
-                                    >
-                                        <Save className="w-4 h-4" />
-                                        Set
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </Section>
-                    
-                    <Section title="Encryption">
-                        <div className="flex items-center justify-between mb-5">
-                            <div>
-                                <span className="text-sm font-medium block">Enable AES-256 Encryption</span>
-                                <span className="text-xs text-muted-foreground">Encrypt all peer-to-peer traffic</span>
-                            </div>
-                            <Toggle checked={encryptionEnabled} onChange={handleEncryptionToggle} />
-                        </div>
-                        {encryptionEnabled ? (
-                            <div className="bg-success-muted p-4 rounded-xl border border-success/20">
-                                <div className="flex items-center gap-2 status-success mb-2">
-                                    <Shield className="w-4 h-4" />
-                                    <span className="text-sm font-semibold">Encryption Active</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">All traffic is encrypted with AES-256-CBC + HMAC verification.</p>
-                            </div>
-                        ) : (
-                            <div className="bg-secondary/30 p-4 rounded-xl border border-border/50">
-                                <p className="text-xs text-muted-foreground">⚠ Traffic is not encrypted. Enable encryption for secure file transfers.</p>
-                            </div>
-                        )}
-                    </Section>
-                </div>
-            )}
+          {activeTab === 'network' && (
+            <NetworkSettings
+              peerIp={peerIp}
+              peerPort={peerPort}
+              uploadLimit={uploadLimit}
+              downloadLimit={downloadLimit}
+              onPeerIpChange={setPeerIp}
+              onPeerPortChange={setPeerPort}
+              onUploadLimitChange={setUploadLimit}
+              onDownloadLimitChange={setDownloadLimit}
+              onAddPeer={handleAddPeer}
+              onApplyUploadLimit={handleUploadLimitChange}
+              onApplyDownloadLimit={handleDownloadLimitChange}
+            />
+          )}
+          
+          {activeTab === 'security' && (
+            <SecuritySettings
+              config={config}
+              encryptionEnabled={encryptionEnabled}
+              newSessionCode={newSessionCode}
+              copied={copied}
+              isGenerating={isGenerating}
+              onEncryptionToggle={handleEncryptionToggle}
+              onSessionCodeChange={setNewSessionCode}
+              onGenerateCode={handleGenerateCode}
+              onCopyCode={handleCopyCode}
+              onSetSessionCode={handleSessionCodeChange}
+            />
+          )}
 
-            {activeTab === 'advanced' && (
-                <div className="space-y-6">
-                    <Section title="System Information">
-                        <div className="space-y-2 text-xs">
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Metrics Port:</span>
-                                <span className="font-mono">{config?.metricsPort || 9100}</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Database:</span>
-                                <span className="font-mono">sentinel.db (SQLite)</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">IPC Socket:</span>
-                                <span className="font-mono text-xs">/run/user/1000/sentinelfs/sentinel_daemon.sock</span>
-                            </div>
-                        </div>
-                    </Section>
-                    <Section title="Delta Sync Engine">
-                        <div className="space-y-2 text-xs">
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Algorithm:</span>
-                                <span className="font-mono">Rolling Checksum (Adler32) + SHA-256</span>
-                            </div>
-                            <div className="flex justify-between py-1">
-                                <span className="text-muted-foreground">Block Size:</span>
-                                <span className="font-mono">4 KB</span>
-                            </div>
-                        </div>
-                    </Section>
-                    <Section title="Ignore Patterns">
-                        <p className="text-xs text-muted-foreground mb-4">Files and folders matching these patterns will not be synchronized.</p>
-                        <div className="space-y-3">
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text"
-                                    value={newPattern}
-                                    onChange={(e) => setNewPattern(e.target.value)}
-                                    placeholder="*.log, node_modules/, .git/"
-                                    className="flex-1 bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleAddPattern()}
-                                />
-                                <button 
-                                    onClick={handleAddPattern}
-                                    disabled={!newPattern.trim()}
-                                    className="px-4 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
-                                >
-                                    <Plus className="w-4 h-4" /> Add
-                                </button>
-                            </div>
-                            {ignorePatterns.length > 0 ? (
-                                <div className="space-y-2">
-                                    {ignorePatterns.map((pattern, i) => (
-                                        <div key={i} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/30">
-                                            <div className="flex items-center gap-2">
-                                                <FileX className="w-4 h-4 text-muted-foreground" />
-                                                <span className="font-mono text-sm">{pattern}</span>
-                                            </div>
-                                            <button 
-                                                onClick={() => handleRemovePattern(pattern)}
-                                                className="p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-muted-foreground text-center py-6 bg-secondary/20 rounded-xl border border-dashed border-border/50">No ignore patterns defined</p>
-                            )}
-                        </div>
-                    </Section>
-                    <Section title="Export / Import">
-                        <div className="grid grid-cols-2 gap-4">
-                            <button 
-                                onClick={handleExportConfig}
-                                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
-                            >
-                                <Download className="w-4 h-4" /> Export Config
-                            </button>
-                            <button 
-                                onClick={handleImportConfig}
-                                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
-                            >
-                                <Upload className="w-4 h-4" /> Import Config
-                            </button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-3">Export settings to share with other devices or backup your configuration.</p>
-                    </Section>
-                    <Section title="Support Bundle">
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Generate a support bundle containing config, logs, and system info for troubleshooting.
-                        </p>
-                        <button 
-                            onClick={async () => {
-                                if (window.api) {
-                                    addNotification('info', 'Generating...', 'Creating support bundle, please wait...')
-                                    const res = await window.api.sendCommand('EXPORT_SUPPORT_BUNDLE')
-                                    if (res.success) {
-                                        // Parse bundle path from response
-                                        const output = (res as any).output || ''
-                                        const pathMatch = output.match(/BUNDLE_PATH:(.+)/)
-                                        const bundlePath = pathMatch ? pathMatch[1].trim() : 'support folder'
-                                        addNotification('success', 'Support Bundle Created', `Bundle saved to: ${bundlePath}`)
-                                    } else {
-                                        addNotification('error', 'Export Failed', res.error || 'Unknown error')
-                                    }
-                                }
-                            }}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-sm font-medium transition-all"
-                        >
-                            <Download className="w-4 h-4" /> Export Support Bundle
-                        </button>
-                    </Section>
-                    <Section title="ML Anomaly Detection">
-                        <div className="bg-warning-muted p-4 rounded-xl border border-warning/20">
-                            <div className="flex items-center gap-2 status-warning mb-2">
-                                <Database className="w-4 h-4" />
-                                <span className="text-sm font-semibold">Experimental Feature</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">ML-based anomaly detection uses IsolationForest via ONNX Runtime to identify suspicious peer behavior. This feature is in beta.</p>
-                        </div>
-                    </Section>
-                    <Section title="Danger Zone">
-                        <div className="space-y-3">
-                            <button 
-                                onClick={() => window.api?.sendCommand('STATUS')}
-                                className="w-full px-4 py-3 bg-secondary/50 hover:bg-secondary transition-all text-foreground rounded-xl text-sm font-medium border border-border/30 hover:border-border/50"
-                            >
-                                Refresh Daemon Status
-                            </button>
-                            <button 
-                                className="w-full px-4 py-3 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 hover:border-destructive/30 rounded-xl text-sm font-medium transition-all"
-                                onClick={() => {
-                                    if (confirm('Are you sure you want to reset all settings to defaults?')) {
-                                        sendConfig('uploadLimit', '0')
-                                        sendConfig('downloadLimit', '0')
-                                        addNotification('warning', 'Settings Reset', 'All settings have been reset to defaults')
-                                    }
-                                }}
-                            >
-                                Reset to Defaults
-                            </button>
-                        </div>
-                    </Section>
-                </div>
-            )}
+          {activeTab === 'advanced' && (
+            <AdvancedSettings
+              config={config}
+              ignorePatterns={ignorePatterns}
+              newPattern={newPattern}
+              onNewPatternChange={setNewPattern}
+              onAddPattern={handleAddPattern}
+              onRemovePattern={handleRemovePattern}
+              onExportConfig={handleExportConfig}
+              onImportConfig={handleImportConfig}
+              onExportSupportBundle={handleExportSupportBundle}
+              onRefreshStatus={handleRefreshStatus}
+              onResetDefaults={handleResetDefaults}
+            />
+          )}
         </div>
       </div>
     </div>
   )
-}
-
-function SettingsTab({ active, onClick, icon, label }: any) {
-    return (
-        <button 
-            onClick={onClick}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                active 
-                  ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm' 
-                  : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
-            }`}
-        >
-            <span className={`transition-colors ${active ? 'text-primary' : ''}`}>{icon}</span>
-            {label}
-            {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"></div>}
-        </button>
-    )
-}
-
-function Section({ title, children }: any) {
-    return (
-        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 shadow-sm hover:border-border/80 transition-colors">
-            <h3 className="font-semibold mb-4 pb-3 border-b border-border/50 text-foreground flex items-center gap-2">
-                <div className="w-1 h-4 bg-primary/60 rounded-full"></div>
-                {title}
-            </h3>
-            {children}
-        </div>
-    )
-}
-
-function Input({ label, value }: any) {
-    return (
-        <div className="mb-4 last:mb-0">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">{label}</label>
-            <input 
-                type="text" 
-                defaultValue={value} 
-                className="w-full bg-background/50 border border-border/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 outline-none transition-all" 
-            />
-        </div>
-    )
-}
-
-function Toggle({ checked, onChange }: any) {
-    return (
-        <div 
-            onClick={onChange}
-            className={`w-11 h-6 rounded-full relative cursor-pointer transition-all duration-300 ${
-                checked 
-                  ? 'bg-primary shadow-sm shadow-primary/30' 
-                  : 'bg-secondary/80 border border-border/50'
-            }`}
-        >
-            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${checked ? 'right-1' : 'left-1'}`}></div>
-        </div>
-    )
-}
-
-// ==========================================
-// APPEARANCE SETTINGS COMPONENT
-// ==========================================
-
-function AppearanceSettings() {
-    const { settings, setTheme, setFont, setColorMode, currentTheme, currentFont } = useAppearance()
-    const { theme, toggleTheme } = useTheme()
-    
-    // Helper to get the two most prominent colors for a theme
-    const getThemeGradient = (themeColors: any, isDark: boolean) => {
-        const colors = isDark ? themeColors.dark : themeColors.light
-        // Use primary and accent as the two main colors
-        return `linear-gradient(135deg, hsl(${colors.primary}) 0%, hsl(${colors.accent}) 100%)`
-    }
-
-    // Local fonts from public/fonts directory
-    const localFonts = [
-        {
-            id: 'pixellet' as FontId,
-            name: 'Pixellet',
-            description: 'Retro pixel style',
-            family: "'Pixellet', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'plank' as FontId,
-            name: 'Plank',
-            description: 'Bold display font',
-            family: "'Plank', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'super-croissant' as FontId,
-            name: 'Super Croissant',
-            description: 'Playful rounded font',
-            family: "'Super Croissant', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'spicy-sale' as FontId,
-            name: 'Spicy Sale',
-            description: 'Fun decorative font',
-            family: "'Spicy Sale', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'star' as FontId,
-            name: 'Star',
-            description: 'Starry display font',
-            family: "'Star', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'playful-christmas' as FontId,
-            name: 'Playful Christmas',
-            description: 'Festive holiday font',
-            family: "'Playful Christmas', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        }
-    ]
-
-    // Combined fonts list (local + web fonts)
-    const allFonts = [
-        ...localFonts,
-        {
-            id: 'inter' as FontId,
-            name: 'Inter',
-            description: 'Modern sans-serif',
-            family: "'Inter', system-ui, sans-serif",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'jetbrains' as FontId,
-            name: 'JetBrains Mono',
-            description: 'Developer monospace',
-            family: "'JetBrains Mono', monospace",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'fira-code' as FontId,
-            name: 'Fira Code',
-            description: 'Code with ligatures',
-            family: "'Fira Code', monospace",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'roboto-mono' as FontId,
-            name: 'Roboto Mono',
-            description: 'Clean monospace',
-            family: "'Roboto Mono', monospace",
-            preview: 'SentinelFS'
-        },
-        {
-            id: 'system' as FontId,
-            name: 'System Default',
-            description: 'Use system fonts',
-            family: "system-ui, -apple-system, sans-serif",
-            preview: 'SentinelFS'
-        }
-    ]
-
-    return (
-        <div className="space-y-6">
-            {/* Dark/Light Mode Toggle */}
-            <Section title="Color Mode">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        {theme === 'dark' ? <Moon className="w-5 h-5 status-info" /> : <Sun className="w-5 h-5 text-primary" />}
-                        <div>
-                            <span className="text-sm font-medium block">Theme Mode</span>
-                            <span className="text-xs text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                        </div>
-                    </div>
-                    <Toggle checked={theme === 'dark'} onChange={() => {
-                        toggleTheme()
-                        setColorMode(theme === 'dark' ? 'light' : 'dark')
-                    }} />
-                </div>
-            </Section>
-
-            {/* Theme Selection */}
-            <Section title="Color Theme">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {themes.map((t) => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTheme(t.id)}
-                            className={`group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
-                                settings.themeId === t.id
-                                    ? 'border-primary bg-primary/10 shadow-sm'
-                                    : 'border-border/50 hover:border-border hover:bg-secondary/30'
-                            }`}
-                        >
-                            {/* Theme Gradient Preview */}
-                            <div 
-                                className="w-12 h-12 rounded-lg shadow-sm flex-shrink-0 border border-white/10"
-                                style={{ 
-                                    background: getThemeGradient(t.colors, theme === 'dark')
-                                }}
-                            />
-                            
-                            {/* Theme Info */}
-                            <div className="flex-1 text-left">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold">{t.name}</span>
-                                    {settings.themeId === t.id && (
-                                        <Check className="w-3.5 h-3.5 text-primary" />
-                                    )}
-                                </div>
-                                <span className="text-xs text-muted-foreground">{t.description}</span>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </Section>
-
-            {/* Font Selection */}
-            <Section title="Font Family">
-                <div className="grid grid-cols-1 gap-2">
-                    {allFonts.map((f) => (
-                        <button
-                            key={f.id}
-                            onClick={() => setFont(f.id)}
-                            className={`group flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 ${
-                                settings.fontId === f.id
-                                    ? 'border-primary bg-primary/10 shadow-sm'
-                                    : 'border-border/50 hover:border-border hover:bg-secondary/30'
-                            }`}
-                        >
-                            <div className="flex items-center gap-4">
-                                {/* Font Preview */}
-                                <div 
-                                    className="w-28 text-lg font-medium font-preview"
-                                    style={{ '--preview-font': f.family } as React.CSSProperties}
-                                >
-                                    {f.preview}
-                                </div>
-                                
-                                {/* Font Info */}
-                                <div className="text-left">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-semibold">{f.name}</span>
-                                        {settings.fontId === f.id && (
-                                            <Check className="w-3.5 h-3.5 text-primary" />
-                                        )}
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">{f.description}</span>
-                                </div>
-                            </div>
-                            
-                            {/* Selection indicator */}
-                            <div className={`w-4 h-4 rounded-full border-2 transition-all ${
-                                settings.fontId === f.id 
-                                    ? 'border-primary bg-primary' 
-                                    : 'border-border group-hover:border-muted-foreground'
-                            }`}>
-                                {settings.fontId === f.id && (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
-                                    </div>
-                                )}
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </Section>
-        </div>
-    )
 }

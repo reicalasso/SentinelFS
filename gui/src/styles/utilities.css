@@ -1,0 +1,286 @@
+/* Glass Morphism, Glow Effects, Gradients, Cards & Buttons */
+
+/* ==========================================
+   GLASS MORPHISM COMPONENTS
+   ========================================== */
+
+.glass {
+  background: linear-gradient(135deg, 
+    hsl(var(--card) / 0.6) 0%, 
+    hsl(var(--card) / 0.3) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+}
+
+.glass-subtle {
+  background: hsl(var(--card) / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.4) 0%, 
+    rgba(0, 0, 0, 0.2) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ==========================================
+   GLOW EFFECTS
+   ========================================== */
+
+.glow-primary {
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.15),
+              0 0 16px hsl(var(--primary) / 0.05);
+}
+
+.glow-success {
+  box-shadow: 0 0 8px rgba(45, 200, 160, 0.15),
+              0 0 16px rgba(45, 200, 160, 0.05);
+}
+
+.glow-warning {
+  box-shadow: 0 0 8px rgba(255, 200, 50, 0.15),
+              0 0 16px rgba(255, 200, 50, 0.05);
+}
+
+.glow-accent {
+  box-shadow: 0 0 8px hsl(var(--accent) / 0.15),
+              0 0 16px hsl(var(--accent) / 0.05);
+}
+
+.glow-text {
+  text-shadow: 0 0 4px currentColor,
+               0 0 8px currentColor;
+}
+
+/* Glow Effects - Semantic */
+.glow-error {
+  box-shadow: 0 0 8px hsl(0 72% 51% / 0.15), 
+              0 0 16px hsl(0 72% 51% / 0.05);
+}
+
+.glow-info {
+  box-shadow: 0 0 8px hsl(180 60% 50% / 0.15), 
+              0 0 16px hsl(180 60% 50% / 0.05);
+}
+
+/* ==========================================
+   GRADIENT BORDERS
+   ========================================== */
+
+.gradient-border {
+  position: relative;
+  background: hsl(var(--card));
+  border-radius: 16px;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  padding: 1px;
+  background: linear-gradient(135deg, 
+    hsl(var(--primary)), 
+    hsl(var(--accent)),
+    hsl(var(--primary)));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* ==========================================
+   HOVER EFFECTS
+   ========================================== */
+
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* ==========================================
+   CARD STYLES
+   ========================================== */
+
+.card-modern {
+  @apply relative overflow-hidden;
+  background: linear-gradient(145deg, 
+    hsl(var(--card)) 0%, 
+    hsl(var(--card) / 0.8) 100%);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    hsl(var(--primary) / 0.5), 
+    hsl(var(--accent) / 0.5), 
+    transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-modern:hover::before {
+  opacity: 1;
+}
+
+.card-modern:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 60px hsl(var(--primary) / 0.1);
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   STATUS INDICATORS
+   ========================================== */
+
+.status-online {
+  @apply relative;
+  background: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+.status-online::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: ripple 2s ease-out infinite;
+}
+
+/* ==========================================
+   BUTTON STYLES
+   ========================================== */
+
+.btn-primary {
+  @apply relative overflow-hidden;
+  background: linear-gradient(135deg, 
+    hsl(var(--primary)) 0%, 
+    hsl(var(--primary) / 0.8) 100%);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.2), 
+    transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 30px hsl(var(--primary) / 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Button Variants */
+.btn-success {
+  @apply bg-[hsl(160,70%,45%)] hover:bg-[hsl(160,70%,40%)] text-white;
+}
+.btn-warning {
+  @apply bg-[hsl(45,100%,55%)] hover:bg-[hsl(45,100%,50%)] text-black;
+}
+.btn-error {
+  @apply bg-[hsl(0,72%,51%)] hover:bg-[hsl(0,72%,46%)] text-white;
+}
+.btn-info {
+  @apply bg-[hsl(180,60%,50%)] hover:bg-[hsl(180,60%,45%)] text-white;
+}
+
+/* ==========================================
+   STAT CARDS
+   ========================================== */
+
+.stat-card {
+  @apply relative p-6 rounded-2xl overflow-hidden;
+  background: linear-gradient(145deg, 
+    hsl(var(--card)) 0%, 
+    hsl(var(--card) / 0.6) 100%);
+  border: 1px solid hsl(var(--border) / 0.3);
+  transition: all 0.4s ease;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, 
+    hsl(var(--primary) / 0.1) 0%, 
+    transparent 70%);
+  transform: translate(30%, -30%);
+  transition: transform 0.4s ease;
+}
+
+.stat-card:hover::before {
+  transform: translate(20%, -20%) scale(1.2);
+}
+
+.stat-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 
+    0 15px 40px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 hsl(var(--foreground) / 0.05);
+}

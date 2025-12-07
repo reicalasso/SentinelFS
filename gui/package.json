@@ -21,22 +21,23 @@
     "electron:build": "vite build && tsc"
   },
   "dependencies": {
+    "clsx": "^2.1.0",
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {
+    "@types/node": "^20.10.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
-    "@types/node": "^20.10.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
     "postcss": "^8.4.32",
+    "postcss-import": "^16.1.1",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.8",
@@ -51,11 +52,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Utility",
@@ -112,7 +117,9 @@
       {
         "from": "../build_release/plugins",
         "to": "lib/plugins",
-        "filter": ["**/*.so"]
+        "filter": [
+          "**/*.so"
+        ]
       },
       {
         "from": "../config/sentinel.conf",

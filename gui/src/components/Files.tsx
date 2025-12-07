@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { FolderOpen, Plus, File, Search, Trash2, ChevronRight, ChevronDown, Folder, HardDrive, CheckCircle2, Clock, RefreshCw } from 'lucide-react'
+import { FilesHero, FilesSearch, FilesEmpty, FileTreeItem, FilesListHeader } from './files'
 
 export function Files({ files }: { files?: any[] }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
@@ -53,420 +53,150 @@ export function Files({ files }: { files?: any[] }) {
 
   // Reconstruct the file tree from flat list
   const { tree: fileTree, flatList: flatItems } = useMemo(() => {
-      if (!files) return { tree: [], flatList: [] }
+    if (!files) return { tree: [], flatList: [] }
 
-      const map = new Map<string, any>()
+    const map = new Map<string, any>()
+    
+    files.forEach(f => {
+      map.set(f.path, { ...f, children: [] })
+    })
+
+    const getOrCreateFolder = (path: string, rootPath: string): any => {
+      if (map.has(path)) return map.get(path)
       
-      // 1. Initialize map with provided files/folders
-      files.forEach(f => {
-          map.set(f.path, { ...f, children: [] })
+      const newFolder = {
+        path,
+        name: path.split('/').pop(),
+        isFolder: true,
+        size: 0,
+        syncStatus: 'synced',
+        children: [],
+      }
+      map.set(path, newFolder)
+
+      if (path !== rootPath && path.length > rootPath.length) {
+        const lastSlash = path.lastIndexOf('/')
+        if (lastSlash > 0) {
+          const parentPath = path.substring(0, lastSlash)
+          if (parentPath.length >= rootPath.length) {
+            const parentNode = getOrCreateFolder(parentPath, rootPath)
+            if (!parentNode.children.find((c: any) => c.path === path)) {
+              parentNode.children.push(newFolder)
+            }
+          }
+        }
+      }
+      return newFolder
+    }
+
+    files.forEach(f => {
+      if (f.isFolder && !f.parent) return
+
+      const rootPath = f.parent
+      if (!rootPath) return
+
+      const lastSlash = f.path.lastIndexOf('/')
+      const parentDir = f.path.substring(0, lastSlash)
+
+      if (parentDir === rootPath) {
+        const rootNode = map.get(rootPath)
+        if (rootNode) {
+          if (!rootNode.children.find((c: any) => c.path === f.path)) {
+            rootNode.children.push(map.get(f.path))
+          }
+        }
+      } else {
+        const parentFolder = getOrCreateFolder(parentDir, rootPath)
+        if (!parentFolder.children.find((c: any) => c.path === f.path)) {
+          parentFolder.children.push(map.get(f.path))
+        }
+      }
+    })
+
+    const roots = Array.from(map.values()).filter(f => 
+      f.isFolder && !f.parent && files.some(rf => rf.path === f.path && rf.isFolder && !rf.parent)
+    )
+
+    const computeFolderSize = (node: any): number => {
+      if (!node.children || node.children.length === 0) {
+        node.size = node.size ?? 0
+        return node.size
+      }
+
+      let total = node.isFolder ? 0 : (node.size ?? 0)
+      node.children.forEach((child: any) => {
+        total += computeFolderSize(child)
       })
 
-      const getOrCreateFolder = (path: string, rootPath: string): any => {
-          if (map.has(path)) return map.get(path)
-          
-          // Virtual folder creation
-          const newFolder = {
-              path,
-              name: path.split('/').pop(),
-              isFolder: true,
-              size: 0,
-              syncStatus: 'synced',
-              children: [],
-              // parent will be set when attached
-          }
-          map.set(path, newFolder)
+      node.size = total
+      return node.size
+    }
 
-          // Attach to parent if possible
-          if (path !== rootPath && path.length > rootPath.length) {
-               // Find immediate parent path
-               // Handle both / and \ just in case, though Linux uses /
-               const lastSlash = path.lastIndexOf('/')
-               if (lastSlash > 0) {
-                   const parentPath = path.substring(0, lastSlash)
-                   // Recursively ensure parent exists up to rootPath
-                   if (parentPath.length >= rootPath.length) {
-                        const parentNode = getOrCreateFolder(parentPath, rootPath)
-                        if (!parentNode.children.find((c: any) => c.path === path)) {
-                            parentNode.children.push(newFolder)
-                        }
-                   }
-               }
-          }
-          return newFolder
-      }
+    roots.forEach(root => computeFolderSize(root))
 
-      // 2. Process files to build hierarchy
-      files.forEach(f => {
-          // Skip explicit roots for now, they are handled as entry points
-          if (f.isFolder && !f.parent) return
-
-          const rootPath = f.parent
-          if (!rootPath) return // Should not happen for non-roots
-
-          // Find the directory containing this file
-          const lastSlash = f.path.lastIndexOf('/')
-          const parentDir = f.path.substring(0, lastSlash)
-
-          if (parentDir === rootPath) {
-              // Direct child of root
-              const rootNode = map.get(rootPath)
-              if (rootNode) {
-                  if (!rootNode.children.find((c: any) => c.path === f.path)) {
-                      rootNode.children.push(map.get(f.path))
-                  }
-              }
-          } else {
-              // Nested deep
-              const parentFolder = getOrCreateFolder(parentDir, rootPath)
-              if (!parentFolder.children.find((c: any) => c.path === f.path)) {
-                  parentFolder.children.push(map.get(f.path))
-              }
-          }
-      })
-
-      const roots = Array.from(map.values()).filter(f => f.isFolder && !f.parent && files.some(rf => rf.path === f.path && rf.isFolder && !rf.parent))
-
-      const computeFolderSize = (node: any): number => {
-          if (!node.children || node.children.length === 0) {
-              node.size = node.size ?? 0
-              return node.size
-          }
-
-          let total = node.isFolder ? 0 : (node.size ?? 0)
-          node.children.forEach((child: any) => {
-              total += computeFolderSize(child)
-          })
-
-          node.size = total
-          return node.size
-      }
-
-      roots.forEach(root => computeFolderSize(root))
-
-      return {
-          tree: roots,
-          flatList: Array.from(map.values())
-      }
+    return {
+      tree: roots,
+      flatList: Array.from(map.values())
+    }
   }, [files])
 
-  // Filter handling
   const isFiltering = searchQuery.length > 0 || filterType !== 'All Types'
   
-  // If filtering, we flatten the structure again to show matches
   const displayItems = isFiltering ? (flatItems || []).filter((f: any) => {
-      const name = f.path.split('/').pop() || f.path
-      const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesType = filterType === 'All Types' 
-          ? true 
-          : filterType === 'Folders' ? f.isFolder 
-          : !f.isFolder
-      return matchesSearch && matchesType
+    const name = f.path.split('/').pop() || f.path
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = filterType === 'All Types' 
+      ? true 
+      : filterType === 'Folders' ? f.isFolder 
+      : !f.isFolder
+    return matchesSearch && matchesType
   }) : fileTree
 
   const hasRealData = fileTree && fileTree.length > 0
 
-  // Calculate stats
   const stats = useMemo(() => {
     if (!flatItems) return { totalFiles: 0, totalFolders: 0, totalSize: 0 }
-    const files = flatItems.filter((f: any) => !f.isFolder)
+    const filesList = flatItems.filter((f: any) => !f.isFolder)
     const folders = flatItems.filter((f: any) => f.isFolder)
-    const totalSize = files.reduce((acc: number, f: any) => acc + (f.size || 0), 0)
-    return { totalFiles: files.length, totalFolders: folders.length, totalSize }
+    const totalSize = filesList.reduce((acc: number, f: any) => acc + (f.size || 0), 0)
+    return { totalFiles: filesList.length, totalFolders: folders.length, totalSize }
   }, [flatItems])
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-success/20 via-card to-primary/10 border border-success/20 p-4 sm:p-6 lg:p-8">
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-success/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-1/4 -right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-          {/* File Pattern */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-success/20 to-primary/20 backdrop-blur-sm border border-success/30 glow-success">
-                <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 status-success" />
-              </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
-                  SYNC Files
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                  <span className="dot-success animate-pulse"></span>
-                  Manage synchronized directories
-                </p>
-              </div>
-            </div>
-            
-            <button 
-              onClick={handleAddFolder}
-              className="relative overflow-hidden flex items-center justify-center gap-2 sm:gap-2.5 bg-gradient-to-r from-success to-success-dark hover:from-success-light hover:to-success text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all glow-success hover:scale-105 active:scale-95 w-full sm:w-auto"
-            >
-              {/* Shine effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-500"></div>
-              <Plus className="w-4 h-4 relative" />
-              <span className="relative">Add Folder</span>
-            </button>
-          </div>
-          
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-success/15 to-success-dark/10 border border-success/30 backdrop-blur-sm">
-              <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-background/50">
-                <Folder className="w-3 h-3 sm:w-4 sm:h-4 status-success" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base sm:text-lg font-bold status-success">{stats.totalFolders}</div>
-                <div className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Folders</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-accent/15 to-accent/10 border border-accent/30 backdrop-blur-sm">
-              <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-background/50">
-                <File className="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base sm:text-lg font-bold text-accent">{stats.totalFiles}</div>
-                <div className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Files</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-primary/15 to-primary/10 border border-primary/30 backdrop-blur-sm">
-              <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-background/50">
-                <HardDrive className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base sm:text-lg font-bold text-primary truncate">{formatSize(stats.totalSize)}</div>
-                <div className="text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">Total</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <FilesHero 
+        stats={stats} 
+        onAddFolder={handleAddFolder} 
+        formatSize={formatSize} 
+      />
 
-      {/* Filters & Search - Enhanced */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <div className="relative flex-1 group">
-            <Search className="absolute left-3 sm:left-4 top-3 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input 
-                type="text" 
-                placeholder="Search files and folders..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gradient-to-r from-secondary/60 to-secondary/40 border border-border/50 rounded-xl pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none transition-all placeholder:text-muted-foreground/60"
-            />
-        </div>
-        <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="bg-gradient-to-r from-secondary/60 to-secondary/40 border border-border/50 rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all cursor-pointer"
-        >
-            <option>All Types</option>
-            <option>Folders</option>
-            <option>Files</option>
-        </select>
-      </div>
+      <FilesSearch 
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterType={filterType}
+        onFilterChange={setFilterType}
+      />
 
-      {/* File List - Enhanced */}
       <div className="card-modern overflow-hidden">
-        {/* Header - Desktop only */}
-        <div className="hidden sm:grid grid-cols-12 gap-4 p-4 sm:p-5 border-b border-border/30 text-xs font-bold text-muted-foreground/80 uppercase tracking-widest bg-gradient-to-r from-secondary/50 to-secondary/30">
-            <div className="col-span-6 flex items-center gap-2">
-              <File className="w-3.5 h-3.5" />
-              Name
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <HardDrive className="w-3.5 h-3.5" />
-              Size
-            </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <RefreshCw className="w-3.5 h-3.5" />
-              Status
-            </div>
-            <div className="col-span-2 text-right">Actions</div>
-        </div>
+        <FilesListHeader />
         
         <div className="divide-y divide-border/20">
-            {!hasRealData && (
-                <div className="p-8 sm:p-16 text-center flex flex-col items-center">
-                    <div className="relative mb-4 sm:mb-6">
-                        <div className="absolute inset-0 bg-success/20 blur-3xl rounded-full"></div>
-                        <div className="relative p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-secondary to-secondary/50 border border-border/50">
-                            <FolderOpen className="w-8 h-8 sm:w-12 sm:h-12 text-muted-foreground/30" />
-                        </div>
-                    </div>
-                    <h3 className="font-bold text-base sm:text-lg text-foreground mb-2">No Synced Files Yet</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm">Add a folder to start synchronizing your files across devices.</p>
-                    <button 
-                        onClick={handleAddFolder}
-                        className="mt-4 sm:mt-6 px-5 sm:px-6 py-2.5 sm:py-3 bg-success-muted hover:bg-success/20 status-success rounded-xl font-medium transition-all border border-success/20"
-                    >
-                        Add Your First Folder
-                    </button>
-                </div>
-            )}
-            {displayItems.map((item: any, i: number) => (
-                <FileTreeItem 
-                    key={item.path} 
-                    item={item} 
-                    level={0} 
-                    expandedFolders={expandedFolders} 
-                    toggleFolder={toggleFolder} 
-                    formatSize={formatSize} 
-                    handleRemoveWatch={handleRemoveWatch}
-                    isFiltering={isFiltering}
-                />
-            ))}
+          {!hasRealData && <FilesEmpty onAddFolder={handleAddFolder} />}
+          
+          {displayItems.map((item: any) => (
+            <FileTreeItem 
+              key={item.path} 
+              item={item} 
+              level={0} 
+              expandedFolders={expandedFolders} 
+              toggleFolder={toggleFolder} 
+              formatSize={formatSize} 
+              handleRemoveWatch={handleRemoveWatch}
+              isFiltering={isFiltering}
+            />
+          ))}
         </div>
       </div>
     </div>
   )
-}
-
-function FileTreeItem({ item, level, expandedFolders, toggleFolder, formatSize, handleRemoveWatch, isFiltering }: any) {
-    const itemName = item.name || item.path.split('/').pop() || item.path
-    const isExpanded = expandedFolders.has(item.path)
-    const hasChildren = item.children && item.children.length > 0
-    const canExpand = !isFiltering && item.isFolder
-    
-    // Indentation style
-    const paddingLeft = `${level * 1 + 0.75}rem`
-    
-    return (
-        <>
-            {/* Mobile View */}
-            <div 
-                className={`sm:hidden p-3 hover:bg-gradient-to-r hover:from-secondary/40 hover:to-transparent transition-all group ${canExpand ? 'cursor-pointer' : ''}`}
-                onClick={() => canExpand && toggleFolder(item.path)}
-                style={{ paddingLeft: level === 0 ? '0.75rem' : paddingLeft }}
-            >
-                <div className="flex items-center gap-2">
-                    {canExpand ? (
-                        <button className="p-1 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-all">
-                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-                    ) : (
-                        <div className="w-6"></div> 
-                    )}
-                    
-                    <div className={`p-2 rounded-xl transition-all ${
-                        item.isFolder 
-                            ? 'bg-gradient-to-br from-success/20 to-success-dark/10 status-success border border-success/30' 
-                            : 'bg-gradient-to-br from-accent/20 to-accent/10 text-accent border border-accent/30'
-                    }`}>
-                        {item.isFolder ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm truncate">{itemName}</div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                            <span>{item.size !== undefined && item.size !== null ? formatSize(item.size) : '—'}</span>
-                            <span>•</span>
-                            <span className={`${
-                                item.syncStatus === 'synced' || item.syncStatus === 'watching'
-                                ? 'status-success' 
-                                : 'status-warning'
-                            }`}>{item.syncStatus}</span>
-                        </div>
-                    </div>
-                    
-                    {!isFiltering && !item.parent && (
-                        <button 
-                            onClick={(e) => handleRemoveWatch(item.path, e)}
-                            className="p-2 hover:bg-destructive/15 hover:text-destructive rounded-xl text-muted-foreground/50 transition-all border border-transparent hover:border-destructive/30"
-                            title="Stop watching"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-            </div>
-            
-            {/* Desktop View */}
-            <div 
-                className={`hidden sm:grid grid-cols-12 gap-4 p-4 hover:bg-gradient-to-r hover:from-secondary/40 hover:to-transparent transition-all items-center group text-sm ${canExpand ? 'cursor-pointer select-none' : ''}`}
-                onClick={() => canExpand && toggleFolder(item.path)}
-                style={{ paddingLeft: level === 0 ? '1.25rem' : `${level * 1.5 + 1}rem` }}
-            >
-                <div className="col-span-6 flex items-center gap-3 overflow-hidden">
-                    {canExpand ? (
-                        <button className="p-1 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-all">
-                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-                    ) : (
-                        <div className="w-6"></div> 
-                    )}
-                    
-                    <div className={`p-2 rounded-xl transition-all group-hover:scale-110 ${
-                        item.isFolder 
-                            ? 'bg-gradient-to-br from-success/20 to-success-dark/10 status-success border border-success/30' 
-                            : 'bg-gradient-to-br from-accent/20 to-accent/10 text-accent border border-accent/30'
-                    }`}>
-                        {item.isFolder ? <Folder className="w-4 h-4" /> : <File className="w-4 h-4" />}
-                    </div>
-                    
-                    <div className="truncate min-w-0 flex-1">
-                        <div className="font-semibold truncate group-hover:text-primary transition-colors" title={item.path}>{itemName}</div>
-                        {/* Show path for root items or when filtering */}
-                        {(level === 0 || isFiltering) && (
-                            <div className="text-[10px] text-muted-foreground/60 truncate font-mono">{item.path}</div>
-                        )}
-                    </div>
-                </div>
-                
-                <div className="col-span-2 font-mono text-muted-foreground text-xs">
-                    {item.size !== undefined && item.size !== null ? formatSize(item.size) : '—'}
-                </div>
-                
-                <div className="col-span-2">
-                     <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg uppercase font-bold tracking-wide ${
-                        item.syncStatus === 'synced' || item.syncStatus === 'watching'
-                        ? 'badge-success' 
-                        : 'bg-warning-muted status-warning border border-warning/30 animate-pulse'
-                    }`}>
-                        {item.syncStatus === 'synced' || item.syncStatus === 'watching' ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                        ) : (
-                            <Clock className="w-3 h-3" />
-                        )}
-                        {item.syncStatus}
-                    </span>
-                </div>
-                
-                <div className="col-span-2 text-right">
-                    {!isFiltering && !item.parent && (
-                        <button 
-                            onClick={(e) => handleRemoveWatch(item.path, e)}
-                            className="p-2 hover:bg-destructive/15 hover:text-destructive rounded-xl text-muted-foreground/50 transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-destructive/30"
-                            title="Stop watching"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Recursive Children */}
-            {canExpand && isExpanded && hasChildren && (
-                <div className="border-l-2 border-primary/20 ml-6 bg-gradient-to-r from-primary/5 to-transparent">
-                    {item.children.map((child: any) => (
-                        <FileTreeItem 
-                            key={child.path} 
-                            item={child} 
-                            level={level + 1} 
-                            expandedFolders={expandedFolders} 
-                            toggleFolder={toggleFolder} 
-                            formatSize={formatSize}
-                            handleRemoveWatch={handleRemoveWatch}
-                            isFiltering={isFiltering}
-                        />
-                    ))}
-                </div>
-            )}
-        </>
-    )
 }

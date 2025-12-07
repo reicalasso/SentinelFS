@@ -1,0 +1,384 @@
+/* Files Component Styles */
+
+/* ==========================================
+   FILES HERO SECTION
+   ========================================== */
+
+.files-hero {
+  @apply relative overflow-hidden rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8;
+  background: linear-gradient(to bottom right, hsl(var(--success) / 0.2), hsl(var(--card)), hsl(var(--primary) / 0.1));
+  border-color: hsl(var(--success) / 0.2);
+}
+
+.files-hero-bg {
+  @apply absolute inset-0 overflow-hidden;
+}
+
+.files-hero-orb {
+  @apply absolute rounded-full blur-3xl animate-pulse;
+}
+
+.files-hero-orb-1 {
+  @apply -top-1/2 -left-1/4 w-96 h-96;
+  background: hsl(var(--success) / 0.2);
+}
+
+.files-hero-orb-2 {
+  @apply -bottom-1/4 -right-1/4 w-96 h-96;
+  background: hsl(var(--primary) / 0.2);
+  animation-delay: 1s;
+}
+
+.files-hero-pattern {
+  @apply absolute inset-0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.files-hero-content {
+  @apply relative z-10;
+}
+
+.files-hero-header {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6;
+}
+
+.files-hero-title-group {
+  @apply flex items-center gap-3 sm:gap-4;
+}
+
+.files-hero-icon {
+  @apply p-3 sm:p-4 rounded-xl sm:rounded-2xl backdrop-blur-sm border glow-success;
+  background: linear-gradient(to bottom right, hsl(var(--success) / 0.2), hsl(var(--primary) / 0.2));
+  border-color: hsl(var(--success) / 0.3);
+}
+
+.files-hero-title {
+  @apply text-xl sm:text-2xl font-bold bg-clip-text text-transparent;
+  background-image: linear-gradient(to right, hsl(var(--foreground)), hsl(var(--foreground) / 0.6));
+}
+
+.files-hero-subtitle {
+  @apply text-xs sm:text-sm mt-1 flex items-center gap-2;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ==========================================
+   FILES ADD BUTTON
+   ========================================== */
+
+.files-add-btn {
+  @apply relative overflow-hidden flex items-center justify-center gap-2 sm:gap-2.5 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold transition-all glow-success w-full sm:w-auto;
+  background: linear-gradient(to right, hsl(var(--success)), hsl(var(--success-dark)));
+}
+
+.files-add-btn:hover {
+  @apply scale-105;
+  background: linear-gradient(to right, hsl(var(--success-light)), hsl(var(--success)));
+}
+
+.files-add-btn:active {
+  @apply scale-95;
+}
+
+.files-add-btn-shine {
+  @apply absolute inset-0 translate-x-[-100%] transition-transform duration-500;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.files-add-btn:hover .files-add-btn-shine {
+  @apply translate-x-[100%];
+}
+
+/* ==========================================
+   FILES STATS GRID
+   ========================================== */
+
+.files-stats-grid {
+  @apply grid grid-cols-3 gap-2 sm:gap-4;
+}
+
+.files-stat-card {
+  @apply flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border backdrop-blur-sm;
+}
+
+.files-stat-folders {
+  background: linear-gradient(to right, hsl(var(--success) / 0.15), hsl(var(--success-dark) / 0.1));
+  border-color: hsl(var(--success) / 0.3);
+}
+
+.files-stat-files {
+  background: linear-gradient(to right, hsl(var(--accent) / 0.15), hsl(var(--accent) / 0.1));
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+.files-stat-size {
+  background: linear-gradient(to right, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.1));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.files-stat-icon {
+  @apply p-1.5 sm:p-2 rounded-md sm:rounded-lg;
+  background: hsl(var(--background) / 0.5);
+}
+
+.files-stat-value {
+  @apply text-base sm:text-lg font-bold;
+}
+
+.files-stat-label {
+  @apply uppercase tracking-wider;
+  font-size: 8px;
+}
+
+@media (min-width: 640px) {
+  .files-stat-label {
+    font-size: 10px;
+  }
+}
+
+/* ==========================================
+   FILES SEARCH
+   ========================================== */
+
+.files-search-container {
+  @apply flex flex-col sm:flex-row gap-3 sm:gap-4;
+}
+
+.files-search-input-wrapper {
+  @apply relative flex-1;
+}
+
+.files-search-icon {
+  @apply absolute left-3 sm:left-4 top-3 w-4 h-4 transition-colors;
+  color: hsl(var(--muted-foreground));
+}
+
+.files-search-input-wrapper:focus-within .files-search-icon {
+  color: hsl(var(--primary));
+}
+
+.files-search-input {
+  @apply w-full border rounded-xl pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 text-sm outline-none transition-all;
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.6), hsl(var(--secondary) / 0.4));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.files-search-input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.files-search-input:focus {
+  @apply ring-2;
+  ring-color: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+.files-filter-select {
+  @apply border rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm outline-none transition-all cursor-pointer;
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.6), hsl(var(--secondary) / 0.4));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.files-filter-select:focus {
+  @apply ring-2;
+  ring-color: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* ==========================================
+   FILES EMPTY STATE
+   ========================================== */
+
+.files-empty {
+  @apply p-8 sm:p-16 text-center flex flex-col items-center;
+}
+
+.files-empty-icon-wrapper {
+  @apply relative mb-4 sm:mb-6;
+}
+
+.files-empty-glow {
+  @apply absolute inset-0 rounded-full blur-3xl;
+  background: hsl(var(--success) / 0.2);
+}
+
+.files-empty-icon-box {
+  @apply relative p-4 sm:p-6 rounded-2xl sm:rounded-3xl border;
+  background: linear-gradient(to bottom right, hsl(var(--secondary)), hsl(var(--secondary) / 0.5));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.files-empty-title {
+  @apply font-bold text-base sm:text-lg mb-2;
+  color: hsl(var(--foreground));
+}
+
+.files-empty-desc {
+  @apply text-sm max-w-sm;
+  color: hsl(var(--muted-foreground));
+}
+
+.files-empty-btn {
+  @apply mt-4 sm:mt-6 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium transition-all border;
+  background: hsl(var(--success-muted));
+  color: hsl(var(--success));
+  border-color: hsl(var(--success) / 0.2);
+}
+
+.files-empty-btn:hover {
+  background: hsl(var(--success) / 0.2);
+}
+
+/* ==========================================
+   FILES LIST HEADER
+   ========================================== */
+
+.files-list-header {
+  @apply hidden sm:grid grid-cols-12 gap-4 p-4 sm:p-5 border-b text-xs font-bold uppercase tracking-widest;
+  border-color: hsl(var(--border) / 0.3);
+  color: hsl(var(--muted-foreground) / 0.8);
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.5), hsl(var(--secondary) / 0.3));
+}
+
+/* ==========================================
+   FILE TREE ITEM
+   ========================================== */
+
+.file-tree-item-mobile {
+  @apply sm:hidden p-3 transition-all;
+}
+
+.file-tree-item-mobile:hover {
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.4), transparent);
+}
+
+.file-tree-item-content {
+  @apply flex items-center gap-2;
+}
+
+.file-tree-expand-btn {
+  @apply p-1 rounded-lg transition-all;
+  color: hsl(var(--muted-foreground));
+}
+
+.file-tree-expand-btn:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--primary));
+}
+
+.file-tree-icon {
+  @apply p-2 rounded-xl transition-all border;
+}
+
+.file-tree-icon-folder {
+  background: linear-gradient(to bottom right, hsl(var(--success) / 0.2), hsl(var(--success-dark) / 0.1));
+  border-color: hsl(var(--success) / 0.3);
+  color: hsl(var(--success));
+}
+
+.file-tree-icon-file {
+  background: linear-gradient(to bottom right, hsl(var(--accent) / 0.2), hsl(var(--accent) / 0.1));
+  border-color: hsl(var(--accent) / 0.3);
+  color: hsl(var(--accent));
+}
+
+.file-tree-icon-hover {
+  transition: transform 0.2s;
+}
+
+.group:hover .file-tree-icon-hover {
+  transform: scale(1.1);
+}
+
+.file-tree-name {
+  @apply font-semibold text-sm truncate;
+}
+
+.file-tree-name-desktop {
+  @apply font-semibold truncate transition-colors;
+}
+
+.file-tree-name-desktop:hover,
+.group:hover .file-tree-name-desktop {
+  color: hsl(var(--primary));
+}
+
+.file-tree-meta {
+  @apply flex items-center gap-2 text-xs mt-0.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.file-tree-path {
+  @apply truncate font-mono;
+  font-size: 10px;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.file-tree-remove-btn {
+  @apply p-2 rounded-xl transition-all border border-transparent;
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.file-tree-remove-btn:hover {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.3);
+}
+
+.file-tree-remove-btn-desktop {
+  @apply p-2 rounded-xl transition-all border border-transparent opacity-0;
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.group:hover .file-tree-remove-btn-desktop {
+  opacity: 1;
+}
+
+.file-tree-remove-btn-desktop:hover {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.3);
+}
+
+/* ==========================================
+   FILE TREE ITEM DESKTOP
+   ========================================== */
+
+.file-tree-item-desktop {
+  @apply hidden sm:grid grid-cols-12 gap-4 p-4 transition-all items-center text-sm;
+}
+
+.file-tree-item-desktop:hover {
+  background: linear-gradient(to right, hsl(var(--secondary) / 0.4), transparent);
+}
+
+/* ==========================================
+   FILE TREE STATUS BADGES
+   ========================================== */
+
+.file-tree-status {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg uppercase font-bold tracking-wide;
+  font-size: 10px;
+}
+
+.file-tree-status-synced {
+  @apply badge-success;
+}
+
+.file-tree-status-pending {
+  @apply animate-pulse border;
+  background: hsl(var(--warning-muted));
+  color: hsl(var(--warning));
+  border-color: hsl(var(--warning) / 0.3);
+}
+
+/* ==========================================
+   FILE TREE CHILDREN
+   ========================================== */
+
+.file-tree-children {
+  @apply border-l-2 ml-6;
+  border-color: hsl(var(--primary) / 0.2);
+  background: linear-gradient(to right, hsl(var(--primary) / 0.05), transparent);
+}

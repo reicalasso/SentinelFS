@@ -79,6 +79,8 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
   const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null)
   const [peakUpload, setPeakUpload] = useState(0)
   const [peakDownload, setPeakDownload] = useState(0)
+  const [currentUploadRate, setCurrentUploadRate] = useState(0)
+  const [currentDownloadRate, setCurrentDownloadRate] = useState(0)
   
   // Format metrics from daemon
   const totalUploaded = metrics?.totalUploaded || 0
@@ -106,6 +108,10 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
       uploadRate = Math.max(0, (metrics.totalUploaded - lastMetrics.totalUploaded) / timeDiff)
       downloadRate = Math.max(0, (metrics.totalDownloaded - lastMetrics.totalDownloaded) / timeDiff)
       
+      // Update current rates
+      setCurrentUploadRate(uploadRate)
+      setCurrentDownloadRate(downloadRate)
+      
       // Track peaks
       if (uploadRate > peakUpload) setPeakUpload(uploadRate)
       if (downloadRate > peakDownload) setPeakDownload(downloadRate)
@@ -131,6 +137,8 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Hero Section with Animated Stats */}
       <HeroSection 
+        currentUpload={currentUploadRate}
+        currentDownload={currentDownloadRate}
         peakUpload={peakUpload}
         peakDownload={peakDownload}
         peersCount={peersCount}

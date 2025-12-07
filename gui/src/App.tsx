@@ -320,7 +320,7 @@ export default function App() {
             {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} threatStatus={threatStatus} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
-            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} />}
+            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} activity={activity} />}
             {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <LogsView logs={logs} onClear={clearLogs} />}
           </div>

@@ -1,0 +1,484 @@
+/* Peers Component Styles */
+
+/* ==========================================
+   PEERS HERO
+   ========================================== */
+
+.peers-hero {
+  @apply relative overflow-hidden rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8;
+  background: linear-gradient(135deg, 
+    hsl(var(--primary) / 0.2) 0%, 
+    hsl(var(--card)) 50%, 
+    hsl(var(--accent) / 0.1) 100%);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.peers-hero-bg-1 {
+  @apply absolute -top-1/2 -right-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse;
+  background: hsl(var(--primary) / 0.2);
+}
+
+.peers-hero-bg-2 {
+  @apply absolute -bottom-1/4 -left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse;
+  background: hsl(var(--accent) / 0.2);
+  animation-delay: 1s;
+}
+
+.peers-hero-grid-pattern {
+  @apply absolute inset-0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.peers-hero-icon {
+  @apply p-3 sm:p-4 rounded-xl sm:rounded-2xl backdrop-blur-sm border glow-primary;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.2));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.peers-hero-title {
+  @apply text-xl sm:text-2xl font-bold bg-clip-text text-transparent;
+  background-image: linear-gradient(90deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.6));
+}
+
+.peers-hero-subtitle {
+  @apply text-xs sm:text-sm text-muted-foreground mt-1 flex items-center gap-2;
+}
+
+/* ==========================================
+   PEERS ACTION BUTTONS
+   ========================================== */
+
+.peers-action-btn {
+  @apply flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all border;
+}
+
+.peers-action-btn-destructive {
+  @apply bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/20 hover:border-destructive/40;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+.peers-action-btn-destructive:hover {
+  box-shadow: 0 8px 20px hsl(0 72% 51% / 0.1);
+}
+
+.peers-action-btn-accent {
+  @apply bg-accent/10 hover:bg-accent/20 text-accent border-accent/20 hover:border-accent/40;
+}
+
+.peers-action-btn-accent:hover {
+  box-shadow: 0 8px 20px hsl(var(--accent) / 0.1);
+}
+
+.peers-scan-btn {
+  @apply relative overflow-hidden flex items-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-sm font-semibold text-primary-foreground transition-all;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  box-shadow: 0 8px 20px hsl(var(--primary) / 0.3);
+}
+
+.peers-scan-btn:hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--primary) / 0.7));
+  box-shadow: 0 12px 30px hsl(var(--primary) / 0.5);
+}
+
+.peers-scan-btn-disabled {
+  @apply opacity-70 cursor-not-allowed;
+}
+
+.peers-scan-btn-shine {
+  @apply absolute inset-0 translate-x-[-100%] transition-transform duration-500;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+}
+
+.peers-scan-btn:hover .peers-scan-btn-shine {
+  transform: translateX(100%);
+}
+
+/* ==========================================
+   PEER CARD
+   ========================================== */
+
+.peer-card-status-bar {
+  @apply h-1.5 rounded-t-[20px] transition-all;
+}
+
+.peer-card-status-bar-connected {
+  background: linear-gradient(90deg, hsl(160 70% 45%), hsl(160 60% 55%));
+}
+
+.peer-card-status-bar-pending {
+  @apply animate-pulse;
+  background: linear-gradient(90deg, hsl(45 100% 55%), hsl(45 90% 65%));
+}
+
+.peer-card-status-bar-offline {
+  background: linear-gradient(90deg, hsl(var(--muted)), hsl(var(--muted-foreground) / 0.3));
+}
+
+.peer-card-icon {
+  @apply relative p-4 rounded-2xl transition-all border;
+}
+
+.peer-card-icon-connected {
+  background: linear-gradient(135deg, hsl(160 70% 45% / 0.2), hsl(160 60% 35% / 0.1));
+  border-color: hsl(160 70% 45% / 0.3);
+  color: hsl(160 70% 45%);
+  box-shadow: 0 0 15px hsl(160 70% 45% / 0.15);
+}
+
+.peer-card-icon-pending {
+  background: linear-gradient(135deg, hsl(45 100% 55% / 0.2), hsl(45 90% 45% / 0.1));
+  border-color: hsl(45 100% 55% / 0.3);
+  color: hsl(45 100% 55%);
+}
+
+.peer-card-icon-offline {
+  @apply bg-secondary text-muted-foreground border-border/50;
+}
+
+.peer-card-online-dot {
+  @apply absolute -top-1 -right-1 w-3 h-3 rounded-full;
+  background: hsl(160 70% 45%);
+  box-shadow: 0 0 8px hsl(160 70% 45% / 0.5);
+}
+
+.peer-card-online-dot-ping {
+  @apply absolute inset-0 rounded-full animate-ping opacity-50;
+  background: hsl(160 70% 45%);
+}
+
+.peer-card-name {
+  @apply font-bold text-lg truncate transition-colors;
+}
+
+.card-modern:hover .peer-card-name {
+  color: hsl(var(--primary));
+}
+
+.peer-card-ip {
+  @apply flex items-center gap-2 text-xs text-muted-foreground font-mono mt-1 px-2 py-1 rounded-lg w-fit;
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.peer-card-stat {
+  @apply rounded-xl p-3 border;
+  background: linear-gradient(135deg, hsl(var(--secondary) / 0.5), hsl(var(--secondary) / 0.2));
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.peer-card-stat-label {
+  @apply text-xs text-muted-foreground mb-1 flex items-center gap-1.5;
+}
+
+.peer-card-stat-value {
+  @apply font-semibold flex items-center gap-2;
+}
+
+.peer-card-stat-value-success {
+  color: hsl(160 70% 45%);
+}
+
+.peer-card-stat-value-warning {
+  color: hsl(45 100% 55%);
+}
+
+.peer-card-stat-value-error {
+  color: hsl(0 72% 51%);
+}
+
+.peer-card-stat-value-muted {
+  @apply text-muted-foreground;
+}
+
+.peer-card-stat-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.peer-card-stat-dot-success {
+  background: hsl(160 70% 45%);
+}
+
+.peer-card-stat-dot-warning {
+  @apply animate-pulse;
+  background: hsl(45 100% 55%);
+}
+
+.peer-card-stat-dot-muted {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.peer-card-latency-chart {
+  @apply mt-4 h-20 w-full rounded-xl overflow-hidden border p-2;
+  background: linear-gradient(135deg, hsl(var(--background) / 0.8), hsl(var(--background) / 0.4));
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.peer-card-actions {
+  @apply mt-5 pt-4 border-t;
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.peer-card-block-btn {
+  @apply w-full py-2.5 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 border;
+  background: linear-gradient(90deg, hsl(var(--secondary)), hsl(var(--secondary) / 0.5));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.peer-card-block-btn:hover {
+  background: linear-gradient(90deg, hsl(0 72% 51% / 0.2), hsl(0 72% 51% / 0.1));
+  color: hsl(0 72% 51%);
+  border-color: hsl(0 72% 51% / 0.3);
+}
+
+/* ==========================================
+   DISCOVERY PANEL
+   ========================================== */
+
+.discovery-panel-icon {
+  @apply p-2 sm:p-2.5 rounded-lg sm:rounded-xl border;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05));
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.discovery-toggle-card {
+  @apply relative overflow-hidden flex items-center justify-between p-5 rounded-2xl border transition-all;
+  background: linear-gradient(135deg, hsl(var(--secondary) / 0.5), hsl(var(--secondary) / 0.2));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.discovery-toggle-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.discovery-toggle-card-accent:hover {
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+.discovery-toggle-bg {
+  @apply absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-0 transition-opacity;
+  background: hsl(var(--primary) / 0.05);
+}
+
+.discovery-toggle-bg-accent {
+  background: hsl(var(--accent) / 0.05);
+}
+
+.discovery-toggle-card:hover .discovery-toggle-bg {
+  opacity: 1;
+}
+
+.discovery-toggle {
+  @apply relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300;
+}
+
+.discovery-toggle-on {
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
+}
+
+.discovery-toggle-on-accent {
+  background: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--accent) / 0.8));
+  box-shadow: 0 4px 15px hsl(var(--accent) / 0.3);
+}
+
+.discovery-toggle-off {
+  @apply bg-secondary border-2;
+  border-color: hsl(var(--muted-foreground) / 0.2);
+}
+
+.discovery-toggle-knob {
+  @apply absolute top-1 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-md;
+}
+
+.discovery-relay-status {
+  @apply text-[10px] px-2 py-0.5 rounded-full font-bold;
+}
+
+.discovery-relay-status-connected {
+  background: hsl(160 70% 45% / 0.2);
+  color: hsl(160 70% 60%);
+  border: 1px solid hsl(160 70% 45% / 0.3);
+}
+
+.discovery-relay-status-connecting {
+  @apply animate-pulse;
+  background: hsl(45 100% 55% / 0.15);
+  color: hsl(45 100% 55%);
+  border: 1px solid hsl(45 100% 55% / 0.3);
+}
+
+/* ==========================================
+   SESSION CODE PANEL
+   ========================================== */
+
+.session-code-panel {
+  @apply mt-6 p-5 rounded-2xl border;
+  background: linear-gradient(135deg, hsl(280 60% 50% / 0.1), hsl(var(--primary) / 0.05));
+  border-color: hsl(280 60% 50% / 0.2);
+}
+
+.session-code-display {
+  @apply flex-1 font-mono text-lg px-4 py-2.5 rounded-xl border tracking-wider;
+  background: hsl(var(--background) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.session-code-copy-btn {
+  @apply p-2.5 rounded-xl transition-all border;
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.session-code-copy-btn:hover {
+  background: hsl(var(--secondary) / 0.8);
+}
+
+.session-code-copy-btn-success {
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 45%);
+  border-color: hsl(160 70% 45% / 0.3);
+}
+
+/* ==========================================
+   RELAY PEERS LIST
+   ========================================== */
+
+.relay-peers-header-icon {
+  @apply p-2.5 rounded-xl border;
+  background: linear-gradient(135deg, hsl(var(--accent) / 0.2), hsl(var(--accent) / 0.05));
+  border-color: hsl(var(--accent) / 0.2);
+}
+
+.relay-peers-refresh-btn {
+  @apply p-2 rounded-lg transition-colors;
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.relay-peers-refresh-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+.relay-peer-item {
+  @apply flex items-center gap-4 p-4 rounded-xl border;
+  background: hsl(var(--secondary) / 0.3);
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.relay-peer-icon {
+  @apply p-3 rounded-xl border;
+  background: hsl(var(--accent) / 0.1);
+  color: hsl(var(--accent));
+  border-color: hsl(var(--accent) / 0.2);
+}
+
+.relay-peer-nat-badge {
+  @apply px-2 py-0.5 rounded text-xs;
+  background: hsl(var(--secondary));
+}
+
+/* ==========================================
+   RELAY MODAL
+   ========================================== */
+
+.relay-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease;
+}
+
+.relay-modal {
+  @apply max-w-lg w-full rounded-3xl border shadow-2xl;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  animation: zoomIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.relay-modal-header {
+  @apply flex items-center justify-between p-6 border-b;
+  border-color: hsl(var(--border));
+}
+
+.relay-modal-header-icon {
+  @apply p-2.5 rounded-xl border;
+  background: linear-gradient(135deg, hsl(var(--accent) / 0.2), hsl(var(--accent) / 0.05));
+  border-color: hsl(var(--accent) / 0.2);
+}
+
+.relay-modal-close-btn {
+  @apply p-2 rounded-xl transition-colors;
+}
+
+.relay-modal-close-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+.relay-modal-info {
+  @apply flex gap-3 p-4 rounded-xl border;
+  background: hsl(var(--accent) / 0.05);
+  border-color: hsl(var(--accent) / 0.2);
+}
+
+.relay-modal-input {
+  @apply px-4 py-3 rounded-xl border text-sm transition-all;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+.relay-modal-input:focus {
+  @apply outline-none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+}
+
+.relay-modal-error {
+  @apply p-4 rounded-xl text-sm border;
+  background: hsl(0 72% 51% / 0.1);
+  border-color: hsl(0 72% 51% / 0.3);
+  color: hsl(0 72% 51%);
+}
+
+.relay-modal-footer {
+  @apply flex gap-3 p-6 border-t rounded-b-3xl;
+  background: hsl(var(--secondary) / 0.2);
+  border-color: hsl(var(--border));
+}
+
+.relay-modal-btn-cancel {
+  @apply flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all;
+  background: hsl(var(--secondary));
+}
+
+.relay-modal-btn-cancel:hover {
+  background: hsl(var(--secondary) / 0.8);
+}
+
+.relay-modal-btn-connect {
+  @apply flex-1 px-4 py-3 rounded-xl text-sm font-semibold text-primary-foreground transition-all flex items-center justify-center gap-2;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  box-shadow: 0 8px 20px hsl(var(--primary) / 0.3);
+}
+
+.relay-modal-btn-connect:hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--primary) / 0.7));
+}
+
+.relay-modal-btn-disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
