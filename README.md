@@ -94,27 +94,53 @@ SentinelFS/
 
 ---
 
-## 🔧 Build Instructions
+## 🔧 Build & Run Instructions
 
 ### Prerequisites
 *   CMake 3.15+
 *   C++ Compiler (GCC 9+, Clang 10+, MSVC 2019+)
-*   Node.js 16+ & Yarn/NPM
-*   Conan (optional, for dependency management)
+*   Node.js 16+ & npm
+*   OpenSSL, SQLite3, Boost (Asio)
 
-### Building the Daemon
+### Quick Start (Recommended)
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
+# Build and launch everything with one command:
+./scripts/start_safe.sh
+
+# Or with options:
+./scripts/start_safe.sh --daemon-only   # Only daemon, no GUI
+./scripts/start_safe.sh --rebuild       # Force clean rebuild
 ```
 
-### Building the GUI
+### Manual Build
+
+**Building the Daemon:**
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+make -j$(nproc)
+```
+
+**Running the Daemon (with correct paths):**
+```bash
+./scripts/run_daemon.sh
+# Or manually:
+SENTINELFS_PLUGIN_DIR=./build/plugins \
+LD_LIBRARY_PATH=./build/core:$LD_LIBRARY_PATH \
+./build/app/daemon/sentinel_daemon
+```
+
+**Building & Running the GUI:**
 ```bash
 cd gui
 npm install
-npm run build
+npm run dev    # Development mode (also starts daemon)
+npm run build  # Production build
 ```
+
+### Configuration
+Config file: `~/.config/sentinelfs/sentinel.conf`
+Sync folder: `~/SentinelFS` (default)
 
 ---
 
