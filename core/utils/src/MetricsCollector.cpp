@@ -45,6 +45,18 @@ namespace SentinelFS {
     void MetricsCollector::incrementSyncPaused() { securityMetrics_.syncPausedCount++; }
     void MetricsCollector::incrementAuthFailures() { securityMetrics_.authFailures++; }
     void MetricsCollector::incrementEncryptionErrors() { securityMetrics_.encryptionErrors++; }
+    
+    // ML Threat Detection metrics
+    void MetricsCollector::incrementThreatsDetected() { securityMetrics_.threatsDetected++; }
+    void MetricsCollector::incrementRansomwareAlerts() { securityMetrics_.ransomwareAlerts++; }
+    void MetricsCollector::incrementHighEntropyFiles() { securityMetrics_.highEntropyFiles++; }
+    void MetricsCollector::incrementMassOperationAlerts() { securityMetrics_.massOperationAlerts++; }
+    void MetricsCollector::updateThreatScore(double score) { 
+        securityMetrics_.currentThreatScoreX100 = static_cast<uint64_t>(score * 100); 
+    }
+    void MetricsCollector::updateAvgFileEntropy(double entropy) { 
+        securityMetrics_.avgFileEntropyX100 = static_cast<uint64_t>(entropy * 100); 
+    }
 
     // Performance metrics
     void MetricsCollector::recordSyncLatency(uint64_t latencyMs) {
@@ -108,6 +120,13 @@ namespace SentinelFS {
         snapshot.syncPausedCount = securityMetrics_.syncPausedCount.load();
         snapshot.authFailures = securityMetrics_.authFailures.load();
         snapshot.encryptionErrors = securityMetrics_.encryptionErrors.load();
+        // ML Threat Detection metrics
+        snapshot.threatsDetected = securityMetrics_.threatsDetected.load();
+        snapshot.ransomwareAlerts = securityMetrics_.ransomwareAlerts.load();
+        snapshot.highEntropyFiles = securityMetrics_.highEntropyFiles.load();
+        snapshot.massOperationAlerts = securityMetrics_.massOperationAlerts.load();
+        snapshot.currentThreatScore = securityMetrics_.currentThreatScoreX100.load() / 100.0;
+        snapshot.avgFileEntropy = securityMetrics_.avgFileEntropyX100.load() / 100.0;
         return snapshot;
     }
 
@@ -277,6 +296,32 @@ namespace SentinelFS {
         ss << "# HELP sentinelfs_encryption_errors_total Total encryption/decryption errors" << std::endl;
         ss << "# TYPE sentinelfs_encryption_errors_total counter" << std::endl;
         ss << "sentinelfs_encryption_errors_total " << securityMetrics_.encryptionErrors.load() << std::endl;
+        
+        // === ML Threat Detection Metrics ===
+        ss << "# HELP sentinelfs_threats_detected_total Total threats detected by ML engine" << std::endl;
+        ss << "# TYPE sentinelfs_threats_detected_total counter" << std::endl;
+        ss << "sentinelfs_threats_detected_total " << securityMetrics_.threatsDetected.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_ransomware_alerts_total Total ransomware alerts generated" << std::endl;
+        ss << "# TYPE sentinelfs_ransomware_alerts_total counter" << std::endl;
+        ss << "sentinelfs_ransomware_alerts_total " << securityMetrics_.ransomwareAlerts.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_high_entropy_files_total Total high-entropy files detected" << std::endl;
+        ss << "# TYPE sentinelfs_high_entropy_files_total counter" << std::endl;
+        ss << "sentinelfs_high_entropy_files_total " << securityMetrics_.highEntropyFiles.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_mass_operation_alerts_total Total mass operation alerts" << std::endl;
+        ss << "# TYPE sentinelfs_mass_operation_alerts_total counter" << std::endl;
+        ss << "sentinelfs_mass_operation_alerts_total " << securityMetrics_.massOperationAlerts.load() << std::endl;
+        
+        ss << "# HELP sentinelfs_current_threat_score Current unified threat score (0-1)" << std::endl;
+        ss << "# TYPE sentinelfs_current_threat_score gauge" << std::endl;
+        ss << std::fixed << std::setprecision(3);
+        ss << "sentinelfs_current_threat_score " << (securityMetrics_.currentThreatScoreX100.load() / 100.0) << std::endl;
+        
+        ss << "# HELP sentinelfs_avg_file_entropy Average file entropy (0-8 bits)" << std::endl;
+        ss << "# TYPE sentinelfs_avg_file_entropy gauge" << std::endl;
+        ss << "sentinelfs_avg_file_entropy " << (securityMetrics_.avgFileEntropyX100.load() / 100.0) << std::endl;
         
         // === Performance Metrics ===
         ss << "# HELP sentinelfs_sync_latency_ms Average sync latency in milliseconds" << std::endl;

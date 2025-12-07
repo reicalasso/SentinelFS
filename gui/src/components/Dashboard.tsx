@@ -1,8 +1,8 @@
-import { Activity, ArrowDown, ArrowUp, HardDrive, Shield, Wifi, Zap, Network, AlertTriangle, Database, Eye, Sparkles, TrendingUp, Clock } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, HardDrive, Shield, Wifi, Zap, Network, AlertTriangle, Database, Eye, Sparkles, TrendingUp, Clock, Brain, Bug, FileWarning, Gauge } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useState, useEffect } from 'react'
 
-export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
+export function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus }: any) {
   const [trafficHistory, setTrafficHistory] = useState<any[]>([])
   const [lastMetrics, setLastMetrics] = useState<any>(null)
   const [peakUpload, setPeakUpload] = useState(0)
@@ -350,13 +350,90 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           sub={health ? `${(health.dbSizeBytes / 1024).toFixed(0)} KB` : 'Loading...'}
         />
         <HealthCard
-          title="Anomaly Detection"
-          icon={<AlertTriangle className="w-5 h-5" />}
-          status={anomaly?.score > 0.5 ? 'error' : anomaly?.score > 0 ? 'warning' : 'success'}
-          value={anomaly?.score > 0 ? `Score: ${(anomaly.score * 100).toFixed(0)}%` : 'Normal'}
-          sub={anomaly?.lastType || 'No anomalies detected'}
+          title="ML Threat Detection"
+          icon={<Brain className="w-5 h-5" />}
+          status={threatStatus?.threatLevel === 'HIGH' || threatStatus?.threatLevel === 'CRITICAL' ? 'error' : threatStatus?.threatLevel === 'MEDIUM' ? 'warning' : 'success'}
+          value={threatStatus?.mlEnabled ? threatStatus.threatLevel || 'Safe' : 'Disabled'}
+          sub={threatStatus?.mlEnabled ? `Score: ${(threatStatus.threatScore || 0).toFixed(1)}%` : 'Enable ML plugin'}
         />
       </div>
+
+      {/* ML Threat Detection Panel */}
+      {threatStatus?.mlEnabled && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-card to-accent/5 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-lg">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-1000"></div>
+          
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30">
+                  <Brain className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">AI/ML Threat Analysis</h3>
+                  <p className="text-xs text-muted-foreground">Real-time security monitoring</p>
+                </div>
+              </div>
+              <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                threatStatus.threatLevel === 'CRITICAL' ? 'bg-error/20 text-error border border-error/30 animate-pulse' :
+                threatStatus.threatLevel === 'HIGH' ? 'bg-error/20 text-error border border-error/30' :
+                threatStatus.threatLevel === 'MEDIUM' ? 'bg-warning/20 text-warning border border-warning/30' :
+                threatStatus.threatLevel === 'LOW' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
+                'bg-success/20 text-success border border-success/30'
+              }`}>
+                {threatStatus.threatLevel || 'Safe'}
+              </div>
+            </div>
+
+            {/* Threat Score Gauge */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Threat Score</span>
+                <span className="font-mono font-bold">{(threatStatus.threatScore || 0).toFixed(1)}%</span>
+              </div>
+              <div className="h-3 bg-secondary/50 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    threatStatus.threatScore >= 75 ? 'bg-gradient-to-r from-error to-error-dark' :
+                    threatStatus.threatScore >= 50 ? 'bg-gradient-to-r from-warning to-warning-dark' :
+                    threatStatus.threatScore >= 25 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+                    'bg-gradient-to-r from-success to-success-dark'
+                  }`}
+                  style={{ width: `${Math.min(100, threatStatus.threatScore || 0)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Threat Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <ThreatStatCard
+                icon={<Bug className="w-4 h-4" />}
+                label="Total Threats"
+                value={threatStatus.totalThreats || 0}
+                status={threatStatus.totalThreats > 0 ? 'warning' : 'success'}
+              />
+              <ThreatStatCard
+                icon={<AlertTriangle className="w-4 h-4" />}
+                label="Ransomware"
+                value={threatStatus.ransomwareAlerts || 0}
+                status={threatStatus.ransomwareAlerts > 0 ? 'error' : 'success'}
+              />
+              <ThreatStatCard
+                icon={<FileWarning className="w-4 h-4" />}
+                label="High Entropy"
+                value={threatStatus.highEntropyFiles || 0}
+                status={threatStatus.highEntropyFiles > 0 ? 'warning' : 'success'}
+              />
+              <ThreatStatCard
+                icon={<Gauge className="w-4 h-4" />}
+                label="Avg Entropy"
+                value={`${(threatStatus.avgFileEntropy || 0).toFixed(2)}`}
+                status={threatStatus.avgFileEntropy > 7.0 ? 'warning' : 'success'}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Degraded Peers Warning */}
       {degradedPeers > 0 && (
@@ -368,6 +445,25 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity }: any) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Threat Stat Card Component
+function ThreatStatCard({ icon, label, value, status }: { icon: React.ReactNode, label: string, value: number | string, status: 'success' | 'warning' | 'error' }) {
+  const statusColors = {
+    success: 'text-success border-success/30 bg-success/10',
+    warning: 'text-warning border-warning/30 bg-warning/10',
+    error: 'text-error border-error/30 bg-error/10'
+  }
+  
+  return (
+    <div className={`p-3 rounded-xl border ${statusColors[status]} transition-all hover:scale-105`}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className={statusColors[status].split(' ')[0]}>{icon}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <div className="text-lg font-bold font-mono">{value}</div>
     </div>
   )
 }

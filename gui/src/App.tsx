@@ -28,7 +28,7 @@ declare global {
 export default function App() {
   // Use centralized state management
   const { state, actions } = useAppState()
-  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles } = state
+  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles, threatStatus } = state
   const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict, deleteVersion } = actions
   const [showOnboarding, setShowOnboarding] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -317,7 +317,7 @@ export default function App() {
 
         <main className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} />}
+            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} threatStatus={threatStatus} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
             {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} />}

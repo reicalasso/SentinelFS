@@ -225,6 +225,9 @@ function connectToDaemon() {
                     })
                 } else if (json.tcpPort !== undefined || json.uploadLimit !== undefined) {
                     win?.webContents.send('daemon-data', { type: 'CONFIG', payload: json })
+                } else if (json.threatScore !== undefined || json.threatLevel !== undefined) {
+                    // ML Threat Status response
+                    win?.webContents.send('daemon-data', { type: 'THREAT_STATUS', payload: json })
                 } else if (Array.isArray(json)) {
                     // Fallback/Legacy: Distinguish between PEERS and FILES by checking first element
                     if (json.length > 0 && json[0].path !== undefined) {
@@ -287,6 +290,7 @@ function startMonitoring() {
             setTimeout(() => daemonSocket?.write('ACTIVITY_JSON\n'), 600)
             setTimeout(() => daemonSocket?.write('TRANSFERS_JSON\n'), 750)
             setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 900)
+            setTimeout(() => daemonSocket?.write('THREAT_STATUS_JSON\n'), 1050)
         }
     }, 2000)
 }

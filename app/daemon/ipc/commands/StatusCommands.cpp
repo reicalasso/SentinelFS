@@ -262,4 +262,79 @@ AnomalyReport StatusCommands::getAnomalyReport() const {
     return report;
 }
 
+ThreatStatusReport StatusCommands::getThreatStatus() const {
+    ThreatStatusReport report;
+    
+    auto& metrics = MetricsCollector::instance();
+    auto secMetrics = metrics.getSecurityMetrics();
+    
+    report.threatScore = secMetrics.currentThreatScore;
+    report.totalThreats = secMetrics.threatsDetected;
+    report.ransomwareAlerts = secMetrics.ransomwareAlerts;
+    report.highEntropyFiles = secMetrics.highEntropyFiles;
+    report.massOperationAlerts = secMetrics.massOperationAlerts;
+    report.avgFileEntropy = secMetrics.avgFileEntropy;
+    report.mlEnabled = true;  // ML plugin is always loaded
+    
+    // Determine threat level from score
+    if (report.threatScore >= 0.8) {
+        report.threatLevel = "CRITICAL";
+    } else if (report.threatScore >= 0.6) {
+        report.threatLevel = "HIGH";
+    } else if (report.threatScore >= 0.4) {
+        report.threatLevel = "MEDIUM";
+    } else if (report.threatScore >= 0.2) {
+        report.threatLevel = "LOW";
+    } else {
+        report.threatLevel = "NONE";
+    }
+    
+    return report;
+}
+
+std::string StatusCommands::handleThreatStatus() {
+    auto report = getThreatStatus();
+    
+    std::stringstream ss;
+    ss << "=== ML Threat Detection Status ===\n";
+    ss << "ML Engine: " << (report.mlEnabled ? "ENABLED ✓" : "DISABLED") << "\n";
+    ss << "Threat Level: " << report.threatLevel;
+    
+    if (report.threatLevel == "CRITICAL") ss << " 🚨";
+    else if (report.threatLevel == "HIGH") ss << " ⚠️";
+    else if (report.threatLevel == "MEDIUM") ss << " ⚡";
+    else ss << " ✓";
+    
+    ss << "\n";
+    ss << std::fixed << std::setprecision(2);
+    ss << "Threat Score: " << (report.threatScore * 100) << "%\n";
+    ss << "Avg File Entropy: " << report.avgFileEntropy << " bits/byte\n";
+    ss << "\n--- Alert Statistics ---\n";
+    ss << "Total Threats: " << report.totalThreats << "\n";
+    ss << "Ransomware Alerts: " << report.ransomwareAlerts << "\n";
+    ss << "High Entropy Files: " << report.highEntropyFiles << "\n";
+    ss << "Mass Operation Alerts: " << report.massOperationAlerts << "\n";
+    
+    return ss.str();
+}
+
+std::string StatusCommands::handleThreatStatusJson() {
+    auto report = getThreatStatus();
+    
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(4);
+    ss << "{";
+    ss << "\"mlEnabled\": " << (report.mlEnabled ? "true" : "false") << ",";
+    ss << "\"threatLevel\": \"" << report.threatLevel << "\",";
+    ss << "\"threatScore\": " << report.threatScore << ",";
+    ss << "\"avgFileEntropy\": " << report.avgFileEntropy << ",";
+    ss << "\"totalThreats\": " << report.totalThreats << ",";
+    ss << "\"ransomwareAlerts\": " << report.ransomwareAlerts << ",";
+    ss << "\"highEntropyFiles\": " << report.highEntropyFiles << ",";
+    ss << "\"massOperationAlerts\": " << report.massOperationAlerts;
+    ss << "}\n";
+    
+    return ss.str();
+}
+
 } // namespace SentinelFS

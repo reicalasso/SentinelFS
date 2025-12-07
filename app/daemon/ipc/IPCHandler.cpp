@@ -399,6 +399,10 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return statusCmds_->handlePlugins();
     } else if (cmd == "STATS") {
         return statusCmds_->handleStats();
+    } else if (cmd == "THREAT_STATUS") {
+        return statusCmds_->handleThreatStatus();
+    } else if (cmd == "THREAT_STATUS_JSON") {
+        return statusCmds_->handleThreatStatusJson();
     }
     
     // Peer commands

@@ -51,6 +51,13 @@ namespace SentinelFS {
         uint64_t syncPausedCount{0};
         uint64_t authFailures{0};
         uint64_t encryptionErrors{0};
+        // ML Threat Detection metrics
+        uint64_t threatsDetected{0};
+        uint64_t ransomwareAlerts{0};
+        uint64_t highEntropyFiles{0};
+        uint64_t massOperationAlerts{0};
+        double currentThreatScore{0.0};
+        double avgFileEntropy{0.0};
     };
 
     struct PerformanceMetricsSnapshot {
@@ -91,6 +98,13 @@ namespace SentinelFS {
         std::atomic<uint64_t> syncPausedCount{0};
         std::atomic<uint64_t> authFailures{0};
         std::atomic<uint64_t> encryptionErrors{0};
+        // ML Threat Detection metrics
+        std::atomic<uint64_t> threatsDetected{0};
+        std::atomic<uint64_t> ransomwareAlerts{0};
+        std::atomic<uint64_t> highEntropyFiles{0};
+        std::atomic<uint64_t> massOperationAlerts{0};
+        std::atomic<uint64_t> currentThreatScoreX100{0};  // Scaled by 100 for atomic
+        std::atomic<uint64_t> avgFileEntropyX100{0};      // Scaled by 100 for atomic
     };
 
     struct PerformanceMetrics {
@@ -142,6 +156,14 @@ namespace SentinelFS {
         void incrementSyncPaused();
         void incrementAuthFailures();
         void incrementEncryptionErrors();
+        
+        // ML Threat Detection metrics
+        void incrementThreatsDetected();
+        void incrementRansomwareAlerts();
+        void incrementHighEntropyFiles();
+        void incrementMassOperationAlerts();
+        void updateThreatScore(double score);
+        void updateAvgFileEntropy(double entropy);
 
         // Performance metrics
         void recordSyncLatency(uint64_t latencyMs);

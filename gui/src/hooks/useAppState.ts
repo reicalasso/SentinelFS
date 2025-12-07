@@ -56,6 +56,18 @@ export interface AppConfig {
   downloadLimit?: number
 }
 
+// ML Threat Status type
+export interface ThreatStatus {
+  threatScore: number
+  threatLevel: string
+  totalThreats: number
+  ransomwareAlerts: number
+  highEntropyFiles: number
+  massOperationAlerts: number
+  avgFileEntropy: number
+  mlEnabled: boolean
+}
+
 // File version type
 export interface FileVersion {
   versionId: number
@@ -105,6 +117,7 @@ export interface AppState {
   conflicts: Conflict[]
   showConflictModal: boolean
   versionedFiles: Map<string, FileVersion[]>
+  threatStatus: ThreatStatus | null
 }
 
 // Actions
@@ -129,6 +142,7 @@ type AppAction =
   | { type: 'REMOVE_CONFLICT'; payload: number }
   | { type: 'SET_VERSIONED_FILES'; payload: Map<string, FileVersion[]> }
   | { type: 'DELETE_VERSION'; payload: { filePath: string; versionId: number } }
+  | { type: 'SET_THREAT_STATUS'; payload: ThreatStatus }
 
 // Initial state
 const initialState: AppState = {
@@ -147,7 +161,8 @@ const initialState: AppState = {
   toasts: [],
   conflicts: [],
   showConflictModal: false,
-  versionedFiles: new Map()
+  versionedFiles: new Map(),
+  threatStatus: null
 }
 
 // Reducer
@@ -204,6 +219,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       return { ...state, versionedFiles: newVersionedFiles }
     }
+    case 'SET_THREAT_STATUS':
+      return { ...state, threatStatus: action.payload }
     default:
       return state
   }
@@ -248,6 +265,8 @@ export function useAppState() {
       dispatch({ type: 'SET_TRANSFERS', payload: { transfers: data.payload, history: data.history || [] } })
     } else if (data.type === 'CONFIG') {
       dispatch({ type: 'SET_CONFIG', payload: data.payload })
+    } else if (data.type === 'THREAT_STATUS') {
+      dispatch({ type: 'SET_THREAT_STATUS', payload: data.payload })
     }
   }, [])
 

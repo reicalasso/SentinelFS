@@ -2,6 +2,7 @@
 #include "EventBus.h"
 #include "ThreatDetector.h"
 #include "Logger.h"
+#include "MetricsCollector.h"
 #include <iostream>
 #include <memory>
 
@@ -173,6 +174,24 @@ private:
         if (!eventBus_) return;
         
         auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        // Update metrics
+        metrics.incrementThreatsDetected();
+        metrics.updateThreatScore(alert.confidenceScore);
+        
+        // Track specific threat types
+        switch (alert.type) {
+            case ThreatDetector::ThreatType::RANSOMWARE:
+                metrics.incrementRansomwareAlerts();
+                break;
+            case ThreatDetector::ThreatType::MASS_DELETION:
+                metrics.incrementMassOperationAlerts();
+                break;
+            default:
+                metrics.incrementSuspiciousActivities();
+                break;
+        }
         
         // Publish to EventBus
         std::string alertType = ThreatDetector::threatTypeToString(alert.type);
