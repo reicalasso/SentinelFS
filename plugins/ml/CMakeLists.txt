@@ -6,6 +6,11 @@ project(MLPlugin)
 add_library(ml_plugin SHARED
     src/ml_plugin.cpp
     src/AnomalyDetector.cpp
+    src/BehaviorProfiler.cpp
+    src/FileEntropyAnalyzer.cpp
+    src/PatternMatcher.cpp
+    src/IsolationForest.cpp
+    src/ThreatDetector.cpp
 )
 
 target_include_directories(ml_plugin PUBLIC

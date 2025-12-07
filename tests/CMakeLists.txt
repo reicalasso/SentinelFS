@@ -53,6 +53,7 @@ add_sentinel_test(test_delta_engine unit/test_delta_engine.cpp)
 add_sentinel_test(test_delta_serialization unit/test_delta_serialization.cpp)
 add_sentinel_test(test_session_code unit/test_session_code.cpp)
 add_integration_test(test_anomaly_detector unit/test_anomaly_detector.cpp ml_plugin)
+add_integration_test(test_threat_detector unit/test_threat_detector.cpp ml_plugin)
 add_sentinel_test(test_auto_remesh unit/test_auto_remesh.cpp)
 add_sentinel_test(test_offline_queue unit/test_offline_queue.cpp)
 
