@@ -1172,3 +1172,568 @@ time, mark, audio, video, button, input, select, textarea {
 .ring-primary {
   @apply ring-2 ring-[hsl(30,100%,55%)] ring-offset-2 ring-offset-[hsl(195,60%,12%)];
 }
+
+/* ==========================================
+   CHART COLORS
+   ========================================== */
+
+:root {
+  --chart-upload-color: hsl(45, 100%, 55%);
+  --chart-download-color: hsl(160, 70%, 45%);
+}
+
+/* ==========================================
+   DASHBOARD COMPONENTS
+   ========================================== */
+
+/* Hero Section */
+.hero-section {
+  @apply relative overflow-hidden rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8 mb-4 sm:mb-8;
+  background: linear-gradient(135deg, 
+    hsl(var(--primary) / 0.2) 0%, 
+    hsl(var(--card)) 50%, 
+    hsl(var(--accent) / 0.1) 100%);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.hero-bg-gradient-1 {
+  @apply absolute -top-1/2 -left-1/2 w-full h-full rounded-full blur-3xl animate-pulse;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.3), transparent);
+}
+
+.hero-bg-gradient-2 {
+  @apply absolute -bottom-1/2 -right-1/2 w-full h-full rounded-full blur-3xl animate-pulse;
+  background: linear-gradient(315deg, hsl(var(--accent) / 0.2), transparent);
+  animation-delay: 1s;
+}
+
+.hero-grid-pattern {
+  @apply absolute inset-0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.hero-icon-wrapper {
+  @apply p-2 sm:p-3 rounded-xl sm:rounded-2xl backdrop-blur-sm border shadow-lg w-fit;
+  background: hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 8px 32px hsl(var(--primary) / 0.2);
+}
+
+.hero-title {
+  @apply text-xl sm:text-2xl font-bold bg-clip-text text-transparent;
+  background-image: linear-gradient(90deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.6));
+}
+
+.hero-subtitle {
+  @apply text-xs sm:text-sm text-muted-foreground flex items-center gap-2;
+}
+
+/* Quick Stat */
+.quick-stat {
+  @apply flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border backdrop-blur-sm transition-transform cursor-default;
+}
+
+.quick-stat:hover {
+  transform: scale(1.05);
+}
+
+.quick-stat-icon {
+  @apply p-1.5 sm:p-2 rounded-md sm:rounded-lg;
+  background: hsl(var(--background) / 0.5);
+}
+
+.quick-stat-value {
+  @apply text-sm sm:text-lg font-bold truncate;
+}
+
+.quick-stat-label {
+  @apply text-[8px] sm:text-[10px] text-muted-foreground uppercase tracking-wider truncate;
+}
+
+.quick-stat-teal {
+  background: linear-gradient(90deg, hsl(180 60% 50% / 0.2), hsl(180 60% 40% / 0.1));
+  border-color: hsl(180 60% 50% / 0.3);
+  color: hsl(180, 60%, 50%);
+}
+
+.quick-stat-emerald {
+  background: linear-gradient(90deg, hsl(160 70% 45% / 0.2), hsl(160 70% 35% / 0.1));
+  border-color: hsl(160 70% 45% / 0.3);
+  color: hsl(160, 70%, 45%);
+}
+
+.quick-stat-coral {
+  background: linear-gradient(90deg, hsl(var(--accent) / 0.2), hsl(var(--accent) / 0.1));
+  border-color: hsl(var(--accent) / 0.3);
+  color: hsl(var(--accent));
+}
+
+.quick-stat-amber {
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.1));
+  border-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--primary));
+}
+
+/* Stat Card */
+.stat-card-corner-accent {
+  @apply absolute top-0 right-0 w-24 h-24 rounded-bl-full opacity-0 transition-all duration-500;
+  background: linear-gradient(315deg, hsl(var(--primary) / 0.1), transparent);
+}
+
+.card-modern:hover .stat-card-corner-accent {
+  opacity: 1;
+}
+
+.stat-card-icon-wrapper {
+  @apply p-3 rounded-2xl border shadow-inner transition-all duration-300;
+  background: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary) / 0.5));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.card-modern:hover .stat-card-icon-wrapper {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.stat-card-status {
+  @apply flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm;
+}
+
+.stat-card-status-success {
+  @apply badge-success glow-success;
+}
+
+.stat-card-status-warning {
+  @apply status-warning border;
+  background: hsl(45 100% 55% / 0.15);
+  border-color: hsl(45 100% 55% / 0.3);
+}
+
+.stat-card-status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.stat-card-status-dot-success {
+  @apply glow-success;
+  background: hsl(160 70% 45%);
+}
+
+.stat-card-status-dot-warning {
+  @apply animate-pulse;
+  background: hsl(45 100% 55%);
+}
+
+.stat-card-title {
+  @apply text-xs font-semibold uppercase tracking-wider mb-1;
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+
+.stat-card-value {
+  @apply text-3xl font-bold tracking-tight bg-clip-text text-transparent transition-all duration-300;
+  background-image: linear-gradient(90deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.7));
+}
+
+.card-modern:hover .stat-card-value {
+  background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+}
+
+.stat-card-sub {
+  @apply text-xs text-muted-foreground mt-2 flex items-center gap-1.5;
+}
+
+.stat-card-bottom-accent {
+  @apply absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 transition-all duration-500;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+}
+
+.card-modern:hover .stat-card-bottom-accent {
+  width: 75%;
+}
+
+/* Health Card */
+.health-card {
+  @apply relative overflow-hidden backdrop-blur-sm border rounded-2xl p-5 shadow-lg transition-all duration-300;
+}
+
+.health-card:hover {
+  transform: scale(1.02);
+}
+
+.health-card-success {
+  background: linear-gradient(135deg, hsl(160 70% 45% / 0.1), hsl(160 70% 35% / 0.05));
+  border-color: hsl(160 70% 45% / 0.3);
+  box-shadow: 0 0 8px hsl(160 70% 45% / 0.15), 0 0 16px hsl(160 70% 45% / 0.05);
+}
+
+.health-card-success:hover {
+  border-color: hsl(160 70% 45% / 0.5);
+}
+
+.health-card-warning {
+  background: linear-gradient(135deg, hsl(45 100% 55% / 0.1), hsl(45 100% 45% / 0.05));
+  border-color: hsl(45 100% 55% / 0.3);
+  box-shadow: 0 0 8px hsl(45 100% 55% / 0.15), 0 0 16px hsl(45 100% 55% / 0.05);
+}
+
+.health-card-warning:hover {
+  border-color: hsl(45 100% 55% / 0.5);
+}
+
+.health-card-error {
+  background: linear-gradient(135deg, hsl(0 72% 51% / 0.1), hsl(0 72% 41% / 0.05));
+  border-color: hsl(0 72% 51% / 0.3);
+  box-shadow: 0 0 8px hsl(0 72% 51% / 0.15), 0 0 16px hsl(0 72% 51% / 0.05);
+}
+
+.health-card-error:hover {
+  border-color: hsl(0 72% 51% / 0.5);
+}
+
+.health-card-shimmer {
+  @apply absolute inset-0 transition-transform duration-1000;
+  background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.05), transparent);
+  transform: translateX(-100%);
+}
+
+.health-card:hover .health-card-shimmer {
+  transform: translateX(100%);
+}
+
+.health-card-icon {
+  @apply p-2 rounded-xl;
+  background: hsl(var(--background) / 0.5);
+}
+
+.health-card-indicator {
+  @apply w-2.5 h-2.5 rounded-full shadow-lg;
+}
+
+.health-card-indicator-success {
+  background: hsl(160 70% 45%);
+  box-shadow: 0 0 8px hsl(160 70% 45% / 0.5);
+}
+
+.health-card-indicator-warning {
+  @apply animate-pulse;
+  background: hsl(45 100% 55%);
+  box-shadow: 0 0 8px hsl(45 100% 55% / 0.5);
+}
+
+.health-card-indicator-error {
+  @apply animate-pulse;
+  background: hsl(0 72% 51%);
+  box-shadow: 0 0 8px hsl(0 72% 51% / 0.5);
+}
+
+.health-card-sub {
+  @apply text-xs text-muted-foreground mt-1.5 flex items-center gap-1;
+}
+
+/* Activity Item */
+.activity-item {
+  @apply flex gap-3 items-start p-3 rounded-xl border border-transparent transition-all cursor-default;
+  background: linear-gradient(90deg, hsl(var(--secondary) / 0.3), transparent);
+}
+
+.activity-item:hover {
+  background: linear-gradient(90deg, hsl(var(--secondary) / 0.5), transparent);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.activity-item-icon {
+  @apply mt-0.5 p-2 rounded-xl border shadow-sm transition-transform;
+}
+
+.activity-item:hover .activity-item-icon {
+  transform: scale(1.1);
+}
+
+.activity-item-sync {
+  @apply status-success;
+  background: hsl(160 70% 45% / 0.15);
+  border-color: hsl(160 70% 45% / 0.3);
+}
+
+.activity-item-delete {
+  @apply status-error;
+  background: hsl(0 72% 51% / 0.15);
+  border-color: hsl(0 72% 51% / 0.3);
+}
+
+.activity-item-security {
+  @apply text-primary;
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.activity-item-default {
+  @apply text-muted-foreground;
+  background: hsl(var(--muted) / 0.2);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.activity-item-file {
+  @apply text-sm font-medium truncate transition-colors;
+}
+
+.activity-item:hover .activity-item-file {
+  color: hsl(var(--primary));
+}
+
+.activity-item-time {
+  @apply text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full;
+  color: hsl(var(--muted-foreground) / 0.6);
+  background: hsl(var(--muted) / 0.3);
+}
+
+.activity-item-details {
+  @apply text-xs text-muted-foreground truncate mt-0.5;
+}
+
+/* Activity Feed */
+.activity-feed-decoration {
+  @apply absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 rounded-bl-full opacity-50;
+  background: linear-gradient(315deg, hsl(var(--accent) / 0.1), transparent);
+}
+
+.activity-feed-title {
+  @apply font-bold text-base sm:text-lg flex items-center gap-2 sm:gap-3;
+}
+
+.activity-feed-title-icon {
+  @apply p-1.5 sm:p-2 rounded-lg sm:rounded-xl border;
+  background: hsl(var(--accent) / 0.1);
+  border-color: hsl(var(--accent) / 0.2);
+}
+
+.activity-feed-badge {
+  @apply flex items-center gap-2 text-xs text-muted-foreground px-2 py-1 rounded-lg;
+  background: hsl(var(--muted) / 0.2);
+}
+
+.activity-feed-list {
+  @apply h-[280px] sm:h-[360px] overflow-y-auto space-y-2 pr-1;
+}
+
+.activity-feed-empty {
+  @apply h-full flex flex-col items-center justify-center text-center;
+}
+
+.activity-feed-empty-icon {
+  @apply p-4 rounded-2xl mb-4;
+  background: hsl(var(--muted) / 0.2);
+}
+
+/* Network Traffic Chart */
+.chart-top-gradient {
+  @apply absolute top-0 left-0 right-0 h-32 pointer-events-none;
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.05), transparent);
+}
+
+.chart-title {
+  @apply font-bold text-lg sm:text-xl flex items-center gap-2 sm:gap-3;
+}
+
+.chart-title-icon {
+  @apply p-1.5 sm:p-2 rounded-lg sm:rounded-xl border;
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.chart-title-text {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(90deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.6));
+}
+
+.chart-subtitle {
+  @apply text-xs sm:text-sm text-muted-foreground mt-1 ml-8 sm:ml-12;
+}
+
+.chart-legend-upload {
+  @apply flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-primary;
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.chart-legend-download {
+  @apply flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border glow-success;
+  background: hsl(160 70% 45% / 0.15);
+  border-color: hsl(160 70% 45% / 0.3);
+  color: hsl(160 70% 45%);
+}
+
+.chart-glow-effect {
+  @apply absolute inset-0 rounded-xl pointer-events-none;
+  background: linear-gradient(180deg, hsl(160 70% 45% / 0.05), transparent, hsl(45 100% 55% / 0.05));
+}
+
+/* Traffic Summary Card */
+.traffic-summary-card {
+  @apply rounded-lg sm:rounded-xl p-2 sm:p-4 border transition-colors;
+  background: linear-gradient(135deg, hsl(var(--background) / 0.8), hsl(var(--background) / 0.4));
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.traffic-summary-download:hover {
+  border-color: hsl(160 70% 45% / 0.3);
+}
+
+.traffic-summary-upload:hover {
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.traffic-summary-label {
+  @apply text-[10px] sm:text-xs text-muted-foreground mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5;
+}
+
+.traffic-summary-value {
+  @apply text-base sm:text-xl font-bold transition-transform;
+}
+
+.traffic-summary-card:hover .traffic-summary-value {
+  transform: scale(1.05);
+}
+
+/* Threat Stat Card */
+.threat-stat-card {
+  @apply p-3 rounded-xl border transition-all;
+}
+
+.threat-stat-card:hover {
+  transform: scale(1.05);
+}
+
+.threat-stat-success {
+  color: hsl(160 70% 45%);
+  border-color: hsl(160 70% 45% / 0.3);
+  background: hsl(160 70% 45% / 0.1);
+}
+
+.threat-stat-warning {
+  color: hsl(45 100% 55%);
+  border-color: hsl(45 100% 55% / 0.3);
+  background: hsl(45 100% 55% / 0.1);
+}
+
+.threat-stat-error {
+  color: hsl(0 72% 51%);
+  border-color: hsl(0 72% 51% / 0.3);
+  background: hsl(0 72% 51% / 0.1);
+}
+
+.threat-stat-icon {
+  /* Inherits color from parent */
+}
+
+.threat-stat-label {
+  @apply text-xs text-muted-foreground;
+}
+
+.threat-stat-value {
+  @apply text-lg font-bold font-mono;
+}
+
+/* Threat Analysis Panel */
+.threat-panel {
+  @apply relative overflow-hidden backdrop-blur-sm border rounded-2xl p-5 shadow-lg;
+  background: linear-gradient(135deg, 
+    hsl(var(--primary) / 0.05), 
+    hsl(var(--card)), 
+    hsl(var(--accent) / 0.05));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.threat-panel-hover-overlay {
+  @apply absolute inset-0 opacity-0 transition-opacity duration-1000;
+  background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.05), transparent);
+}
+
+.threat-panel:hover .threat-panel-hover-overlay {
+  opacity: 1;
+}
+
+.threat-panel-icon {
+  @apply p-2.5 rounded-xl border;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.threat-level-badge {
+  @apply px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider;
+}
+
+.threat-level-critical {
+  @apply animate-pulse;
+  background: hsl(0 72% 51% / 0.2);
+  color: hsl(0 72% 51%);
+  border: 1px solid hsl(0 72% 51% / 0.3);
+}
+
+.threat-level-high {
+  background: hsl(0 72% 51% / 0.2);
+  color: hsl(0 72% 51%);
+  border: 1px solid hsl(0 72% 51% / 0.3);
+}
+
+.threat-level-medium {
+  background: hsl(45 100% 55% / 0.2);
+  color: hsl(45 100% 55%);
+  border: 1px solid hsl(45 100% 55% / 0.3);
+}
+
+.threat-level-low {
+  background: hsl(50 100% 50% / 0.2);
+  color: hsl(50 100% 50%);
+  border: 1px solid hsl(50 100% 50% / 0.3);
+}
+
+.threat-level-safe {
+  background: hsl(160 70% 45% / 0.2);
+  color: hsl(160 70% 45%);
+  border: 1px solid hsl(160 70% 45% / 0.3);
+}
+
+.threat-gauge-track {
+  @apply h-3 rounded-full overflow-hidden;
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.threat-gauge-fill {
+  @apply h-full rounded-full transition-all duration-500;
+}
+
+.threat-gauge-critical {
+  background: linear-gradient(90deg, hsl(0 72% 51%), hsl(0 72% 41%));
+}
+
+.threat-gauge-high {
+  background: linear-gradient(90deg, hsl(45 100% 55%), hsl(45 100% 45%));
+}
+
+.threat-gauge-medium {
+  background: linear-gradient(90deg, hsl(50 100% 50%), hsl(50 100% 40%));
+}
+
+.threat-gauge-safe {
+  background: linear-gradient(90deg, hsl(160 70% 45%), hsl(160 70% 35%));
+}
+
+/* Degraded Peers Warning */
+.degraded-peers-warning {
+  @apply border rounded-xl p-4 flex items-center gap-3;
+  background: hsl(45 100% 55% / 0.15);
+  border-color: hsl(45 100% 55% / 0.3);
+}
+
+.degraded-peers-title {
+  @apply font-medium;
+  color: hsl(45 100% 55%);
+}
+
+.degraded-peers-message {
+  @apply text-sm text-muted-foreground;
+}
+
