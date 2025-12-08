@@ -226,15 +226,44 @@ private:
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         if (!db) return false;
         
+        // Get or create file_id from files table
+        int fileId = 0;
+        const char* getFileIdSql = "SELECT id FROM files WHERE path = ?;";
+        sqlite3_stmt* fileStmt;
+        if (sqlite3_prepare_v2(db, getFileIdSql, -1, &fileStmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(fileStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(fileStmt) == SQLITE_ROW) {
+                fileId = sqlite3_column_int(fileStmt, 0);
+            }
+            sqlite3_finalize(fileStmt);
+        }
+        
+        // If file doesn't exist, create it first
+        if (fileId == 0) {
+            const char* insertFileSql = "INSERT INTO files (path) VALUES (?);";
+            sqlite3_stmt* insertStmt;
+            if (sqlite3_prepare_v2(db, insertFileSql, -1, &insertStmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(insertStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+                if (sqlite3_step(insertStmt) == SQLITE_DONE) {
+                    fileId = static_cast<int>(sqlite3_last_insert_rowid(db));
+                }
+                sqlite3_finalize(insertStmt);
+            }
+        }
+        
+        if (fileId == 0) {
+            return false;
+        }
+        
         // Check if threat already exists for this file (prevent duplicates)
         // Check both active threats (marked_safe=0) and safe-marked threats (marked_safe=1)
-        const char* checkSql = "SELECT id, marked_safe FROM detected_threats WHERE file_path = ?";
+        const char* checkSql = "SELECT id, marked_safe FROM detected_threats WHERE file_id = ?";
         sqlite3_stmt* checkStmt;
         bool exists = false;
         bool isMarkedSafe = false;
         
         if (sqlite3_prepare_v2(db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(checkStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(checkStmt, 1, fileId);
             if (sqlite3_step(checkStmt) == SQLITE_ROW) {
                 exists = true;
                 isMarkedSafe = sqlite3_column_int(checkStmt, 1) == 1;
@@ -254,7 +283,7 @@ private:
         }
         
         const char* sql = "INSERT INTO detected_threats "
-                         "(file_path, threat_type, threat_level, threat_score, detected_at, "
+                         "(file_id, threat_type_id, threat_level_id, threat_score, detected_at, "
                          "entropy, file_size, hash, quarantine_path, ml_model_used, additional_info, marked_safe) "
                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
         
@@ -263,36 +292,38 @@ private:
             return false;
         }
         
-        // Map threat type
-        std::string threatType;
+        // Map threat type to threat_type_id
+        // 1=ransomware, 2=malware, 3=suspicious, 4=entropy_anomaly, 5=rapid_modification, 6=mass_deletion
+        int threatTypeId = 3; // default: suspicious
         switch (alert.type) {
             case ThreatDetector::ThreatType::RANSOMWARE:
-                threatType = "RANSOMWARE";
+                threatTypeId = 1;
                 break;
             case ThreatDetector::ThreatType::MASS_DELETION:
-                threatType = "MASS_OPERATION";
+                threatTypeId = 6;
                 break;
             case ThreatDetector::ThreatType::DATA_EXFILTRATION:
-                threatType = "SUSPICIOUS_PATTERN";
+                threatTypeId = 3;
                 break;
             default:
-                threatType = "UNKNOWN";
+                threatTypeId = 3;
         }
         
-        // Map severity to threat level
-        std::string threatLevel;
+        // Map severity to threat_level_id
+        // 1=low, 2=medium, 3=high, 4=critical
+        int threatLevelId = 1; // default: low
         switch (alert.severity) {
             case ThreatDetector::Severity::CRITICAL:
-                threatLevel = "CRITICAL";
+                threatLevelId = 4;
                 break;
             case ThreatDetector::Severity::HIGH:
-                threatLevel = "HIGH";
+                threatLevelId = 3;
                 break;
             case ThreatDetector::Severity::MEDIUM:
-                threatLevel = "MEDIUM";
+                threatLevelId = 2;
                 break;
             default:
-                threatLevel = "LOW";
+                threatLevelId = 1;
         }
         
         // Get file size
@@ -303,9 +334,9 @@ private:
             }
         } catch (...) {}
         
-        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, 2, threatType.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, 3, threatLevel.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 1, fileId);
+        sqlite3_bind_int(stmt, 2, threatTypeId);
+        sqlite3_bind_int(stmt, 3, threatLevelId);
         sqlite3_bind_double(stmt, 4, alert.confidenceScore * 100.0);
         sqlite3_bind_int64(stmt, 5, std::time(nullptr) * 1000LL); // milliseconds
         sqlite3_bind_double(stmt, 6, alert.fileEntropy);

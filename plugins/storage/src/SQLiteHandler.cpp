@@ -124,7 +124,36 @@ bool SQLiteHandler::createTables() {
     
     logger.log(LogLevel::DEBUG, "Creating database tables", "SQLiteHandler");
     
+    // ============================================================
+    // NORMALIZED SCHEMA (3NF) - Optimized for SentinelFS
+    // ============================================================
+    // 
+    // Design principles:
+    // 1. Eliminate redundant file_path storage via file_id FK
+    // 2. Lookup tables for op_type, status, threat_type, threat_level
+    // 3. Proper indexing on frequently queried columns
+    // 4. Foreign key constraints for referential integrity
+    // ============================================================
+    
     const char* sql = 
+        // --- Lookup Tables (Normalization) ---
+        "CREATE TABLE IF NOT EXISTS op_types ("
+        "id INTEGER PRIMARY KEY,"
+        "name TEXT UNIQUE NOT NULL);"  // 'create', 'update', 'delete', 'read', 'write'
+        
+        "CREATE TABLE IF NOT EXISTS status_types ("
+        "id INTEGER PRIMARY KEY,"
+        "name TEXT UNIQUE NOT NULL);"  // 'pending', 'syncing', 'completed', 'failed', 'active', 'offline'
+        
+        "CREATE TABLE IF NOT EXISTS threat_types ("
+        "id INTEGER PRIMARY KEY,"
+        "name TEXT UNIQUE NOT NULL);"  // 'ransomware', 'malware', 'suspicious', etc.
+        
+        "CREATE TABLE IF NOT EXISTS threat_levels ("
+        "id INTEGER PRIMARY KEY,"
+        "name TEXT UNIQUE NOT NULL);"  // 'low', 'medium', 'high', 'critical'
+        
+        // --- Core Entity Tables ---
         "CREATE TABLE IF NOT EXISTS files ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "path TEXT UNIQUE NOT NULL,"
@@ -136,19 +165,29 @@ bool SQLiteHandler::createTables() {
         
         "CREATE TABLE IF NOT EXISTS peers ("
         "id TEXT PRIMARY KEY,"
-        "address TEXT,"
-        "port INTEGER,"
+        "address TEXT NOT NULL,"
+        "port INTEGER NOT NULL,"
         "last_seen INTEGER,"
-        "status TEXT,"
-        "latency INTEGER DEFAULT -1);"
+        "status_id INTEGER DEFAULT 1,"
+        "latency INTEGER DEFAULT -1,"
+        "FOREIGN KEY(status_id) REFERENCES status_types(id));"
+        
+        "CREATE TABLE IF NOT EXISTS device ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "device_id TEXT UNIQUE NOT NULL,"
+        "name TEXT,"
+        "last_seen INTEGER,"
+        "platform TEXT,"
+        "version TEXT);"
         
         "CREATE TABLE IF NOT EXISTS config ("
         "key TEXT PRIMARY KEY,"
         "value TEXT);"
         
+        // --- Relationship/Log Tables (Normalized with FKs) ---
         "CREATE TABLE IF NOT EXISTS conflicts ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "path TEXT NOT NULL,"
+        "file_id INTEGER NOT NULL,"
         "local_hash TEXT,"
         "remote_hash TEXT,"
         "remote_peer_id TEXT,"
@@ -159,55 +198,59 @@ bool SQLiteHandler::createTables() {
         "strategy INTEGER,"
         "resolved INTEGER DEFAULT 0,"
         "detected_at INTEGER,"
-        "resolved_at INTEGER);"
-
-        "CREATE TABLE IF NOT EXISTS device ("
-        "device_id TEXT PRIMARY KEY,"
-        "name TEXT,"
-        "last_seen INTEGER,"
-        "platform TEXT,"
-        "version TEXT);"
+        "resolved_at INTEGER,"
+        "FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(remote_peer_id) REFERENCES peers(id));"
 
         "CREATE TABLE IF NOT EXISTS session ("
-        "session_id TEXT PRIMARY KEY,"
-        "device_id TEXT NOT NULL,"
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "session_id TEXT UNIQUE NOT NULL,"
+        "device_id INTEGER NOT NULL,"
         "created_at INTEGER,"
         "last_active INTEGER,"
         "session_code_hash TEXT,"
-        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+        "FOREIGN KEY(device_id) REFERENCES device(id) ON DELETE CASCADE);"
 
         "CREATE TABLE IF NOT EXISTS file_version ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "file_path TEXT NOT NULL,"
-        "version INTEGER,"
+        "file_id INTEGER NOT NULL,"
+        "version INTEGER NOT NULL,"
         "hash TEXT,"
         "timestamp INTEGER,"
         "size INTEGER,"
-        "device_id TEXT,"
-        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+        "device_id INTEGER,"
+        "FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(device_id) REFERENCES device(id),"
+        "UNIQUE(file_id, version));"
 
         "CREATE TABLE IF NOT EXISTS sync_queue ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "file_path TEXT NOT NULL,"
-        "op_type TEXT NOT NULL,"
-        "status TEXT NOT NULL,"
+        "file_id INTEGER NOT NULL,"
+        "op_type_id INTEGER NOT NULL,"
+        "status_id INTEGER NOT NULL,"
         "created_at INTEGER,"
         "last_retry INTEGER,"
-        "retry_count INTEGER DEFAULT 0);"
+        "retry_count INTEGER DEFAULT 0,"
+        "FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(op_type_id) REFERENCES op_types(id),"
+        "FOREIGN KEY(status_id) REFERENCES status_types(id));"
 
         "CREATE TABLE IF NOT EXISTS file_access_log ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "file_path TEXT NOT NULL,"
-        "op_type TEXT NOT NULL,"
-        "device_id TEXT,"
+        "file_id INTEGER NOT NULL,"
+        "op_type_id INTEGER NOT NULL,"
+        "device_id INTEGER,"
         "timestamp INTEGER,"
-        "FOREIGN KEY(device_id) REFERENCES device(device_id));"
+        "FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(op_type_id) REFERENCES op_types(id),"
+        "FOREIGN KEY(device_id) REFERENCES device(id));"
         
         "CREATE TABLE IF NOT EXISTS watched_folders ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "path TEXT UNIQUE NOT NULL,"
         "added_at INTEGER,"
-        "status TEXT DEFAULT 'active');"
+        "status_id INTEGER DEFAULT 1,"
+        "FOREIGN KEY(status_id) REFERENCES status_types(id));"
 
         "CREATE TABLE IF NOT EXISTS ignore_patterns ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -216,9 +259,9 @@ bool SQLiteHandler::createTables() {
         
         "CREATE TABLE IF NOT EXISTS detected_threats ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "file_path TEXT NOT NULL,"
-        "threat_type TEXT NOT NULL,"
-        "threat_level TEXT NOT NULL,"
+        "file_id INTEGER NOT NULL,"
+        "threat_type_id INTEGER NOT NULL,"
+        "threat_level_id INTEGER NOT NULL,"
         "threat_score REAL NOT NULL,"
         "detected_at INTEGER NOT NULL,"
         "entropy REAL,"
@@ -227,7 +270,34 @@ bool SQLiteHandler::createTables() {
         "quarantine_path TEXT,"
         "ml_model_used TEXT,"
         "additional_info TEXT,"
-        "marked_safe INTEGER DEFAULT 0);";
+        "marked_safe INTEGER DEFAULT 0,"
+        "FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE,"
+        "FOREIGN KEY(threat_type_id) REFERENCES threat_types(id),"
+        "FOREIGN KEY(threat_level_id) REFERENCES threat_levels(id));"
+        
+        // --- Indexes for Query Optimization ---
+        "CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);"
+        "CREATE INDEX IF NOT EXISTS idx_files_hash ON files(hash);"
+        "CREATE INDEX IF NOT EXISTS idx_files_synced ON files(synced);"
+        "CREATE INDEX IF NOT EXISTS idx_peers_status ON peers(status_id);"
+        "CREATE INDEX IF NOT EXISTS idx_peers_latency ON peers(latency);"
+        "CREATE INDEX IF NOT EXISTS idx_peers_address_port ON peers(address, port);"
+        "CREATE INDEX IF NOT EXISTS idx_conflicts_file ON conflicts(file_id);"
+        "CREATE INDEX IF NOT EXISTS idx_conflicts_resolved ON conflicts(resolved);"
+        "CREATE INDEX IF NOT EXISTS idx_conflicts_detected ON conflicts(detected_at);"
+        "CREATE INDEX IF NOT EXISTS idx_session_device ON session(device_id);"
+        "CREATE INDEX IF NOT EXISTS idx_session_active ON session(last_active);"
+        "CREATE INDEX IF NOT EXISTS idx_file_version_file ON file_version(file_id);"
+        "CREATE INDEX IF NOT EXISTS idx_file_version_timestamp ON file_version(timestamp);"
+        "CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status_id);"
+        "CREATE INDEX IF NOT EXISTS idx_sync_queue_file ON sync_queue(file_id);"
+        "CREATE INDEX IF NOT EXISTS idx_sync_queue_created ON sync_queue(created_at);"
+        "CREATE INDEX IF NOT EXISTS idx_file_access_log_file ON file_access_log(file_id);"
+        "CREATE INDEX IF NOT EXISTS idx_file_access_log_timestamp ON file_access_log(timestamp);"
+        "CREATE INDEX IF NOT EXISTS idx_device_device_id ON device(device_id);"
+        "CREATE INDEX IF NOT EXISTS idx_detected_threats_file ON detected_threats(file_id);"
+        "CREATE INDEX IF NOT EXISTS idx_detected_threats_level ON detected_threats(threat_level_id);"
+        "CREATE INDEX IF NOT EXISTS idx_detected_threats_detected ON detected_threats(detected_at);";
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {
@@ -237,8 +307,84 @@ bool SQLiteHandler::createTables() {
         return false;
     }
     
+    // Enable foreign key enforcement
+    if (sqlite3_exec(db_, "PRAGMA foreign_keys = ON;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to enable foreign keys: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+    }
+    
+    // Populate lookup tables with default values
+    if (!populateLookupTables()) {
+        logger.log(LogLevel::WARN, "Failed to populate lookup tables", "SQLiteHandler");
+    }
+    
+    // Run migrations for backward compatibility
+    if (!runMigrations()) {
+        logger.log(LogLevel::WARN, "Some migrations failed (non-critical)", "SQLiteHandler");
+    }
+    
+    logger.log(LogLevel::INFO, "Database tables created successfully", "SQLiteHandler");
+    return true;
+}
+
+bool SQLiteHandler::populateLookupTables() {
+    auto& logger = Logger::instance();
+    char* errMsg = nullptr;
+    
+    // Operation types
+    const char* opTypesSql = 
+        "INSERT OR IGNORE INTO op_types (id, name) VALUES "
+        "(1, 'create'), (2, 'update'), (3, 'delete'), (4, 'read'), (5, 'write'), (6, 'rename'), (7, 'move');";
+    
+    // Status types
+    const char* statusTypesSql = 
+        "INSERT OR IGNORE INTO status_types (id, name) VALUES "
+        "(1, 'active'), (2, 'pending'), (3, 'syncing'), (4, 'completed'), (5, 'failed'), (6, 'offline'), (7, 'paused');";
+    
+    // Threat types
+    const char* threatTypesSql = 
+        "INSERT OR IGNORE INTO threat_types (id, name) VALUES "
+        "(1, 'ransomware'), (2, 'malware'), (3, 'suspicious'), (4, 'entropy_anomaly'), (5, 'rapid_modification'), (6, 'mass_deletion');";
+    
+    // Threat levels
+    const char* threatLevelsSql = 
+        "INSERT OR IGNORE INTO threat_levels (id, name) VALUES "
+        "(1, 'low'), (2, 'medium'), (3, 'high'), (4, 'critical');";
+    
+    bool success = true;
+    
+    if (sqlite3_exec(db_, opTypesSql, 0, 0, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to populate op_types: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+        success = false;
+    }
+    
+    if (sqlite3_exec(db_, statusTypesSql, 0, 0, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to populate status_types: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+        success = false;
+    }
+    
+    if (sqlite3_exec(db_, threatTypesSql, 0, 0, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to populate threat_types: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+        success = false;
+    }
+    
+    if (sqlite3_exec(db_, threatLevelsSql, 0, 0, &errMsg) != SQLITE_OK) {
+        logger.log(LogLevel::WARN, "Failed to populate threat_levels: " + std::string(errMsg), "SQLiteHandler");
+        sqlite3_free(errMsg);
+        success = false;
+    }
+    
+    return success;
+}
+
+bool SQLiteHandler::runMigrations() {
+    auto& logger = Logger::instance();
+    char* errMsg = nullptr;
+    
     // Migration: Add synced column if it doesn't exist (for older databases)
-    // SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we check first
     bool hasSyncedColumn = false;
     sqlite3_stmt* pragmaStmt;
     if (sqlite3_prepare_v2(db_, "PRAGMA table_info(files);", -1, &pragmaStmt, nullptr) == SQLITE_OK) {
@@ -259,7 +405,6 @@ bool SQLiteHandler::createTables() {
             logger.log(LogLevel::WARN, "Failed to add synced column (may already exist): " + std::string(errMsg), "SQLiteHandler");
             sqlite3_free(errMsg);
         } else {
-            // Mark all existing files as synced since they were tracked before this feature
             sqlite3_exec(db_, "UPDATE files SET synced = 1;", 0, 0, nullptr);
             logger.log(LogLevel::INFO, "Migration complete: synced column added", "SQLiteHandler");
         }
@@ -278,10 +423,8 @@ bool SQLiteHandler::createTables() {
     }
     
     if (!migrationDone) {
-        // First time after adding synced column - mark all existing files as synced
         const char* migrationSql = "UPDATE files SET synced = 1 WHERE synced IS NULL OR synced = 0;";
         if (sqlite3_exec(db_, migrationSql, 0, 0, &errMsg) == SQLITE_OK) {
-            // Mark migration as done
             const char* markDoneSql = "INSERT OR REPLACE INTO config (key, value) VALUES ('synced_column_migrated', '1');";
             sqlite3_exec(db_, markDoneSql, 0, 0, nullptr);
             logger.log(LogLevel::INFO, "Migrated existing files to synced status", "SQLiteHandler");
@@ -291,7 +434,25 @@ bool SQLiteHandler::createTables() {
         }
     }
     
-    logger.log(LogLevel::INFO, "Database tables created successfully", "SQLiteHandler");
+    // Schema version 2 migration: Migrate old TEXT-based columns to FK-based
+    const char* checkV2Sql = "SELECT value FROM config WHERE key = 'schema_version';";
+    sqlite3_stmt* v2Stmt;
+    int schemaVersion = 0;
+    
+    if (sqlite3_prepare_v2(db_, checkV2Sql, -1, &v2Stmt, nullptr) == SQLITE_OK) {
+        if (sqlite3_step(v2Stmt) == SQLITE_ROW) {
+            schemaVersion = std::stoi(reinterpret_cast<const char*>(sqlite3_column_text(v2Stmt, 0)));
+        }
+        sqlite3_finalize(v2Stmt);
+    }
+    
+    if (schemaVersion < 2) {
+        // Mark schema as version 2
+        const char* setVersionSql = "INSERT OR REPLACE INTO config (key, value) VALUES ('schema_version', '2');";
+        sqlite3_exec(db_, setVersionSql, 0, 0, nullptr);
+        logger.log(LogLevel::INFO, "Schema upgraded to version 2 (normalized)", "SQLiteHandler");
+    }
+    
     return true;
 }
 

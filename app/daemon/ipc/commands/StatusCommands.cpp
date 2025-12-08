@@ -282,8 +282,8 @@ ThreatStatusReport StatusCommands::getThreatStatus() const {
             sqlite3_finalize(stmt);
         }
         
-        // Count ransomware alerts
-        const char* ransomwareSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type = 'RANSOMWARE' AND marked_safe = 0";
+        // Count ransomware alerts (threat_type_id=1 is ransomware)
+        const char* ransomwareSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type_id = 1 AND marked_safe = 0";
         if (sqlite3_prepare_v2(db, ransomwareSql, -1, &stmt, nullptr) == SQLITE_OK) {
             if (sqlite3_step(stmt) == SQLITE_ROW) {
                 report.ransomwareAlerts = sqlite3_column_int(stmt, 0);
@@ -300,8 +300,8 @@ ThreatStatusReport StatusCommands::getThreatStatus() const {
             sqlite3_finalize(stmt);
         }
         
-        // Count mass operation alerts
-        const char* massSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type = 'MASS_OPERATION' AND marked_safe = 0";
+        // Count mass operation alerts (threat_type_id=6 is mass_deletion)
+        const char* massSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type_id = 6 AND marked_safe = 0";
         if (sqlite3_prepare_v2(db, massSql, -1, &stmt, nullptr) == SQLITE_OK) {
             if (sqlite3_step(stmt) == SQLITE_ROW) {
                 report.massOperationAlerts = sqlite3_column_int(stmt, 0);

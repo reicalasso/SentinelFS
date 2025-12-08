@@ -11,11 +11,15 @@ namespace SentinelFS {
                                      const std::string& version) {
         auto& logger = Logger::instance();
         auto& metrics = MetricsCollector::instance();
-
-        const char* sql = "INSERT OR REPLACE INTO device (device_id, name, last_seen, platform, version) "
-                          "VALUES (?, ?, ?, ?, ?);";
-        sqlite3_stmt* stmt;
         sqlite3* db = handler_->getDB();
+
+        // Use INSERT ... ON CONFLICT for proper upsert with AUTOINCREMENT id
+        const char* sql = "INSERT INTO device (device_id, name, last_seen, platform, version) "
+                          "VALUES (?, ?, ?, ?, ?) "
+                          "ON CONFLICT(device_id) DO UPDATE SET "
+                          "name = excluded.name, last_seen = excluded.last_seen, "
+                          "platform = excluded.platform, version = excluded.version;";
+        sqlite3_stmt* stmt;
 
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
             logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "DeviceManager");

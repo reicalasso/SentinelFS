@@ -39,6 +39,16 @@ private:
      * @brief Create all required database tables
      */
     bool createTables();
+    
+    /**
+     * @brief Populate lookup tables with default values
+     */
+    bool populateLookupTables();
+    
+    /**
+     * @brief Run database migrations for backward compatibility
+     */
+    bool runMigrations();
 };
 
 } // namespace SentinelFS

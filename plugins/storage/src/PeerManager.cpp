@@ -34,7 +34,13 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
         sqlite3_finalize(cleanupStmt);
     }
     
-    const char* sql = "INSERT OR REPLACE INTO peers (id, address, port, last_seen, status, latency) VALUES (?, ?, ?, ?, ?, ?);";
+    // Map status string to status_id (1=active, 6=offline)
+    int statusId = 1; // default: active
+    if (peer.status == "offline") statusId = 6;
+    else if (peer.status == "pending") statusId = 2;
+    else if (peer.status == "syncing") statusId = 3;
+    
+    const char* sql = "INSERT OR REPLACE INTO peers (id, address, port, last_seen, status_id, latency) VALUES (?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -47,7 +53,7 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
     sqlite3_bind_text(stmt, 2, peer.ip.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 3, peer.port);
     sqlite3_bind_int64(stmt, 4, peer.lastSeen);
-    sqlite3_bind_text(stmt, 5, peer.status.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 5, statusId);
     sqlite3_bind_int(stmt, 6, peer.latency);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -66,7 +72,8 @@ std::optional<PeerInfo> PeerManager::getPeer(const std::string& peerId) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
     
-    const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers WHERE id = ?;";
+    const char* sql = "SELECT p.id, p.address, p.port, p.last_seen, COALESCE(s.name, 'unknown'), p.latency "
+                       "FROM peers p LEFT JOIN status_types s ON p.status_id = s.id WHERE p.id = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
@@ -100,7 +107,8 @@ std::vector<PeerInfo> PeerManager::getAllPeers() {
     auto& metrics = MetricsCollector::instance();
     
     std::vector<PeerInfo> peers;
-    const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers;";
+    const char* sql = "SELECT p.id, p.address, p.port, p.last_seen, COALESCE(s.name, 'unknown'), p.latency "
+                      "FROM peers p LEFT JOIN status_types s ON p.status_id = s.id;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 
@@ -187,8 +195,9 @@ std::vector<PeerInfo> PeerManager::getPeersByLatency() {
     auto& metrics = MetricsCollector::instance();
     
     std::vector<PeerInfo> peers;
-    const char* sql = "SELECT id, address, port, last_seen, status, latency FROM peers "
-                     "ORDER BY CASE WHEN latency = -1 THEN 999999 ELSE latency END ASC;";
+    const char* sql = "SELECT p.id, p.address, p.port, p.last_seen, COALESCE(s.name, 'unknown'), p.latency "
+                      "FROM peers p LEFT JOIN status_types s ON p.status_id = s.id "
+                      "ORDER BY CASE WHEN p.latency = -1 THEN 999999 ELSE p.latency END ASC;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
 

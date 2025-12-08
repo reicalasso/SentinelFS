@@ -692,9 +692,14 @@ std::string FileCommands::handleThreatsJson() {
     ss << "{\"type\":\"DETECTED_THREATS\",\"payload\":[";
     
     sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    const char* sql = "SELECT id, file_path, threat_type, threat_level, threat_score, detected_at, "
-                      "entropy, file_size, hash, quarantine_path, ml_model_used, additional_info, marked_safe "
-                      "FROM detected_threats ORDER BY detected_at DESC";
+    // Normalized query with JOINs to lookup tables
+    const char* sql = "SELECT dt.id, f.path, tt.name, tl.name, dt.threat_score, dt.detected_at, "
+                      "dt.entropy, dt.file_size, dt.hash, dt.quarantine_path, dt.ml_model_used, dt.additional_info, dt.marked_safe "
+                      "FROM detected_threats dt "
+                      "JOIN files f ON dt.file_id = f.id "
+                      "JOIN threat_types tt ON dt.threat_type_id = tt.id "
+                      "JOIN threat_levels tl ON dt.threat_level_id = tl.id "
+                      "ORDER BY dt.detected_at DESC";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -756,8 +761,9 @@ std::string FileCommands::handleDeleteThreat(const std::string& args) {
     
     sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
     
-    // First, get quarantine path to delete the file
-    const char* selectSql = "SELECT file_path, quarantine_path FROM detected_threats WHERE id = ?";
+    // First, get quarantine path to delete the file (using normalized schema with JOIN)
+    const char* selectSql = "SELECT f.path, dt.quarantine_path FROM detected_threats dt "
+                            "JOIN files f ON dt.file_id = f.id WHERE dt.id = ?";
     sqlite3_stmt* selectStmt;
     std::string filePath;
     std::string quarantinePath;
