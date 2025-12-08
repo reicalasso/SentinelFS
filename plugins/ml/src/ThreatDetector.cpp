@@ -122,6 +122,9 @@ ThreatDetector::ThreatAlert ThreatDetector::processEvent(
             entropyResult = entropyAnalyzer_->analyzeFile(path);
             fileEntropy = entropyResult.entropy;
         }
+    } else if (action == "DELETE") {
+        // For DELETE events, we don't clear the entropy result.
+        // We just don't calculate it.
     }
     
     // 5. Isolation Forest

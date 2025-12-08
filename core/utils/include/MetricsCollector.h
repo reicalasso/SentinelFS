@@ -128,6 +128,7 @@ namespace SentinelFS {
 
         // Sync metrics
         void incrementFilesWatched();
+        void decrementFilesWatched();
         void incrementFilesSynced();
         void incrementFilesModified();
         void incrementFilesDeleted();
@@ -161,6 +162,7 @@ namespace SentinelFS {
         void incrementThreatsDetected();
         void incrementRansomwareAlerts();
         void incrementHighEntropyFiles();
+        void decrementHighEntropyFiles();
         void incrementMassOperationAlerts();
         void updateThreatScore(double score);
         void updateAvgFileEntropy(double entropy);

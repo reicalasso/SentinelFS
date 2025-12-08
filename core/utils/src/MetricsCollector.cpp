@@ -15,6 +15,11 @@ namespace SentinelFS {
 
     // Sync metrics
     void MetricsCollector::incrementFilesWatched() { syncMetrics_.filesWatched++; }
+    void MetricsCollector::decrementFilesWatched() { 
+        if (syncMetrics_.filesWatched > 0) {
+            syncMetrics_.filesWatched--; 
+        }
+    }
     void MetricsCollector::incrementFilesSynced() { syncMetrics_.filesSynced++; }
     void MetricsCollector::incrementFilesModified() { syncMetrics_.filesModified++; }
     void MetricsCollector::incrementFilesDeleted() { syncMetrics_.filesDeleted++; }
@@ -50,6 +55,11 @@ namespace SentinelFS {
     void MetricsCollector::incrementThreatsDetected() { securityMetrics_.threatsDetected++; }
     void MetricsCollector::incrementRansomwareAlerts() { securityMetrics_.ransomwareAlerts++; }
     void MetricsCollector::incrementHighEntropyFiles() { securityMetrics_.highEntropyFiles++; }
+    void MetricsCollector::decrementHighEntropyFiles() { 
+        if (securityMetrics_.highEntropyFiles > 0) {
+            securityMetrics_.highEntropyFiles--; 
+        }
+    }
     void MetricsCollector::incrementMassOperationAlerts() { securityMetrics_.massOperationAlerts++; }
     void MetricsCollector::updateThreatScore(double score) { 
         // score is 0-1, convert to 0-100 percentage for storage and display
