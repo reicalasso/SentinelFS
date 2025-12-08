@@ -135,7 +135,7 @@ export default function App() {
             </h3>
             <SidebarItem icon={<Activity />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setTab('dashboard'); setSidebarOpen(false); }} />
             <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => { setTab('files'); setSidebarOpen(false); }} />
-            <SidebarItem icon={<Users />} label="Network Mesh" active={activeTab === 'peers'} onClick={() => { setTab('peers'); setSidebarOpen(false); }} badge={peers.length > 0 ? peers.length : undefined} />
+            <SidebarItem icon={<Users />} label="NetFalcon" active={activeTab === 'peers'} onClick={() => { setTab('peers'); setSidebarOpen(false); }} badge={peers.length > 0 ? peers.length : undefined} />
             <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => { setTab('transfers'); setSidebarOpen(false); }} />
           </div>
 
@@ -363,10 +363,10 @@ export default function App() {
 
         <main className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} threatStatus={threatStatus} onOpenQuarantine={() => showQuarantineModal(true)} />}
+            {activeTab === 'dashboard' && <Dashboard metrics={metrics as any} syncStatus={syncStatus} peersCount={peers.length} activity={activity as any} threatStatus={threatStatus as any} onOpenQuarantine={() => showQuarantineModal(true)} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
-            {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} activity={activity} />}
+            {activeTab === 'transfers' && <Transfers metrics={metrics as any} transfers={transfers} history={transferHistory} activity={activity as any} />}
             {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <LogsView logs={logs} onClear={clearLogs} />}
           </div>

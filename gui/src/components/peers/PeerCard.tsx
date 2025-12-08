@@ -1,4 +1,4 @@
-import { Laptop, Smartphone, Globe, Ban, Signal, Zap } from 'lucide-react'
+import { Laptop, Smartphone, Globe, Ban, Signal, Zap, Network } from 'lucide-react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 interface PeerCardProps {
@@ -11,6 +11,7 @@ interface PeerCardProps {
     trusted: boolean
     latency: number
     lastSeen: string
+    transport?: 'TCP' | 'QUIC' | 'Relay'
   }
   index: number
   latencyHistory?: { time: string; latency: number }[]
@@ -55,7 +56,7 @@ export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="peer-card-stat">
             <div className="peer-card-stat-label">
               <Signal className="w-3 h-3" /> Status
@@ -80,6 +81,17 @@ export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps
               peer.latency < 150 ? 'peer-card-stat-value-warning' : 'peer-card-stat-value-error'
             }`}>
               {peer.latency >= 0 ? `${peer.latency}ms` : 'N/A'}
+            </div>
+          </div>
+          <div className="peer-card-stat">
+            <div className="peer-card-stat-label">
+              <Network className="w-3 h-3" /> Transport
+            </div>
+            <div className={`peer-card-stat-value text-xs ${
+              peer.transport === 'TCP' ? 'text-emerald-400' : 
+              peer.transport === 'Relay' ? 'text-violet-400' : 'text-amber-400'
+            }`}>
+              {peer.transport || 'TCP'}
             </div>
           </div>
         </div>

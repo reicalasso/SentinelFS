@@ -521,11 +521,102 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return relayCmds_->handleRelayPeers();
     }
     
+    // NetFalcon commands
+    else if (cmd == "NETFALCON_STATUS") {
+        return handleNetFalconStatus();
+    } else if (cmd == "NETFALCON_SET_STRATEGY") {
+        return handleNetFalconSetStrategy(args);
+    } else if (cmd == "NETFALCON_SET_TRANSPORT") {
+        return handleNetFalconSetTransport(args);
+    }
+    
     // Unknown command - sanitized response to avoid information disclosure
     else {
         // Don't echo back the unknown command to prevent potential injection/disclosure
         return "ERROR: Invalid command. Use STATUS for help.\n";
     }
+}
+
+// NetFalcon command handlers
+std::string IPCHandler::handleNetFalconStatus() {
+    std::ostringstream ss;
+    ss << "{\n";
+    ss << "  \"plugin\": \"NetFalcon\",\n";
+    ss << "  \"version\": \"1.0.0\",\n";
+    ss << "  \"transports\": {\n";
+    ss << "    \"tcp\": { \"enabled\": " << (network_ && network_->isTransportEnabled("tcp") ? "true" : "false") << ", \"listening\": " << (network_ ? "true" : "false") << " },\n";
+    ss << "    \"quic\": { \"enabled\": " << (network_ && network_->isTransportEnabled("quic") ? "true" : "false") << ", \"listening\": false },\n";
+    ss << "    \"relay\": { \"enabled\": " << (network_ && network_->isTransportEnabled("relay") ? "true" : "false") << ", \"connected\": " << (network_ && network_->isRelayConnected() ? "true" : "false") << " }\n";
+    ss << "  },\n";
+    
+    // Get strategy name
+    std::string strategyName = "FALLBACK_CHAIN";
+    if (network_) {
+        switch (network_->getTransportStrategy()) {
+            case INetworkAPI::TransportStrategy::PREFER_FAST: strategyName = "PREFER_FAST"; break;
+            case INetworkAPI::TransportStrategy::PREFER_RELIABLE: strategyName = "PREFER_RELIABLE"; break;
+            case INetworkAPI::TransportStrategy::ADAPTIVE: strategyName = "ADAPTIVE"; break;
+            default: strategyName = "FALLBACK_CHAIN"; break;
+        }
+    }
+    ss << "  \"strategy\": \"" << strategyName << "\",\n";
+    ss << "  \"localPeerId\": \"" << (network_ ? network_->getLocalPeerId() : "N/A") << "\",\n";
+    ss << "  \"listeningPort\": " << (network_ ? network_->getLocalPort() : 0) << ",\n";
+    ss << "  \"encryptionEnabled\": " << (network_ && network_->isEncryptionEnabled() ? "true" : "false") << "\n";
+    ss << "}\n";
+    return ss.str();
+}
+
+std::string IPCHandler::handleNetFalconSetStrategy(const std::string& args) {
+    if (args.empty()) {
+        return "ERROR: Strategy required (FALLBACK_CHAIN, PREFER_FAST, PREFER_RELIABLE, ADAPTIVE)\n";
+    }
+    
+    if (!network_) {
+        return "ERROR: Network plugin not available\n";
+    }
+    
+    INetworkAPI::TransportStrategy strategy;
+    if (args == "FALLBACK_CHAIN") {
+        strategy = INetworkAPI::TransportStrategy::FALLBACK_CHAIN;
+    } else if (args == "PREFER_FAST") {
+        strategy = INetworkAPI::TransportStrategy::PREFER_FAST;
+    } else if (args == "PREFER_RELIABLE") {
+        strategy = INetworkAPI::TransportStrategy::PREFER_RELIABLE;
+    } else if (args == "ADAPTIVE") {
+        strategy = INetworkAPI::TransportStrategy::ADAPTIVE;
+    } else {
+        return "ERROR: Invalid strategy. Use FALLBACK_CHAIN, PREFER_FAST, PREFER_RELIABLE, or ADAPTIVE\n";
+    }
+    
+    network_->setTransportStrategy(strategy);
+    return "OK: Transport strategy set to " + args + "\n";
+}
+
+std::string IPCHandler::handleNetFalconSetTransport(const std::string& args) {
+    if (args.empty()) {
+        return "ERROR: Transport setting required (e.g., tcp=1, relay=0)\n";
+    }
+    
+    if (!network_) {
+        return "ERROR: Network plugin not available\n";
+    }
+    
+    size_t eqPos = args.find('=');
+    if (eqPos == std::string::npos) {
+        return "ERROR: Invalid format. Use transport=0|1 (e.g., tcp=1)\n";
+    }
+    
+    std::string transport = args.substr(0, eqPos);
+    std::string value = args.substr(eqPos + 1);
+    bool enabled = (value == "1" || value == "true");
+    
+    if (transport == "tcp" || transport == "quic" || transport == "relay" || transport == "webrtc") {
+        network_->setTransportEnabled(transport, enabled);
+        return "OK: Transport " + transport + " " + (enabled ? "enabled" : "disabled") + "\n";
+    }
+    
+    return "ERROR: Unknown transport. Use tcp, quic, relay, or webrtc\n";
 }
 
 // Sanitize response to remove sensitive system information

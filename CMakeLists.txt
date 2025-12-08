@@ -33,7 +33,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/systemd/sentinel_daemon.servic
 
 add_subdirectory(core)
 add_subdirectory(plugins/filesystem)
-add_subdirectory(plugins/network)
+# add_subdirectory(plugins/network)  # Deprecated: replaced by NetFalcon
+add_subdirectory(plugins/netfalcon)
 add_subdirectory(plugins/storage)
 add_subdirectory(plugins/ml)
 add_subdirectory(app/cli)

@@ -10,10 +10,13 @@ import {
   DegradedPeersWarning 
 } from './dashboard'
 
-// Types
+// Types - using any for flexibility with different data sources
 interface MetricsData {
-  totalUploaded: number
-  totalDownloaded: number
+  totalUploaded?: number
+  totalDownloaded?: number
+  bytesUploaded?: number
+  bytesDownloaded?: number
+  [key: string]: any
 }
 
 interface SyncStatusData {
@@ -34,7 +37,7 @@ interface SyncStatusData {
 
 interface ThreatStatusData {
   mlEnabled: boolean
-  threatLevel?: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  threatLevel?: string
   threatScore?: number
   totalThreats?: number
   ransomwareAlerts?: number
@@ -44,9 +47,11 @@ interface ThreatStatusData {
 
 interface ActivityData {
   type: string
-  file: string
-  time: string
-  details: string
+  file?: string
+  path?: string
+  time?: string
+  timestamp?: number
+  details?: string
 }
 
 interface TrafficHistoryItem {
@@ -106,8 +111,12 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
     
     if (lastMetrics) {
       const timeDiff = 2 // seconds (polling interval)
-      uploadRate = Math.max(0, (metrics.totalUploaded - lastMetrics.totalUploaded) / timeDiff)
-      downloadRate = Math.max(0, (metrics.totalDownloaded - lastMetrics.totalDownloaded) / timeDiff)
+      const currUp = metrics.totalUploaded || metrics.bytesUploaded || 0
+      const lastUp = lastMetrics.totalUploaded || lastMetrics.bytesUploaded || 0
+      const currDown = metrics.totalDownloaded || metrics.bytesDownloaded || 0
+      const lastDown = lastMetrics.totalDownloaded || lastMetrics.bytesDownloaded || 0
+      uploadRate = Math.max(0, (currUp - lastUp) / timeDiff)
+      downloadRate = Math.max(0, (currDown - lastDown) / timeDiff)
       
       // Update current rates
       setCurrentUploadRate(uploadRate)
@@ -189,7 +198,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
         />
 
         {/* Activity Feed */}
-        <ActivityFeed recentActivity={recentActivity} />
+        <ActivityFeed recentActivity={recentActivity as any} />
       </div>
 
       {/* Health Summary Row */}
@@ -225,7 +234,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
       </div>
 
       {/* ML Threat Detection Panel */}
-      {threatStatus && <ThreatAnalysisPanel threatStatus={threatStatus} onOpenQuarantine={onOpenQuarantine} />}
+      {threatStatus && <ThreatAnalysisPanel threatStatus={threatStatus as any} onOpenQuarantine={onOpenQuarantine} />}
 
       {/* Degraded Peers Warning */}
       <DegradedPeersWarning degradedPeers={degradedPeers} />

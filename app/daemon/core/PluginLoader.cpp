@@ -135,7 +135,7 @@ bool DaemonCore::loadPlugins() {
     };
 
     registerPlugin("storage", "storage/libstorage_plugin.so");
-    registerPlugin("network", "network/libnetwork_plugin.so", {"storage"});
+    registerPlugin("network", "netfalcon/libnetfalcon.so", {"storage"});
     registerPlugin("filesystem", "filesystem/libfilesystem_plugin.so");
     registerPlugin("ml", "ml/libml_plugin.so", {"storage"}, "1.0.0", true);
 

@@ -175,6 +175,53 @@ namespace SentinelFS {
          * @return Vector of relay peer information.
          */
         virtual std::vector<RelayPeerInfo> getRelayPeers() const = 0;
+        
+        /**
+         * @brief Transport strategy for multi-transport plugins
+         */
+        enum class TransportStrategy {
+            FALLBACK_CHAIN,  // Try transports in order
+            PREFER_FAST,     // Select lowest latency
+            PREFER_RELIABLE, // Select lowest packet loss
+            ADAPTIVE         // Dynamic selection
+        };
+        
+        /**
+         * @brief Set transport selection strategy.
+         * @param strategy The strategy to use for transport selection.
+         */
+        virtual void setTransportStrategy(TransportStrategy strategy) { (void)strategy; }
+        
+        /**
+         * @brief Get current transport strategy.
+         */
+        virtual TransportStrategy getTransportStrategy() const { return TransportStrategy::FALLBACK_CHAIN; }
+        
+        /**
+         * @brief Enable or disable a specific transport.
+         * @param transport Transport name (tcp, quic, relay)
+         * @param enabled Whether to enable the transport
+         */
+        virtual void setTransportEnabled(const std::string& transport, bool enabled) { 
+            (void)transport; (void)enabled; 
+        }
+        
+        /**
+         * @brief Check if a transport is enabled.
+         * @param transport Transport name
+         * @return true if enabled
+         */
+        virtual bool isTransportEnabled(const std::string& transport) const { 
+            (void)transport; 
+            return transport == "tcp"; // TCP always enabled by default
+        }
+        
+        /**
+         * @brief Get list of available transports.
+         */
+        virtual std::vector<std::string> getAvailableTransports() const {
+            return {"tcp"};
+        }
     };
 }
 

@@ -192,6 +192,11 @@ private:
     
     // Initialize command handlers
     void initializeCommandHandlers();
+    
+    // NetFalcon command handlers
+    std::string handleNetFalconStatus();
+    std::string handleNetFalconSetStrategy(const std::string& args);
+    std::string handleNetFalconSetTransport(const std::string& args);
 };
 
 } // namespace SentinelFS

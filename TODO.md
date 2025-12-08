@@ -26,6 +26,14 @@ Bu dosya, SentinelFS için planlanan geliştirmeleri ve iyileştirmeleri özetle
 
 ## 3. WAN / Çok Segment Ağ Desteği
 
+- [x] **NetFalcon Network Plugin** - Yeni nesil modüler ağ eklentisi
+  - Çok taşıyıcı mimari: TCP + QUIC + WebRTC + Relay (genişletilebilir)
+  - Katmanlı tasarım: Transport → Session → Plugin
+  - Akıllı transport seçimi: RTT, packet loss, jitter bazlı adaptif
+  - Multi-session desteği (farklı workspace'ler için)
+  - Anahtar döndürme ve replay attack koruması
+  - Otomatik transport failover
+  - Eski NetworkPlugin tamamen devre dışı bırakıldı
 - [x] Opsiyonel lightweight relay / introducer sunucusu tasarla (global discovery için)
   - Python asyncio tabanlı relay sunucusu: `relay/relay_server.py`
   - Session code tabanlı peer gruplandırma
