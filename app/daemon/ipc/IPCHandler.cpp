@@ -480,6 +480,17 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return fileCmds_->handlePreviewVersion(args);
     }
     
+    // Threat management commands
+    else if (cmd == "THREATS_JSON") {
+        return fileCmds_->handleThreatsJson();
+    } else if (cmd == "DELETE_THREAT") {
+        return fileCmds_->handleDeleteThreat(args);
+    } else if (cmd == "MARK_THREAT_SAFE") {
+        return fileCmds_->handleMarkThreatSafe(args);
+    } else if (cmd == "UNMARK_THREAT_SAFE") {
+        return fileCmds_->handleUnmarkThreatSafe(args);
+    }
+    
     // Config commands
     else if (cmd == "CONFIG_JSON") {
         return configCmds_->handleConfigJson();

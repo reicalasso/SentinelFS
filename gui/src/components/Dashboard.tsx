@@ -63,6 +63,7 @@ interface DashboardProps {
   peersCount: number
   activity: ActivityData[]
   threatStatus: ThreatStatusData | null
+  onOpenQuarantine?: () => void
 }
 
 // Helper function
@@ -74,7 +75,7 @@ function formatBytes(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-export function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus }: DashboardProps) {
+export function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus, onOpenQuarantine }: DashboardProps) {
   const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryItem[]>([])
   const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null)
   const [peakUpload, setPeakUpload] = useState(0)
@@ -224,7 +225,7 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
       </div>
 
       {/* ML Threat Detection Panel */}
-      {threatStatus && <ThreatAnalysisPanel threatStatus={threatStatus} />}
+      {threatStatus && <ThreatAnalysisPanel threatStatus={threatStatus} onOpenQuarantine={onOpenQuarantine} />}
 
       {/* Degraded Peers Warning */}
       <DegradedPeersWarning degradedPeers={degradedPeers} />

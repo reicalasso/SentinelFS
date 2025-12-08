@@ -13,9 +13,10 @@ interface ThreatStatusData {
 
 interface ThreatAnalysisPanelProps {
   threatStatus: ThreatStatusData
+  onOpenQuarantine?: () => void
 }
 
-export function ThreatAnalysisPanel({ threatStatus }: ThreatAnalysisPanelProps) {
+export function ThreatAnalysisPanel({ threatStatus, onOpenQuarantine }: ThreatAnalysisPanelProps) {
   if (!threatStatus?.mlEnabled) {
     return null
   }
@@ -39,7 +40,7 @@ export function ThreatAnalysisPanel({ threatStatus }: ThreatAnalysisPanelProps) 
   }
 
   return (
-    <div className="threat-panel">
+    <div className="threat-panel cursor-pointer" onClick={onOpenQuarantine}>
       <div className="threat-panel-hover-overlay"></div>
       
       <div className="relative">
@@ -50,7 +51,7 @@ export function ThreatAnalysisPanel({ threatStatus }: ThreatAnalysisPanelProps) 
             </div>
             <div>
               <h3 className="font-semibold">AI/ML Threat Analysis</h3>
-              <p className="text-xs text-muted-foreground">Real-time security monitoring</p>
+              <p className="text-xs text-muted-foreground">Real-time security monitoring · Click to open</p>
             </div>
           </div>
           <div className={`threat-level-badge ${getThreatLevelClass()}`}>

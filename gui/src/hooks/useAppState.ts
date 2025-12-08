@@ -99,6 +99,23 @@ export interface Conflict {
   versions?: FileVersion[]
 }
 
+// Detected Threat type
+export interface DetectedThreat {
+  id: number
+  filePath: string
+  threatType: 'RANSOMWARE' | 'HIGH_ENTROPY' | 'MASS_OPERATION' | 'SUSPICIOUS_PATTERN' | 'UNKNOWN'
+  threatLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  threatScore: number
+  detectedAt: number
+  entropy?: number
+  fileSize: number
+  hash?: string
+  quarantinePath?: string
+  mlModelUsed?: string
+  additionalInfo?: string
+  markedSafe?: boolean
+}
+
 // State
 export interface AppState {
   activeTab: 'dashboard' | 'files' | 'peers' | 'transfers' | 'settings' | 'logs'
@@ -118,6 +135,8 @@ export interface AppState {
   showConflictModal: boolean
   versionedFiles: Map<string, FileVersion[]>
   threatStatus: ThreatStatus | null
+  detectedThreats: DetectedThreat[]
+  showQuarantineModal: boolean
 }
 
 // Actions
@@ -143,6 +162,10 @@ type AppAction =
   | { type: 'SET_VERSIONED_FILES'; payload: Map<string, FileVersion[]> }
   | { type: 'DELETE_VERSION'; payload: { filePath: string; versionId: number } }
   | { type: 'SET_THREAT_STATUS'; payload: ThreatStatus }
+  | { type: 'SET_DETECTED_THREATS'; payload: DetectedThreat[] }
+  | { type: 'SHOW_QUARANTINE_MODAL'; payload: boolean }
+  | { type: 'REMOVE_THREAT'; payload: number }
+  | { type: 'MARK_THREAT_SAFE'; payload: number }
 
 // Initial state
 const initialState: AppState = {
@@ -162,7 +185,9 @@ const initialState: AppState = {
   conflicts: [],
   showConflictModal: false,
   versionedFiles: new Map(),
-  threatStatus: null
+  threatStatus: null,
+  detectedThreats: [],
+  showQuarantineModal: false
 }
 
 // Reducer
@@ -221,6 +246,30 @@ function appReducer(state: AppState, action: AppAction): AppState {
     }
     case 'SET_THREAT_STATUS':
       return { ...state, threatStatus: action.payload }
+    case 'SET_DETECTED_THREATS': {
+      // Only auto-open modal if new threats are detected (count increased)
+      const oldActiveThreatCount = state.detectedThreats.filter(t => !t.markedSafe).length
+      const newActiveThreatCount = action.payload.filter((t: DetectedThreat) => !t.markedSafe).length
+      const shouldAutoOpen = newActiveThreatCount > oldActiveThreatCount && newActiveThreatCount > 0
+      
+      return { 
+        ...state, 
+        detectedThreats: action.payload,
+        // Only open if there are MORE active threats than before, not just if threats exist
+        showQuarantineModal: state.showQuarantineModal || shouldAutoOpen
+      }
+    }
+    case 'SHOW_QUARANTINE_MODAL':
+      return { ...state, showQuarantineModal: action.payload }
+    case 'REMOVE_THREAT':
+      return { ...state, detectedThreats: state.detectedThreats.filter(t => t.id !== action.payload) }
+    case 'MARK_THREAT_SAFE':
+      return { 
+        ...state, 
+        detectedThreats: state.detectedThreats.map(t => 
+          t.id === action.payload ? { ...t, markedSafe: true } : t
+        ) 
+      }
     default:
       return state
   }
@@ -267,6 +316,8 @@ export function useAppState() {
       dispatch({ type: 'SET_CONFIG', payload: data.payload })
     } else if (data.type === 'THREAT_STATUS') {
       dispatch({ type: 'SET_THREAT_STATUS', payload: data.payload })
+    } else if (data.type === 'DETECTED_THREATS') {
+      dispatch({ type: 'SET_DETECTED_THREATS', payload: data.payload })
     }
   }, [])
 
@@ -314,6 +365,22 @@ export function useAppState() {
     dispatch({ type: 'DELETE_VERSION', payload: { filePath, versionId } })
   }, [])
 
+  const setDetectedThreats = useCallback((threats: DetectedThreat[]) => {
+    dispatch({ type: 'SET_DETECTED_THREATS', payload: threats })
+  }, [])
+
+  const showQuarantineModal = useCallback((show: boolean) => {
+    dispatch({ type: 'SHOW_QUARANTINE_MODAL', payload: show })
+  }, [])
+
+  const removeThreat = useCallback((threatId: number) => {
+    dispatch({ type: 'REMOVE_THREAT', payload: threatId })
+  }, [])
+
+  const markThreatSafe = useCallback((threatId: number) => {
+    dispatch({ type: 'MARK_THREAT_SAFE', payload: threatId })
+  }, [])
+
   return {
     state,
     actions: {
@@ -329,7 +396,11 @@ export function useAppState() {
       showConflictModal,
       resolveConflict,
       setVersionedFiles,
-      deleteVersion
+      deleteVersion,
+      setDetectedThreats,
+      showQuarantineModal,
+      removeThreat,
+      markThreatSafe
     }
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState, cloneElement } from 'react'
-import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle, Menu, X } from 'lucide-react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle, Menu, X, ShieldAlert } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
@@ -7,6 +7,7 @@ import { Files } from './components/Files'
 import { Transfers } from './components/Transfers'
 import { ToastList } from './components/ToastList'
 import { ConflictCenter } from './components/ConflictCenter'
+import { QuarantineCenter } from './components/QuarantineCenter'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
@@ -28,8 +29,8 @@ declare global {
 export default function App() {
   // Use centralized state management
   const { state, actions } = useAppState()
-  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles, threatStatus } = state
-  const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict, deleteVersion } = actions
+  const { activeTab, status, logs, isPaused, metrics, peers, syncStatus, files, activity, transfers, transferHistory, config, toasts, conflicts, showConflictModal: isConflictModalOpen, versionedFiles, threatStatus, detectedThreats, showQuarantineModal: isQuarantineModalOpen } = state
+  const { setTab, setStatus, setPaused, handleData, handleLog, clearLogs, addToast, clearToasts, showConflictModal, resolveConflict, deleteVersion, showQuarantineModal, removeThreat, markThreatSafe } = actions
   const [showOnboarding, setShowOnboarding] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -151,6 +152,14 @@ export default function App() {
               badge={conflicts.length > 0 ? conflicts.length : undefined}
               highlight={conflicts.length > 0}
             />
+            <SidebarItem 
+              icon={<ShieldAlert />} 
+              label="Threat Quarantine" 
+              active={false} 
+              onClick={() => { showQuarantineModal(true); setSidebarOpen(false); }} 
+              badge={detectedThreats.filter(t => !t.markedSafe).length > 0 ? detectedThreats.filter(t => !t.markedSafe).length : undefined}
+              highlight={detectedThreats.filter(t => !t.markedSafe).length > 0}
+            />
             <SidebarItem icon={<SettingsIcon />} label="Settings" active={activeTab === 'settings'} onClick={() => { setTab('settings'); setSidebarOpen(false); }} />
             <SidebarItem icon={<Terminal />} label="Debug Console" active={activeTab === 'logs'} onClick={() => { setTab('logs'); setSidebarOpen(false); }} />
           </div>
@@ -263,6 +272,41 @@ export default function App() {
         }}
         versionedFiles={versionedFiles}
       />
+
+      {/* Quarantine Center - Threat detection and management */}
+      <QuarantineCenter
+        threats={detectedThreats}
+        isOpen={isQuarantineModalOpen}
+        onClose={() => showQuarantineModal(false)}
+        onDeleteThreat={async (threatId) => {
+          if (window.api) {
+            const cmd = `DELETE_THREAT ${threatId}`
+            const res = await window.api.sendCommand(cmd)
+            if (res.success) {
+              addToast('Threat deleted successfully')
+              // Refresh threat list from backend
+              await window.api.sendCommand('THREATS_JSON')
+            } else {
+              addToast(`Failed to delete threat: ${res.error}`)
+            }
+          }
+        }}
+        onMarkSafe={async (threatId) => {
+          if (window.api) {
+            const threat = detectedThreats.find(t => t.id === threatId)
+            const isCurrentlySafe = threat?.markedSafe
+            const cmd = isCurrentlySafe ? `UNMARK_THREAT_SAFE ${threatId}` : `MARK_THREAT_SAFE ${threatId}`
+            const res = await window.api.sendCommand(cmd)
+            if (res.success) {
+              addToast(isCurrentlySafe ? 'Unmarked as safe' : 'Marked as safe')
+              // Refresh threat list from backend
+              await window.api.sendCommand('THREATS_JSON')
+            } else {
+              addToast(`Operation failed: ${res.error}`)
+            }
+          }
+        }}
+      />
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
@@ -317,7 +361,7 @@ export default function App() {
 
         <main className="relative flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} threatStatus={threatStatus} />}
+            {activeTab === 'dashboard' && <Dashboard metrics={metrics} syncStatus={syncStatus} peersCount={peers.length} activity={activity} threatStatus={threatStatus} onOpenQuarantine={() => showQuarantineModal(true)} />}
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
             {activeTab === 'transfers' && <Transfers metrics={metrics} transfers={transfers} history={transferHistory} activity={activity} />}

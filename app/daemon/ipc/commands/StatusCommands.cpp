@@ -268,12 +268,73 @@ ThreatStatusReport StatusCommands::getThreatStatus() const {
     auto& metrics = MetricsCollector::instance();
     auto secMetrics = metrics.getSecurityMetrics();
     
-    report.threatScore = secMetrics.currentThreatScore;
-    report.totalThreats = secMetrics.threatsDetected;
-    report.ransomwareAlerts = secMetrics.ransomwareAlerts;
-    report.highEntropyFiles = secMetrics.highEntropyFiles;
-    report.massOperationAlerts = secMetrics.massOperationAlerts;
-    report.avgFileEntropy = secMetrics.avgFileEntropy;
+    // Get real counts from database instead of in-memory metrics
+    if (ctx_.storage) {
+        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+        
+        // Count total threats (not marked as safe)
+        const char* countSql = "SELECT COUNT(*) FROM detected_threats WHERE marked_safe = 0";
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db, countSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                report.totalThreats = sqlite3_column_int(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Count ransomware alerts
+        const char* ransomwareSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type = 'RANSOMWARE' AND marked_safe = 0";
+        if (sqlite3_prepare_v2(db, ransomwareSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                report.ransomwareAlerts = sqlite3_column_int(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Count high entropy files
+        const char* entropySql = "SELECT COUNT(*) FROM detected_threats WHERE entropy > 7.0 AND marked_safe = 0";
+        if (sqlite3_prepare_v2(db, entropySql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                report.highEntropyFiles = sqlite3_column_int(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Count mass operation alerts
+        const char* massSql = "SELECT COUNT(*) FROM detected_threats WHERE threat_type = 'MASS_OPERATION' AND marked_safe = 0";
+        if (sqlite3_prepare_v2(db, massSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                report.massOperationAlerts = sqlite3_column_int(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Get average entropy
+        const char* avgEntropySql = "SELECT AVG(entropy) FROM detected_threats WHERE entropy IS NOT NULL AND marked_safe = 0";
+        if (sqlite3_prepare_v2(db, avgEntropySql, -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(stmt) == SQLITE_ROW && sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
+                report.avgFileEntropy = sqlite3_column_double(stmt, 0);
+            }
+            sqlite3_finalize(stmt);
+        }
+        
+        // Calculate threat score based on active threats
+        if (report.totalThreats > 0) {
+            report.threatScore = std::min(1.0, report.totalThreats * 0.1 + 
+                                         report.ransomwareAlerts * 0.15);
+        } else {
+            report.threatScore = 0.0;
+        }
+    } else {
+        // Fallback to in-memory metrics if database not available
+        report.threatScore = secMetrics.currentThreatScore;
+        report.totalThreats = secMetrics.threatsDetected;
+        report.ransomwareAlerts = secMetrics.ransomwareAlerts;
+        report.highEntropyFiles = secMetrics.highEntropyFiles;
+        report.massOperationAlerts = secMetrics.massOperationAlerts;
+        report.avgFileEntropy = secMetrics.avgFileEntropy;
+    }
+    
     report.mlEnabled = true;  // ML plugin is always loaded
     
     // Determine threat level from score

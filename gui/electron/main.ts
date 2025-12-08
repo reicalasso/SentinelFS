@@ -228,6 +228,9 @@ function connectToDaemon() {
                 } else if (json.threatScore !== undefined || json.threatLevel !== undefined) {
                     // ML Threat Status response
                     win?.webContents.send('daemon-data', { type: 'THREAT_STATUS', payload: json })
+                } else if (json.type === 'DETECTED_THREATS' && json.payload !== undefined) {
+                    // Detected threats list
+                    win?.webContents.send('daemon-data', { type: 'DETECTED_THREATS', payload: json.payload })
                 } else if (Array.isArray(json)) {
                     // Fallback/Legacy: Distinguish between PEERS and FILES by checking first element
                     if (json.length > 0 && json[0].path !== undefined) {
@@ -245,6 +248,50 @@ function connectToDaemon() {
                     lastDaemonLog = line
                     lastDaemonLogAt = now
                     win?.webContents.send('daemon-log', line)
+                    
+                    // Check for ML threat alerts in logs
+                    if (line.includes('THREAT:') || line.includes('ML ALERT:')) {
+                        try {
+                            // Extract threat info from log line
+                            // Example: "⚠️  HIGH THREAT: Ransomware pattern detected in /path/to/file.exe"
+                            const threatMatch = line.match(/(CRITICAL|HIGH|MEDIUM|LOW)\s+THREAT:\s+(.+)/)
+                            if (threatMatch) {
+                                const [, level, description] = threatMatch
+                                
+                                // Extract file path if present
+                                const pathMatch = description.match(/in\s+([^\s]+)$/)
+                                const filePath = pathMatch ? pathMatch[1] : 'Unknown'
+                                
+                                // Determine threat type from description
+                                let threatType = 'UNKNOWN'
+                                if (description.toLowerCase().includes('ransomware')) threatType = 'RANSOMWARE'
+                                else if (description.toLowerCase().includes('entropy')) threatType = 'HIGH_ENTROPY'
+                                else if (description.toLowerCase().includes('mass') || description.toLowerCase().includes('rapid')) threatType = 'MASS_OPERATION'
+                                else if (description.toLowerCase().includes('suspicious') || description.toLowerCase().includes('pattern')) threatType = 'SUSPICIOUS_PATTERN'
+                                
+                                // Create threat object
+                                const threat = {
+                                    id: Date.now(),
+                                    filePath: filePath,
+                                    threatType: threatType,
+                                    threatLevel: level.toUpperCase(),
+                                    threatScore: level === 'CRITICAL' ? 95 : level === 'HIGH' ? 75 : level === 'MEDIUM' ? 50 : 25,
+                                    detectedAt: Date.now(),
+                                    fileSize: 0,
+                                    additionalInfo: description,
+                                    markedSafe: false
+                                }
+                                
+                                // Send to GUI
+                                win?.webContents.send('daemon-data', { 
+                                    type: 'ML_THREAT_DETECTED', 
+                                    payload: threat 
+                                })
+                            }
+                        } catch (e) {
+                            // Ignore parse errors
+                        }
+                    }
                 }
             }
         } catch (e) {
@@ -291,6 +338,7 @@ function startMonitoring() {
             setTimeout(() => daemonSocket?.write('TRANSFERS_JSON\n'), 750)
             setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 900)
             setTimeout(() => daemonSocket?.write('THREAT_STATUS_JSON\n'), 1050)
+            setTimeout(() => daemonSocket?.write('THREATS_JSON\n'), 1200)
         }
     }, 2000)
 }

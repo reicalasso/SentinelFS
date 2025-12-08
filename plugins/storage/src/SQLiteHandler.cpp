@@ -212,7 +212,22 @@ bool SQLiteHandler::createTables() {
         "CREATE TABLE IF NOT EXISTS ignore_patterns ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "pattern TEXT UNIQUE NOT NULL,"
-        "created_at INTEGER);";
+        "created_at INTEGER);"
+        
+        "CREATE TABLE IF NOT EXISTS detected_threats ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "file_path TEXT NOT NULL,"
+        "threat_type TEXT NOT NULL,"
+        "threat_level TEXT NOT NULL,"
+        "threat_score REAL NOT NULL,"
+        "detected_at INTEGER NOT NULL,"
+        "entropy REAL,"
+        "file_size INTEGER NOT NULL,"
+        "hash TEXT,"
+        "quarantine_path TEXT,"
+        "ml_model_used TEXT,"
+        "additional_info TEXT,"
+        "marked_safe INTEGER DEFAULT 0);";
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, sql, 0, 0, &errMsg) != SQLITE_OK) {

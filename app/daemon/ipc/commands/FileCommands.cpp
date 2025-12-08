@@ -3,6 +3,7 @@
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 #include "MetricsCollector.h"
+#include "Logger.h"
 #include <sstream>
 #include <fstream>
 #include <filesystem>
@@ -680,6 +681,185 @@ std::string FileCommands::handlePreviewVersion(const std::string& args) {
     }
     
     return "Error: Version not found\n";
+}
+
+std::string FileCommands::handleThreatsJson() {
+    if (!ctx_.storage) {
+        return "{\"type\":\"DETECTED_THREATS\",\"payload\":[]}\n";
+    }
+    
+    std::stringstream ss;
+    ss << "{\"type\":\"DETECTED_THREATS\",\"payload\":[";
+    
+    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+    const char* sql = "SELECT id, file_path, threat_type, threat_level, threat_score, detected_at, "
+                      "entropy, file_size, hash, quarantine_path, ml_model_used, additional_info, marked_safe "
+                      "FROM detected_threats ORDER BY detected_at DESC";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        bool first = true;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            if (!first) ss << ",";
+            first = false;
+            
+            ss << "{";
+            ss << "\"id\":" << sqlite3_column_int(stmt, 0) << ",";
+            ss << "\"filePath\":\"" << (const char*)sqlite3_column_text(stmt, 1) << "\",";
+            ss << "\"threatType\":\"" << (const char*)sqlite3_column_text(stmt, 2) << "\",";
+            ss << "\"threatLevel\":\"" << (const char*)sqlite3_column_text(stmt, 3) << "\",";
+            ss << "\"threatScore\":" << sqlite3_column_double(stmt, 4) << ",";
+            ss << "\"detectedAt\":" << sqlite3_column_int64(stmt, 5) << ",";
+            
+            if (sqlite3_column_type(stmt, 6) != SQLITE_NULL) {
+                ss << "\"entropy\":" << sqlite3_column_double(stmt, 6) << ",";
+            }
+            
+            ss << "\"fileSize\":" << sqlite3_column_int64(stmt, 7) << ",";
+            
+            if (sqlite3_column_type(stmt, 8) != SQLITE_NULL) {
+                ss << "\"hash\":\"" << (const char*)sqlite3_column_text(stmt, 8) << "\",";
+            }
+            
+            if (sqlite3_column_type(stmt, 9) != SQLITE_NULL) {
+                ss << "\"quarantinePath\":\"" << (const char*)sqlite3_column_text(stmt, 9) << "\",";
+            }
+            
+            if (sqlite3_column_type(stmt, 10) != SQLITE_NULL) {
+                ss << "\"mlModelUsed\":\"" << (const char*)sqlite3_column_text(stmt, 10) << "\",";
+            }
+            
+            if (sqlite3_column_type(stmt, 11) != SQLITE_NULL) {
+                ss << "\"additionalInfo\":\"" << (const char*)sqlite3_column_text(stmt, 11) << "\",";
+            }
+            
+            ss << "\"markedSafe\":" << (sqlite3_column_int(stmt, 12) ? "true" : "false");
+            ss << "}";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    ss << "]}\n";
+    return ss.str();
+}
+
+std::string FileCommands::handleDeleteThreat(const std::string& args) {
+    if (args.empty()) {
+        return "Error: Usage: DELETE_THREAT <threat_id>\n";
+    }
+    
+    int threatId = std::stoi(args);
+    
+    if (!ctx_.storage) {
+        return "Error: Storage not available\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+    
+    // First, get quarantine path to delete the file
+    const char* selectSql = "SELECT file_path, quarantine_path FROM detected_threats WHERE id = ?";
+    sqlite3_stmt* selectStmt;
+    std::string filePath;
+    std::string quarantinePath;
+    
+    if (sqlite3_prepare_v2(db, selectSql, -1, &selectStmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(selectStmt, 1, threatId);
+        
+        if (sqlite3_step(selectStmt) == SQLITE_ROW) {
+            filePath = (const char*)sqlite3_column_text(selectStmt, 0);
+            if (sqlite3_column_type(selectStmt, 1) != SQLITE_NULL) {
+                quarantinePath = (const char*)sqlite3_column_text(selectStmt, 1);
+            }
+        }
+        sqlite3_finalize(selectStmt);
+    }
+    
+    if (filePath.empty()) {
+        return "Error: Threat not found\n";
+    }
+    
+    // Delete quarantined file if it exists
+    namespace fs = std::filesystem;
+    if (!quarantinePath.empty() && fs::exists(quarantinePath)) {
+        try {
+            fs::remove(quarantinePath);
+        } catch (const std::exception& e) {
+            auto& logger = Logger::instance();
+            logger.warn("Failed to delete quarantined file: " + std::string(e.what()), "FileCommands");
+        }
+    }
+    
+    // Delete from database
+    const char* deleteSql = "DELETE FROM detected_threats WHERE id = ?";
+    sqlite3_stmt* deleteStmt;
+    
+    if (sqlite3_prepare_v2(db, deleteSql, -1, &deleteStmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(deleteStmt, 1, threatId);
+        
+        if (sqlite3_step(deleteStmt) == SQLITE_DONE) {
+            sqlite3_finalize(deleteStmt);
+            return "Success: Threat deleted\n";
+        }
+        sqlite3_finalize(deleteStmt);
+    }
+    
+    return "Error: Failed to delete threat\n";
+}
+
+std::string FileCommands::handleMarkThreatSafe(const std::string& args) {
+    if (args.empty()) {
+        return "Error: Usage: MARK_THREAT_SAFE <threat_id>\n";
+    }
+    
+    int threatId = std::stoi(args);
+    
+    if (!ctx_.storage) {
+        return "Error: Storage not available\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+    const char* sql = "UPDATE detected_threats SET marked_safe = 1 WHERE id = ?";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, threatId);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Threat marked as safe\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to mark threat as safe\n";
+}
+
+std::string FileCommands::handleUnmarkThreatSafe(const std::string& args) {
+    if (args.empty()) {
+        return "Error: Usage: UNMARK_THREAT_SAFE <threat_id>\n";
+    }
+    
+    int threatId = std::stoi(args);
+    
+    if (!ctx_.storage) {
+        return "Error: Storage not available\n";
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+    const char* sql = "UPDATE detected_threats SET marked_safe = 0 WHERE id = ?";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, threatId);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            sqlite3_finalize(stmt);
+            return "Success: Safe mark removed from threat\n";
+        }
+        sqlite3_finalize(stmt);
+    }
+    
+    return "Error: Failed to unmark threat\n";
 }
 
 } // namespace SentinelFS

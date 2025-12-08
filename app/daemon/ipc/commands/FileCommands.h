@@ -39,6 +39,12 @@ public:
     std::string handleDeleteVersion(const std::string& args);
     std::string handlePreviewVersion(const std::string& args);
     
+    // Threat management
+    std::string handleThreatsJson();
+    std::string handleDeleteThreat(const std::string& args);
+    std::string handleMarkThreatSafe(const std::string& args);
+    std::string handleUnmarkThreatSafe(const std::string& args);
+    
 private:
     std::string sanitizePath(const std::string& path);
 };

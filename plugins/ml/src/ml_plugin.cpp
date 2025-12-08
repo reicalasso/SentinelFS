@@ -3,8 +3,14 @@
 #include "ThreatDetector.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "IStorageAPI.h"
+#include "PathUtils.h"
 #include <iostream>
 #include <memory>
+#include <filesystem>
+#include <fstream>
+#include <ctime>
+#include <sqlite3.h>
 
 namespace SentinelFS {
 
@@ -31,6 +37,9 @@ public:
     bool initialize(EventBus* eventBus) override {
         auto& logger = Logger::instance();
         eventBus_ = eventBus;
+        
+        // Get storage reference via EventBus (storage plugin should be loaded first)
+        storage_ = nullptr;
         
         // Configure threat detector
         ThreatDetector::Config config;
@@ -74,6 +83,23 @@ public:
         // Subscribe to sync events for additional monitoring
         eventBus_->subscribe("SYNC_STARTED", [this](const std::any&) {
             // Could adjust sensitivity during sync
+        });
+        
+        // Subscribe to storage reference event
+        eventBus_->subscribe("ML_SET_STORAGE", [this](const std::any& data) {
+            try {
+                storage_ = std::any_cast<IStorageAPI*>(data);
+                if (storage_) {
+                    // Ensure quarantine directory exists
+                    auto quarantineDir = PathUtils::getDataDir() / "quarantine";
+                    PathUtils::ensureDirectory(quarantineDir);
+                    
+                    auto& logger = Logger::instance();
+                    logger.info("Storage reference received, quarantine directory ready", "MLPlugin");
+                }
+            } catch (const std::bad_any_cast&) {
+                // Ignore invalid data
+            }
         });
         
         logger.info("MLPlugin initialized with advanced threat detection", "MLPlugin");
@@ -140,9 +166,151 @@ public:
         return detector_->analyzeFile(path);
     }
 
+    /**
+     * @brief Set storage reference (called by daemon)
+     */
+    void setStorage(IStorageAPI* storage) {
+        storage_ = storage;
+        
+        // Ensure quarantine directory exists
+        auto quarantineDir = PathUtils::getDataDir() / "quarantine";
+        PathUtils::ensureDirectory(quarantineDir);
+        
+        auto& logger = Logger::instance();
+        logger.info("Quarantine directory: " + quarantineDir.string(), "MLPlugin");
+    }
+
 private:
     EventBus* eventBus_{nullptr};
     std::unique_ptr<ThreatDetector> detector_;
+    IStorageAPI* storage_{nullptr};
+
+    /**
+     * @brief Quarantine a suspicious file
+     */
+    std::string quarantineFile(const std::string& filePath) {
+        namespace fs = std::filesystem;
+        
+        try {
+            if (!fs::exists(filePath)) {
+                return "";
+            }
+            
+            auto quarantineDir = PathUtils::getDataDir() / "quarantine";
+            PathUtils::ensureDirectory(quarantineDir);
+            
+            // Generate unique quarantine filename
+            auto timestamp = std::time(nullptr);
+            auto filename = fs::path(filePath).filename();
+            auto quarantinePath = quarantineDir / (std::to_string(timestamp) + "_" + filename.string());
+            
+            // Copy file to quarantine (keep original for now)
+            fs::copy_file(filePath, quarantinePath, fs::copy_options::overwrite_existing);
+            
+            return quarantinePath.string();
+        } catch (const std::exception& e) {
+            auto& logger = Logger::instance();
+            logger.error("Failed to quarantine file: " + std::string(e.what()), "MLPlugin");
+            return "";
+        }
+    }
+    
+    /**
+     * @brief Save threat to database
+     */
+    bool saveThreatToDatabase(const ThreatDetector::ThreatAlert& alert, 
+                               const std::string& filePath,
+                               const std::string& quarantinePath) {
+        if (!storage_) return false;
+        
+        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+        if (!db) return false;
+        
+        // Check if threat already exists for this file (prevent duplicates)
+        const char* checkSql = "SELECT id FROM detected_threats WHERE file_path = ? AND marked_safe = 0";
+        sqlite3_stmt* checkStmt;
+        bool exists = false;
+        
+        if (sqlite3_prepare_v2(db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(checkStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+                exists = true;
+            }
+            sqlite3_finalize(checkStmt);
+        }
+        
+        // If threat already exists for this file, skip insertion
+        if (exists) {
+            return true; // Not an error, just already exists
+        }
+        
+        const char* sql = "INSERT INTO detected_threats "
+                         "(file_path, threat_type, threat_level, threat_score, detected_at, "
+                         "entropy, file_size, hash, quarantine_path, ml_model_used, additional_info, marked_safe) "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
+        
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            return false;
+        }
+        
+        // Map threat type
+        std::string threatType;
+        switch (alert.type) {
+            case ThreatDetector::ThreatType::RANSOMWARE:
+                threatType = "RANSOMWARE";
+                break;
+            case ThreatDetector::ThreatType::MASS_DELETION:
+                threatType = "MASS_OPERATION";
+                break;
+            case ThreatDetector::ThreatType::DATA_EXFILTRATION:
+                threatType = "SUSPICIOUS_PATTERN";
+                break;
+            default:
+                threatType = "UNKNOWN";
+        }
+        
+        // Map severity to threat level
+        std::string threatLevel;
+        switch (alert.severity) {
+            case ThreatDetector::Severity::CRITICAL:
+                threatLevel = "CRITICAL";
+                break;
+            case ThreatDetector::Severity::HIGH:
+                threatLevel = "HIGH";
+                break;
+            case ThreatDetector::Severity::MEDIUM:
+                threatLevel = "MEDIUM";
+                break;
+            default:
+                threatLevel = "LOW";
+        }
+        
+        // Get file size
+        int64_t fileSize = 0;
+        try {
+            if (std::filesystem::exists(filePath)) {
+                fileSize = std::filesystem::file_size(filePath);
+            }
+        } catch (...) {}
+        
+        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, threatType.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 3, threatLevel.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_double(stmt, 4, alert.confidenceScore * 100.0);
+        sqlite3_bind_int64(stmt, 5, std::time(nullptr) * 1000LL); // milliseconds
+        sqlite3_bind_double(stmt, 6, alert.fileEntropy);
+        sqlite3_bind_int64(stmt, 7, fileSize);
+        sqlite3_bind_null(stmt, 8); // hash (TODO: calculate if needed)
+        sqlite3_bind_text(stmt, 9, quarantinePath.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 10, "ThreatDetector_v2", -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 11, alert.description.c_str(), -1, SQLITE_TRANSIENT);
+        
+        bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+        sqlite3_finalize(stmt);
+        
+        return success;
+    }
 
     /**
      * @brief Handle file system event
@@ -180,6 +348,9 @@ private:
             // Log high-severity detections
             if (alert.severity >= ThreatDetector::Severity::MEDIUM) {
                 logger.warn("Threat detected: " + alert.description, "MLPlugin");
+                
+                // Handle threat with file path context
+                handleAlertWithPath(alert, path);
             }
             
         } catch (const std::bad_any_cast&) {
@@ -188,11 +359,11 @@ private:
     }
 
     /**
-     * @brief Handle threat alert from detector
+     * @brief Handle threat alert from detector (called from callback - path unknown)
      */
     void handleAlert(const ThreatDetector::ThreatAlert& alert) {
-        if (!eventBus_) return;
-        
+        // This is called from the alert callback which doesn't have path info
+        // Most alerts now come through handleAlertWithPath instead
         auto& logger = Logger::instance();
         auto& metrics = MetricsCollector::instance();
         
@@ -216,13 +387,61 @@ private:
         // Publish to EventBus
         std::string alertType = ThreatDetector::threatTypeToString(alert.type);
         eventBus_->publish("ANOMALY_DETECTED", alertType);
+    }
+    
+    /**
+     * @brief Handle threat alert with file path context
+     */
+    void handleAlertWithPath(const ThreatDetector::ThreatAlert& alert, const std::string& filePath) {
+        if (!eventBus_) return;
         
-        // Publish detailed alert as JSON-like string
+        auto& logger = Logger::instance();
+        auto& metrics = MetricsCollector::instance();
+        
+        // Quarantine the file if severity is high enough
+        std::string quarantinePath;
+        if (alert.severity >= ThreatDetector::Severity::MEDIUM && !filePath.empty()) {
+            quarantinePath = quarantineFile(filePath);
+            if (!quarantinePath.empty()) {
+                logger.info("File quarantined: " + filePath + " -> " + quarantinePath, "MLPlugin");
+            }
+        }
+        
+        // Save threat to database
+        if (storage_ && !filePath.empty()) {
+            if (saveThreatToDatabase(alert, filePath, quarantinePath)) {
+                logger.info("Threat saved to database: " + filePath, "MLPlugin");
+            } else {
+                logger.error("Failed to save threat to database", "MLPlugin");
+            }
+        }
+        
+        // Update metrics
+        metrics.incrementThreatsDetected();
+        metrics.updateThreatScore(alert.confidenceScore);
+        
+        // Track specific threat types
+        switch (alert.type) {
+            case ThreatDetector::ThreatType::RANSOMWARE:
+                metrics.incrementRansomwareAlerts();
+                break;
+            case ThreatDetector::ThreatType::MASS_DELETION:
+                metrics.incrementMassOperationAlerts();
+                break;
+            default:
+                metrics.incrementSuspiciousActivities();
+                break;
+        }
+        
+        // Publish detailed alert with file path
+        std::string alertType = ThreatDetector::threatTypeToString(alert.type);
         std::string alertDetails = "{";
         alertDetails += "\"type\":\"" + alertType + "\",";
         alertDetails += "\"severity\":\"" + ThreatDetector::severityToString(alert.severity) + "\",";
         alertDetails += "\"confidence\":" + std::to_string(alert.confidenceScore) + ",";
-        alertDetails += "\"description\":\"" + alert.description + "\"";
+        alertDetails += "\"description\":\"" + alert.description + "\",";
+        alertDetails += "\"filePath\":\"" + filePath + "\",";
+        alertDetails += "\"quarantinePath\":\"" + quarantinePath + "\"";
         alertDetails += "}";
         
         eventBus_->publish("THREAT_ALERT", alertDetails);
@@ -230,10 +449,10 @@ private:
         // Log based on severity
         switch (alert.severity) {
             case ThreatDetector::Severity::CRITICAL:
-                logger.error("🚨 CRITICAL THREAT: " + alert.description, "MLPlugin");
+                logger.error("🚨 CRITICAL THREAT: " + alert.description + " [" + filePath + "]", "MLPlugin");
                 break;
             case ThreatDetector::Severity::HIGH:
-                logger.warn("⚠️  HIGH THREAT: " + alert.description, "MLPlugin");
+                logger.warn("⚠️  HIGH THREAT: " + alert.description + " [" + filePath + "]", "MLPlugin");
                 break;
             case ThreatDetector::Severity::MEDIUM:
                 logger.warn("⚡ MEDIUM THREAT: " + alert.description, "MLPlugin");

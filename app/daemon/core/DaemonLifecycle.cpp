@@ -96,6 +96,20 @@ bool DaemonCore::initialize() {
     // Setup event routing
     setupEventHandlers();
     
+    // Set storage reference for ML plugin
+    if (mlPlugin_ && storage_) {
+        // Cast to access setStorage method
+        auto* rawPlugin = mlPlugin_.get();
+        // Use reflection/dynamic cast approach - ML plugin implements custom interface
+        try {
+            // Check if plugin has a setStorage method via dynamic invocation
+            eventBus_.publish("ML_SET_STORAGE", storage_.get());
+            logger.info("Storage reference set for ML plugin", "DaemonCore");
+        } catch (const std::exception& e) {
+            logger.warn("Could not set storage for ML plugin: " + std::string(e.what()), "DaemonCore");
+        }
+    }
+    
     // Start network services
     try {
         network_->startListening(config_.tcpPort);
