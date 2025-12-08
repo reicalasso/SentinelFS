@@ -1,169 +1,178 @@
 [HOURLY]
 14,8,4.39436,30
-19,230.065,141.832,494
+18,8,4.39436,30
+19,206.196,149.752,556
 [DIRECTORIES]
-/home/rei/Documents,1,0.0019084
-/home/rei/Documents/.cursor-free-vip,1,0.0019084
-/home/rei/Documents/NVIDIA Nsight Compute/2025.3.1/Sections,53,0.101145
-/home/rei/Documents/PlatformIO/Projects/biiip,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom,8,0.0152672
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/FrameworkArduino,88,0.167939
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/FrameworkArduino/libb64,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib05b,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib05b/Ethernet,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets,8,0.0152672
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets/libb64,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets/libsha1,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib4a8,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib4a8/DHT sensor library,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib9c1,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib9c1/WiFi,18,0.0343511
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/liba23,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/liba23/Adafruit Unified Sensor,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libc5f,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libc5f/FS,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libd0f,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libd0f/WiFiClientSecure,6,0.0114504
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92/WebServer,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92/WebServer/detail,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libfe2,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libfe2/SPI,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/src,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/Adafruit Unified Sensor,7,0.0133588
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/Adafruit Unified Sensor/examples/sensortest,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library,12,0.0229008
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/.github,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/.github/workflows,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/examples/DHT_Unified_Sensor,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/examples/DHTtester,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Adafruit Unified Sensor,7,0.0133588
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Adafruit Unified Sensor/examples/sensortest,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library,12,0.0229008
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/.github,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/.github/workflows,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/examples/DHT_Unified_Sensor,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/examples/DHTtester,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity,12,0.0229008
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/.github/workflows,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/auto,16,0.0305344
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/src,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/subprojects,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/test,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/test/test_runners,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/src,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/test,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/test/test_runners,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/helper,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/src,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/test,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/src,5,0.00954198
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/subprojects,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/test,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/test/test_runners,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/src,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets,7,0.0133588
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/.github,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/.github/workflows,5,0.00954198
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/Nginx,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/arduino_renesas/arduino_uno_r4_wifi,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/arduino_wifinina,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/avr/WebSocketClientAVR,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClient,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSSL,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSSLBundle,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSocketIOack,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketServer,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient,4,0.00763359
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient/lib,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient/src,5,0.00954198
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle,7,0.0133588
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle/lib,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle/src,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClient,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientOTA,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientOTA/python_ota_server,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSSL,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSSLWithCA,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSocketIO,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSocketIOack,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientStomp,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientStompOverSockJs,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServer,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerAllFunctionsDemo,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerFragmentation,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerHooked,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerHttpHeaderValidation,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServer_LEDcontrol,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/particle/ParticleWebSocketClient,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/seeed-studio/xio-wio-terminal/WebSocketClient,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src,12,0.0229008
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src/libb64,6,0.0114504
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src/libsha1,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/tests,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/tests/webSocketServer,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/travis,2,0.00381679
-/home/rei/Documents/PlatformIO/Projects/biiip/.vscode,3,0.00572519
-/home/rei/Documents/PlatformIO/Projects/biiip/include,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/lib,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/src,1,0.0019084
-/home/rei/Documents/PlatformIO/Projects/biiip/test,1,0.0019084
-/home/rei/Documents/sentinel,2,0.00381679
-/home/rei/Documents/sentinel2,1,0.0019084
-/home/rei/Documents/sentinel2/sdggdfvb,1,0.0019084
-/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation,20,0.0381679
-/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/normal_files,12,0.0229008
-/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/ransomware_patterns,19,0.0362595
-/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/suspicious_scripts,12,0.0229008
+/home/rei/Documents,1,0.00162338
+/home/rei/Documents/.cursor-free-vip,1,0.00162338
+/home/rei/Documents/NVIDIA Nsight Compute/2025.3.1/Sections,53,0.086039
+/home/rei/Documents/PlatformIO/Projects/biiip,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom,8,0.012987
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/FrameworkArduino,88,0.142857
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/FrameworkArduino/libb64,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib05b,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib05b/Ethernet,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets,8,0.012987
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets/libb64,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib1eb/WebSockets/libsha1,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib4a8,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib4a8/DHT sensor library,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib9c1,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/lib9c1/WiFi,18,0.0292208
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/liba23,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/liba23/Adafruit Unified Sensor,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libc5f,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libc5f/FS,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libd0f,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libd0f/WiFiClientSecure,6,0.00974026
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92/WebServer,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libe92/WebServer/detail,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libfe2,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/libfe2/SPI,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/build/upesy_wroom/src,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/Adafruit Unified Sensor,7,0.0113636
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/Adafruit Unified Sensor/examples/sensortest,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library,12,0.0194805
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/.github,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/.github/workflows,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/examples/DHT_Unified_Sensor,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/uno/DHT sensor library/examples/DHTtester,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Adafruit Unified Sensor,7,0.0113636
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Adafruit Unified Sensor/examples/sensortest,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library,12,0.0194805
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/.github,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/.github/workflows,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/examples/DHT_Unified_Sensor,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/DHT sensor library/examples/DHTtester,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity,12,0.0194805
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/.github/workflows,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/auto,16,0.025974
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/src,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/subprojects,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/test,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_1/test/test_runners,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/src,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/test,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_2/test/test_runners,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/helper,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/src,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_3/test,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/src,5,0.00811688
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/subprojects,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/test,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/examples/example_4/test/test_runners,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/Unity/src,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets,7,0.0113636
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/.github,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/.github/workflows,5,0.00811688
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/Nginx,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/arduino_renesas/arduino_uno_r4_wifi,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/arduino_wifinina,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/avr/WebSocketClientAVR,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClient,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSSL,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSSLBundle,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketClientSocketIOack,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32/WebSocketServer,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient,4,0.00649351
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient/lib,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/CustomNetworkClient/src,5,0.00811688
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle,7,0.0113636
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle/lib,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp32_pio/WebSocketClientSSLBundle/src,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClient,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientOTA,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientOTA/python_ota_server,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSSL,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSSLWithCA,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSocketIO,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientSocketIOack,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientStomp,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketClientStompOverSockJs,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServer,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerAllFunctionsDemo,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerFragmentation,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerHooked,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServerHttpHeaderValidation,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/esp8266_pico/WebSocketServer_LEDcontrol,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/particle/ParticleWebSocketClient,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/examples/seeed-studio/xio-wio-terminal/WebSocketClient,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src,12,0.0194805
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src/libb64,6,0.00974026
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/src/libsha1,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/tests,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/tests/webSocketServer,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.pio/libdeps/upesy_wroom/WebSockets/travis,2,0.00324675
+/home/rei/Documents/PlatformIO/Projects/biiip/.vscode,3,0.00487013
+/home/rei/Documents/PlatformIO/Projects/biiip/include,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/lib,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/src,1,0.00162338
+/home/rei/Documents/PlatformIO/Projects/biiip/test,1,0.00162338
+/home/rei/Documents/sentinel,2,0.00324675
+/home/rei/Documents/sentinel2,1,0.00162338
+/home/rei/Documents/sentinel2/sdggdfvb,1,0.00162338
+/home/rei/SentinelFS/test_malware_simulation,5,0.00811688
+/home/rei/SentinelFS/test_malware_simulation/normal_files,9,0.0146104
+/home/rei/SentinelFS/test_malware_simulation/ransomware_patterns,24,0.038961
+/home/rei/SentinelFS/test_malware_simulation/suspicious_scripts,9,0.0146104
+/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation,20,0.0324675
+/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/normal_files,12,0.0194805
+/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/ransomware_patterns,19,0.0308442
+/home/rei/sentinelFS-demo/SentinelFS/test_malware_simulation/suspicious_scripts,12,0.0194805
+/home/rei/sentinelFS_demo/SentinelFS/test_malware_simulation,15,0.0243506
+/home/rei/sentinelFS_demo/SentinelFS/test_malware_simulation/normal_files,9,0.0146104
+/home/rei/sentinelFS_demo/SentinelFS/test_malware_simulation/ransomware_patterns,12,0.0194805
+/home/rei/sentinelFS_demo/SentinelFS/test_malware_simulation/suspicious_scripts,9,0.0146104
 [FILETYPES]
-.a,10,0,0,0.020202
-.bat,4,0,0,0.00808081
-.bin,3,0,0,0.00606061
-.build,7,0,0,0.0141414
-.c,28,0,0,0.0565657
-.chart,2,0,0,0.0040404
-.checksum,1,0,0,0.0020202
-.cmake,1,0,0,0.0020202
-.code-workspace,1,0,0,0.0020202
-.conf,1,0,0,0.0020202
-.cpp,17,0,0,0.0343434
-.crypted,4,0,0,0.00808081
-.csv,1,0,0,0.0020202
-.d,76,0,0,0.153535
-.dat,2,0,0,0.0040404
-.dblite,1,0,0,0.0020202
-.elf,1,0,0,0.0020202
-.enc,8,0,0,0.0161616
-.erb,1,0,0,0.0020202
-.h,30,0,0,0.0606061
-.html,1,0,0,0.0020202
-.ini,4,0,0,0.00808081
-.ino,29,0,0,0.0585859
-.js,1,0,0,0.0020202
-.json,11,0,0,0.0222222
-.locked,4,0,0,0.00808081
-.map,1,0,0,0.0020202
-.md,25,0,0,0.0505051
-.o,76,0,0,0.153535
-.pdf,4,0,0,0.00808081
-.pem,1,0,0,0.0020202
-.properties,5,0,0,0.010101
-.py,40,0,0,0.0808081
-.rb,12,0,0,0.0242424
-.section,24,0,0,0.0484848
-.sh,9,0,0,0.0181818
-.txt,33,2,0,0.0707071
-.wrap,2,0,0,0.0040404
-.yaml,4,0,0,0.00808081
-.yml,8,0,0,0.0161616
+.a,10,0,0,0.0170358
+.bat,8,2,0,0.0170358
+.bin,3,0,0,0.00511073
+.build,7,0,0,0.011925
+.c,28,0,0,0.0477002
+.chart,2,0,0,0.00340716
+.checksum,1,0,0,0.00170358
+.cmake,1,0,0,0.00170358
+.code-workspace,1,0,0,0.00170358
+.conf,1,0,0,0.00170358
+.cpp,17,0,0,0.0289608
+.crypted,8,0,0,0.0136286
+.csv,1,0,0,0.00170358
+.d,76,0,0,0.129472
+.dat,2,0,0,0.00340716
+.dblite,1,0,0,0.00170358
+.elf,1,0,0,0.00170358
+.enc,16,0,0,0.0272572
+.erb,1,0,0,0.00170358
+.h,30,0,0,0.0511073
+.html,1,0,0,0.00170358
+.ini,4,0,0,0.00681431
+.ino,29,0,0,0.0494037
+.js,1,0,0,0.00170358
+.json,15,2,0,0.0289608
+.locked,8,0,0,0.0136286
+.map,1,0,0,0.00170358
+.md,33,2,0,0.0596252
+.o,76,0,0,0.129472
+.pdf,4,0,0,0.00681431
+.pem,1,0,0,0.00170358
+.properties,5,0,0,0.00851789
+.py,44,2,0,0.0783646
+.rb,12,0,0,0.0204429
+.section,24,0,0,0.0408859
+.sh,17,4,0,0.0357751
+.txt,49,22,0,0.120954
+.wrap,2,0,0,0.00340716
+.yaml,4,0,0,0.00681431
+.yml,8,0,0,0.0136286
 [STATS]
-524
+616

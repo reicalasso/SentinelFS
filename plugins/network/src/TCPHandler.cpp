@@ -144,18 +144,19 @@ void TCPHandler::listenLoop() {
             char clientIpBuf[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIpBuf, INET_ADDRSTRLEN);
             std::string clientIp(clientIpBuf);
+            int clientPort = ntohs(clientAddr.sin_port);
 
-            logger_.log(LogLevel::INFO, "New connection from " + clientIp, "TCPHandler");
+            logger_.log(LogLevel::INFO, "New connection from " + clientIp + ":" + std::to_string(clientPort), "TCPHandler");
             metrics_.incrementConnections();
             
             // Handle client in a new thread - handshake will add to readThreads_
-            std::thread(&TCPHandler::handleClient, this, clientSocket).detach();
+            std::thread(&TCPHandler::handleClient, this, clientSocket, clientIp, clientPort).detach();
         }
     }
 }
 
-void TCPHandler::handleClient(int clientSocket) {
-    logger_.log(LogLevel::DEBUG, "Handling new client connection", "TCPHandler");
+void TCPHandler::handleClient(int clientSocket, const std::string& clientIp, int clientPort) {
+    logger_.log(LogLevel::DEBUG, "Handling new client connection from " + clientIp, "TCPHandler");
     
     // Perform server-side handshake
     auto result = handshake_->performServerHandshake(clientSocket);
@@ -167,7 +168,7 @@ void TCPHandler::handleClient(int clientSocket) {
         return;
     }
     
-    logger_.log(LogLevel::INFO, "Handshake successful with peer: " + result.peerId, "TCPHandler");
+    logger_.log(LogLevel::INFO, "Handshake successful with peer: " + result.peerId + " from " + clientIp + ":" + std::to_string(clientPort), "TCPHandler");
     
     // Check if we already have an active connection to this peer
     {
@@ -183,9 +184,11 @@ void TCPHandler::handleClient(int clientSocket) {
         connections_[result.peerId] = clientSocket;
     }
     
-    // Publish peer connected event
+    // Publish peer connected event with connection info
     if (eventBus_) {
-        eventBus_->publish("PEER_CONNECTED", result.peerId);
+        // Format: peerId|ip|port
+        std::string eventData = result.peerId + "|" + clientIp + "|" + std::to_string(clientPort);
+        eventBus_->publish("PEER_CONNECTED", eventData);
     }
     
     // Start reading from this peer - track thread for graceful shutdown
@@ -255,12 +258,14 @@ bool TCPHandler::connectToPeer(const std::string& address, int port) {
         connections_[result.peerId] = sock;
     }
     
-    logger_.log(LogLevel::INFO, "Successfully connected to peer: " + result.peerId, "TCPHandler");
+    logger_.log(LogLevel::INFO, "Successfully connected to peer: " + result.peerId + " at " + address + ":" + std::to_string(port), "TCPHandler");
     metrics_.incrementConnections();
     
-    // Publish peer connected event
+    // Publish peer connected event with connection info
     if (eventBus_) {
-        eventBus_->publish("PEER_CONNECTED", result.peerId);
+        // Format: peerId|ip|port
+        std::string eventData = result.peerId + "|" + address + "|" + std::to_string(port);
+        eventBus_->publish("PEER_CONNECTED", eventData);
     }
     
     // Start reading from this peer - track thread for graceful shutdown

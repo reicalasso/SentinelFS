@@ -89,7 +89,7 @@ void EventHandlers::setupHandlers() {
     // Scan other watched folders from DB
     if (storage_) {
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-        const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        const char* sql = "SELECT path FROM watched_folders WHERE status_id = 1";
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -185,9 +185,33 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
         auto& logger = Logger::instance();
         auto& metrics = MetricsCollector::instance();
         
-        std::string peerId = std::any_cast<std::string>(data);
+        // Event data format: "peerId|ip|port"
+        std::string eventData = std::any_cast<std::string>(data);
         
-        logger.info("Peer connected: " + peerId + ", updating status to active", "EventHandlers");
+        // Parse event data
+        std::string peerId, peerIp;
+        int peerPort = 0;
+        
+        size_t pos1 = eventData.find('|');
+        if (pos1 != std::string::npos) {
+            peerId = eventData.substr(0, pos1);
+            size_t pos2 = eventData.find('|', pos1 + 1);
+            if (pos2 != std::string::npos) {
+                peerIp = eventData.substr(pos1 + 1, pos2 - pos1 - 1);
+                try {
+                    peerPort = std::stoi(eventData.substr(pos2 + 1));
+                } catch (...) {
+                    peerPort = 0;
+                }
+            }
+        } else {
+            // Fallback for old format (just peerId)
+            peerId = eventData;
+            peerIp = "0.0.0.0";
+            peerPort = 0;
+        }
+        
+        logger.info("Peer connected: " + peerId + " at " + peerIp + ":" + std::to_string(peerPort), "EventHandlers");
         
         // Update peer status to active
         auto peerOpt = storage_->getPeer(peerId);
@@ -195,23 +219,29 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
             PeerInfo peer = peerOpt.value();
             peer.status = "active";
             peer.lastSeen = std::time(nullptr);
+            // Update IP/port if we have valid values
+            if (!peerIp.empty() && peerIp != "0.0.0.0") {
+                peer.ip = peerIp;
+            }
+            if (peerPort > 0) {
+                peer.port = peerPort;
+            }
             storage_->addPeer(peer);
             metrics.incrementPeersConnected();
             logger.info("Peer " + peerId + " is now active and ready for sync", "EventHandlers");
         } else {
-            // Peer not in database (incoming connection) - add with minimal info
-            // This happens when we receive a connection from a peer we haven't discovered yet
+            // Peer not in database (incoming connection) - add with connection info
             logger.info("Adding new peer from incoming connection: " + peerId, "EventHandlers");
             PeerInfo newPeer;
             newPeer.id = peerId;
-            newPeer.ip = "0.0.0.0";  // Will be updated later by RTT thread or discovery
-            newPeer.port = 0;
+            newPeer.ip = peerIp;
+            newPeer.port = peerPort;
             newPeer.lastSeen = std::time(nullptr);
             newPeer.status = "active";
             newPeer.latency = -1;
             storage_->addPeer(newPeer);
             metrics.incrementPeersConnected();
-            logger.info("Peer " + peerId + " added and marked as active", "EventHandlers");
+            logger.info("Peer " + peerId + " added at " + peerIp + ":" + std::to_string(peerPort), "EventHandlers");
         }
         
         // Trigger file sync after peer connection is established

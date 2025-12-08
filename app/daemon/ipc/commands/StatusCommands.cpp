@@ -192,7 +192,7 @@ HealthSummary StatusCommands::computeHealthSummary() const {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
         if (db) {
             sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM watched_folders WHERE status = 'active'", -1, &stmt, nullptr) == SQLITE_OK) {
+            if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM watched_folders WHERE status_id = 1", -1, &stmt, nullptr) == SQLITE_OK) {
                 if (sqlite3_step(stmt) == SQLITE_ROW) {
                     summary.activeWatcherCount = sqlite3_column_int(stmt, 0);
                 }

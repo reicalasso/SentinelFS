@@ -164,10 +164,14 @@ std::string TransferCommands::handleTransfersJson() {
         ss << "}";
     }
     
-    // Get pending transfers from sync_queue
+    // Get pending transfers from sync_queue (normalized schema with JOINs)
     if (ctx_.storage) {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        const char* sql = "SELECT file_path, op_type, status FROM sync_queue WHERE status = 'pending' ORDER BY created_at DESC LIMIT 20";
+        const char* sql = "SELECT f.path, ot.name, st.name FROM sync_queue sq "
+                          "JOIN files f ON sq.file_id = f.id "
+                          "JOIN op_types ot ON sq.op_type_id = ot.id "
+                          "JOIN status_types st ON sq.status_id = st.id "
+                          "WHERE sq.status_id = 2 ORDER BY sq.created_at DESC LIMIT 20";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -211,8 +215,11 @@ std::string TransferCommands::handleTransfersJson() {
     if (ctx_.storage) {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
         
-        // First try file_access_log
-        const char* historySql = "SELECT file_path, op_type, timestamp FROM file_access_log ORDER BY timestamp DESC LIMIT 20";
+        // First try file_access_log (normalized schema with JOINs)
+        const char* historySql = "SELECT f.path, ot.name, fal.timestamp FROM file_access_log fal "
+                                 "JOIN files f ON fal.file_id = f.id "
+                                 "JOIN op_types ot ON fal.op_type_id = ot.id "
+                                 "ORDER BY fal.timestamp DESC LIMIT 20";
         sqlite3_stmt* stmt;
         bool hasAccessLog = false;
         

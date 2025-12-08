@@ -129,6 +129,7 @@ private:
     bool loadPlugins();
     void setupEventHandlers();
     void printConfiguration() const;
+    void reconnectToKnownPeers();
 };
 
 } // namespace SentinelFS

@@ -1,4 +1,5 @@
 #include "PeerManager.h"
+#include "DBHelper.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
 #include <iostream>
@@ -34,11 +35,7 @@ bool PeerManager::addPeer(const PeerInfo& peer) {
         sqlite3_finalize(cleanupStmt);
     }
     
-    // Map status string to status_id (1=active, 6=offline)
-    int statusId = 1; // default: active
-    if (peer.status == "offline") statusId = 6;
-    else if (peer.status == "pending") statusId = 2;
-    else if (peer.status == "syncing") statusId = 3;
+    int statusId = static_cast<int>(DBHelper::mapStatus(peer.status));
     
     const char* sql = "INSERT OR REPLACE INTO peers (id, address, port, last_seen, status_id, latency) VALUES (?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt;

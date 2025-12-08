@@ -40,7 +40,7 @@ std::string FileCommands::handleFilesJson() {
         std::vector<std::string> watchedFolders;
         
         // 1. Get watched folders first (Roots)
-        const char* folderSql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        const char* folderSql = "SELECT path FROM watched_folders WHERE status_id = 1";
         sqlite3_stmt* folderStmt;
         
         if (sqlite3_prepare_v2(db, folderSql, -1, &folderStmt, nullptr) == SQLITE_OK) {
@@ -176,7 +176,7 @@ std::string FileCommands::handleActivityJson() {
         }
         
         // Also include watched folders
-        const char* foldersSql = "SELECT path, added_at FROM watched_folders WHERE status = 'active' ORDER BY added_at DESC LIMIT 3";
+        const char* foldersSql = "SELECT path, added_at FROM watched_folders WHERE status_id = 1 ORDER BY added_at DESC LIMIT 3";
         
         if (sqlite3_prepare_v2(db, foldersSql, -1, &stmt, nullptr) == SQLITE_OK) {
             while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -426,7 +426,13 @@ std::string FileCommands::handleSyncQueueJson() {
     
     if (ctx_.storage) {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        const char* sql = "SELECT id, file_path, operation, status, progress, size, peer_id, created_at FROM sync_queue ORDER BY created_at DESC LIMIT 50";
+        // Normalized schema with JOINs to lookup tables
+        const char* sql = "SELECT sq.id, f.path, ot.name, st.name, sq.retry_count, f.size, sq.created_at "
+                          "FROM sync_queue sq "
+                          "JOIN files f ON sq.file_id = f.id "
+                          "JOIN op_types ot ON sq.op_type_id = ot.id "
+                          "JOIN status_types st ON sq.status_id = st.id "
+                          "ORDER BY sq.created_at DESC LIMIT 50";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -439,20 +445,19 @@ std::string FileCommands::handleSyncQueueJson() {
                 const char* path = (const char*)sqlite3_column_text(stmt, 1);
                 const char* op = (const char*)sqlite3_column_text(stmt, 2);
                 const char* status = (const char*)sqlite3_column_text(stmt, 3);
-                int progress = sqlite3_column_int(stmt, 4);
+                int retryCount = sqlite3_column_int(stmt, 4);
                 int64_t size = sqlite3_column_int64(stmt, 5);
-                const char* peer = (const char*)sqlite3_column_text(stmt, 6);
-                const char* created = (const char*)sqlite3_column_text(stmt, 7);
+                int64_t created = sqlite3_column_int64(stmt, 6);
                 
                 ss << "{";
                 ss << "\"id\":" << id << ",";
                 ss << "\"path\":\"" << (path ? path : "") << "\",";
                 ss << "\"operation\":\"" << (op ? op : "") << "\",";
                 ss << "\"status\":\"" << (status ? status : "") << "\",";
-                ss << "\"progress\":" << progress << ",";
+                ss << "\"progress\":" << retryCount << ",";
                 ss << "\"size\":" << size << ",";
-                ss << "\"peer\":\"" << (peer ? peer : "") << "\",";
-                ss << "\"created\":\"" << (created ? created : "") << "\"";
+                ss << "\"peer\":\"\",";
+                ss << "\"created\":\"" << created << "\"";
                 ss << "}";
             }
             sqlite3_finalize(stmt);

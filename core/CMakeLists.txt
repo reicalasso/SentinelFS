@@ -64,6 +64,7 @@ set(CORE_SOURCES
     utils/src/HealthEndpoint.cpp
     utils/src/Compression.cpp
     utils/src/PathUtils.cpp
+    utils/src/DBHelper.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

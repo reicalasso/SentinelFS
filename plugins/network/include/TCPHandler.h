@@ -109,7 +109,7 @@ public:
     
 private:
     void listenLoop();
-    void handleClient(int clientSocket);
+    void handleClient(int clientSocket, const std::string& clientIp, int clientPort);
     void readLoop(int socket, const std::string& peerId);
     
     EventBus* eventBus_;

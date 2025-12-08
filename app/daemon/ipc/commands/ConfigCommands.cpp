@@ -49,7 +49,7 @@ std::string ConfigCommands::handleConfigJson() {
     ss << ",\"watchedFolders\":[";
     if (ctx_.storage) {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+        const char* sql = "SELECT path FROM watched_folders WHERE status_id = 1";
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             bool first = true;
@@ -224,11 +224,8 @@ std::string ConfigCommands::handleAddIgnore(const std::string& args) {
     
     sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
     
-    // Create ignore_patterns table if not exists
-    const char* createSql = "CREATE TABLE IF NOT EXISTS ignore_patterns (id INTEGER PRIMARY KEY, pattern TEXT UNIQUE, type TEXT DEFAULT 'glob', active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
-    sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
-    
-    const char* sql = "INSERT OR REPLACE INTO ignore_patterns (pattern, type, active) VALUES (?, 'glob', 1)";
+    // Use normalized schema - ignore_patterns table is created by SQLiteHandler
+    const char* sql = "INSERT OR REPLACE INTO ignore_patterns (pattern, created_at) VALUES (?, strftime('%s','now'))";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -275,11 +272,8 @@ std::string ConfigCommands::handleListIgnore() {
     if (ctx_.storage) {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
         
-        // Create table if not exists
-        const char* createSql = "CREATE TABLE IF NOT EXISTS ignore_patterns (id INTEGER PRIMARY KEY, pattern TEXT UNIQUE, type TEXT DEFAULT 'glob', active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
-        sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
-        
-        const char* sql = "SELECT pattern, type FROM ignore_patterns WHERE active = 1 ORDER BY pattern";
+        // Use normalized schema - ignore_patterns table is created by SQLiteHandler
+        const char* sql = "SELECT pattern FROM ignore_patterns ORDER BY pattern";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -289,10 +283,9 @@ std::string ConfigCommands::handleListIgnore() {
                 first = false;
                 
                 const char* pattern = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                const char* type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
                 
                 ss << "{\"pattern\":\"" << (pattern ? pattern : "") << "\",";
-                ss << "\"type\":\"" << (type ? type : "glob") << "\"}";
+                ss << "\"type\":\"glob\"}";
             }
             sqlite3_finalize(stmt);
         }

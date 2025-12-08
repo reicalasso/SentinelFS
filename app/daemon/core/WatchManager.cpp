@@ -44,11 +44,12 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
         logger.info("Adding watch for directory: " + absPath, "DaemonCore");
         
         // Save to database (or reactivate if exists)
+        // status_id: 1=active, 6=offline (from status_types lookup table)
         if (storage_) {
             sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
             
             // First check if folder already exists
-            const char* checkSql = "SELECT status FROM watched_folders WHERE path = ?";
+            const char* checkSql = "SELECT status_id FROM watched_folders WHERE path = ?";
             sqlite3_stmt* checkStmt;
             bool exists = false;
             
@@ -61,8 +62,8 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
             }
             
             if (exists) {
-                // Update existing folder to active
-                const char* updateSql = "UPDATE watched_folders SET status = 'active', added_at = ? WHERE path = ?";
+                // Update existing folder to active (status_id=1)
+                const char* updateSql = "UPDATE watched_folders SET status_id = 1, added_at = ? WHERE path = ?";
                 sqlite3_stmt* updateStmt;
                 
                 if (sqlite3_prepare_v2(db, updateSql, -1, &updateStmt, nullptr) == SQLITE_OK) {
@@ -75,8 +76,8 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
                     sqlite3_finalize(updateStmt);
                 }
             } else {
-                // Insert new folder
-                const char* insertSql = "INSERT INTO watched_folders (path, added_at, status) VALUES (?, ?, 'active')";
+                // Insert new folder (status_id=1 for active)
+                const char* insertSql = "INSERT INTO watched_folders (path, added_at, status_id) VALUES (?, ?, 1)";
                 sqlite3_stmt* insertStmt;
                 
                 if (sqlite3_prepare_v2(db, insertSql, -1, &insertStmt, nullptr) == SQLITE_OK) {
@@ -86,7 +87,7 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
                     if (sqlite3_step(insertStmt) == SQLITE_DONE) {
                         logger.info("Watched folder saved to database: " + absPath, "DaemonCore");
                     } else {
-                        logger.error("Failed to save watched folder to database", "DaemonCore");
+                        logger.error("Failed to save watched folder to database: " + std::string(sqlite3_errmsg(db)), "DaemonCore");
                     }
                     sqlite3_finalize(insertStmt);
                 }

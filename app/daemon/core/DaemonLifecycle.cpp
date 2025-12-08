@@ -13,6 +13,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <sqlite3.h>
+#include <tuple>
+#include <vector>
 
 namespace SentinelFS {
 
@@ -117,6 +119,10 @@ bool DaemonCore::initialize() {
         
         network_->startDiscovery(config_.discoveryPort);
         logger.info("UDP discovery started on port " + std::to_string(config_.discoveryPort), "DaemonCore");
+        
+        // Auto-reconnect to previously known peers
+        reconnectToKnownPeers();
+        
     } catch (const std::exception& e) {
         logger.error("Failed to start network services: " + std::string(e.what()), "DaemonCore");
         initStatus_.result = InitializationStatus::Result::NetworkFailure;
@@ -134,13 +140,14 @@ bool DaemonCore::initialize() {
             logger.info("Created watch directory: " + watchDir, "DaemonCore");
         }
 
-        filesystem_->startWatching(watchDir);
+        // Use addWatchDirectory to properly register in database
+        addWatchDirectory(watchDir);
         logger.info("Filesystem watcher started for: " + watchDir, "DaemonCore");
 
         // Load and watch persisted folders from database
         if (storage_) {
             sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-            const char* sql = "SELECT path FROM watched_folders WHERE status = 'active'";
+            const char* sql = "SELECT path FROM watched_folders WHERE status_id = 1";
             sqlite3_stmt* stmt;
             if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
                 while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -227,6 +234,83 @@ void DaemonCore::shutdown() {
     
     logger.info("Daemon stopped gracefully", "DaemonCore");
     std::cout << "Daemon stopped." << std::endl;
+}
+
+void DaemonCore::reconnectToKnownPeers() {
+    auto& logger = Logger::instance();
+    
+    if (!storage_ || !network_) {
+        return;
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    if (!db) {
+        return;
+    }
+    
+    // Get all previously known peers with valid addresses
+    const char* sql = "SELECT p.id, p.address, p.port FROM peers p "
+                      "JOIN status_types s ON p.status_id = s.id "
+                      "WHERE p.address != '0.0.0.0' AND p.port > 0";
+    sqlite3_stmt* stmt;
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        logger.warn("Failed to query known peers for reconnection", "DaemonCore");
+        return;
+    }
+    
+    std::vector<std::tuple<std::string, std::string, int>> peersToConnect;
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        const char* address = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        int port = sqlite3_column_int(stmt, 2);
+        
+        if (id && address && port > 0) {
+            peersToConnect.emplace_back(id, address, port);
+        }
+    }
+    sqlite3_finalize(stmt);
+    
+    if (peersToConnect.empty()) {
+        logger.info("No known peers to reconnect", "DaemonCore");
+        return;
+    }
+    
+    logger.info("Attempting to reconnect to " + std::to_string(peersToConnect.size()) + " known peer(s)", "DaemonCore");
+    
+    // Reconnect in a separate thread to not block startup
+    std::thread([this, peersToConnect]() {
+        auto& logger = Logger::instance();
+        
+        // Wait a bit for network to fully initialize
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        
+        for (const auto& [peerId, address, port] : peersToConnect) {
+            logger.info("Reconnecting to peer: " + peerId + " at " + address + ":" + std::to_string(port), "DaemonCore");
+            
+            if (network_->connectToPeer(address, port)) {
+                logger.info("Successfully reconnected to peer: " + peerId, "DaemonCore");
+            } else {
+                logger.warn("Failed to reconnect to peer: " + peerId + " - will retry on discovery", "DaemonCore");
+                
+                // Mark peer as offline in database
+                if (storage_) {
+                    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+                    const char* updateSql = "UPDATE peers SET status_id = 6 WHERE id = ?"; // 6 = offline
+                    sqlite3_stmt* updateStmt;
+                    if (sqlite3_prepare_v2(db, updateSql, -1, &updateStmt, nullptr) == SQLITE_OK) {
+                        sqlite3_bind_text(updateStmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+                        sqlite3_step(updateStmt);
+                        sqlite3_finalize(updateStmt);
+                    }
+                }
+            }
+            
+            // Small delay between connection attempts
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    }).detach();
 }
 
 void DaemonCore::printConfiguration() const {

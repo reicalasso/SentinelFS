@@ -1,4 +1,5 @@
 #include "ConflictManager.h"
+#include "DBHelper.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
 #include <iostream>
@@ -13,7 +14,6 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
     logger.log(LogLevel::WARN, "Conflict detected for file: " + conflict.path + " with peer " + conflict.remotePeerId, "ConflictManager");
     
     sqlite3* db = handler_->getDB();
-    bool inTransaction = false;
     char* errMsg = nullptr;
 
     if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
@@ -22,36 +22,8 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
         metrics.incrementSyncErrors();
         return false;
     }
-    inTransaction = true;
     
-    // First, get or create file_id from files table
-    int fileId = 0;
-    const char* getFileIdSql = "SELECT id FROM files WHERE path = ?;";
-    sqlite3_stmt* fileStmt;
-    if (sqlite3_prepare_v2(db, getFileIdSql, -1, &fileStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(fileStmt, 1, conflict.path.c_str(), -1, SQLITE_STATIC);
-        if (sqlite3_step(fileStmt) == SQLITE_ROW) {
-            fileId = sqlite3_column_int(fileStmt, 0);
-        }
-        sqlite3_finalize(fileStmt);
-    }
-    
-    // If file doesn't exist, create it first
-    if (fileId == 0) {
-        const char* insertFileSql = "INSERT INTO files (path, hash, timestamp, size) VALUES (?, ?, ?, ?);";
-        sqlite3_stmt* insertStmt;
-        if (sqlite3_prepare_v2(db, insertFileSql, -1, &insertStmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(insertStmt, 1, conflict.path.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(insertStmt, 2, conflict.localHash.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_int64(insertStmt, 3, conflict.localTimestamp);
-            sqlite3_bind_int64(insertStmt, 4, conflict.localSize);
-            if (sqlite3_step(insertStmt) == SQLITE_DONE) {
-                fileId = static_cast<int>(sqlite3_last_insert_rowid(db));
-            }
-            sqlite3_finalize(insertStmt);
-        }
-    }
-    
+    int fileId = DBHelper::getOrCreateFileId(db, conflict.path);
     if (fileId == 0) {
         logger.log(LogLevel::ERROR, "Failed to get or create file_id for: " + conflict.path, "ConflictManager");
         sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
@@ -67,9 +39,7 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         metrics.incrementSyncErrors();
-        if (inTransaction) {
-            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
-        }
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
         return false;
     }
 
@@ -89,9 +59,7 @@ bool ConflictManager::addConflict(const ConflictInfo& conflict) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
-        if (inTransaction) {
-            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
-        }
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
         return false;
     }
 
@@ -157,8 +125,6 @@ bool ConflictManager::markConflictResolved(int conflictId) {
     const char* sql = "UPDATE conflicts SET resolved = 1, resolved_at = ? WHERE id = ?;";
     sqlite3_stmt* stmt;
     sqlite3* db = handler_->getDB();
-
-    bool inTransaction = false;
     char* errMsg = nullptr;
 
     if (sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, &errMsg) != SQLITE_OK) {
@@ -167,14 +133,11 @@ bool ConflictManager::markConflictResolved(int conflictId) {
         metrics.incrementSyncErrors();
         return false;
     }
-    inTransaction = true;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         logger.log(LogLevel::ERROR, "Failed to prepare statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         metrics.incrementSyncErrors();
-        if (inTransaction) {
-            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
-        }
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
         return false;
     }
 
@@ -190,9 +153,7 @@ bool ConflictManager::markConflictResolved(int conflictId) {
         logger.log(LogLevel::ERROR, "Failed to execute statement: " + std::string(sqlite3_errmsg(db)), "ConflictManager");
         sqlite3_finalize(stmt);
         metrics.incrementSyncErrors();
-        if (inTransaction) {
-            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
-        }
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
         return false;
     }
 

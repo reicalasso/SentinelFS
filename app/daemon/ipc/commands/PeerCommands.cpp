@@ -104,7 +104,7 @@ std::string PeerCommands::handleBlockPeer(const std::string& args) {
             sqlite3_finalize(stmt);
             
             // Also remove from peers table
-            const char* delSql = "DELETE FROM peers WHERE peer_id = ?";
+            const char* delSql = "DELETE FROM peers WHERE id = ?";
             sqlite3_stmt* delStmt;
             if (sqlite3_prepare_v2(db, delSql, -1, &delStmt, nullptr) == SQLITE_OK) {
                 sqlite3_bind_text(delStmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);

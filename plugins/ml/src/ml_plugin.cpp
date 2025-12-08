@@ -5,6 +5,7 @@
 #include "MetricsCollector.h"
 #include "IStorageAPI.h"
 #include "PathUtils.h"
+#include "DBHelper.h"
 #include <iostream>
 #include <memory>
 #include <filesystem>
@@ -226,37 +227,12 @@ private:
         sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
         if (!db) return false;
         
-        // Get or create file_id from files table
-        int fileId = 0;
-        const char* getFileIdSql = "SELECT id FROM files WHERE path = ?;";
-        sqlite3_stmt* fileStmt;
-        if (sqlite3_prepare_v2(db, getFileIdSql, -1, &fileStmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(fileStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-            if (sqlite3_step(fileStmt) == SQLITE_ROW) {
-                fileId = sqlite3_column_int(fileStmt, 0);
-            }
-            sqlite3_finalize(fileStmt);
-        }
-        
-        // If file doesn't exist, create it first
-        if (fileId == 0) {
-            const char* insertFileSql = "INSERT INTO files (path) VALUES (?);";
-            sqlite3_stmt* insertStmt;
-            if (sqlite3_prepare_v2(db, insertFileSql, -1, &insertStmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(insertStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-                if (sqlite3_step(insertStmt) == SQLITE_DONE) {
-                    fileId = static_cast<int>(sqlite3_last_insert_rowid(db));
-                }
-                sqlite3_finalize(insertStmt);
-            }
-        }
-        
+        int fileId = DBHelper::getOrCreateFileId(db, filePath);
         if (fileId == 0) {
             return false;
         }
         
         // Check if threat already exists for this file (prevent duplicates)
-        // Check both active threats (marked_safe=0) and safe-marked threats (marked_safe=1)
         const char* checkSql = "SELECT id, marked_safe FROM detected_threats WHERE file_id = ?";
         sqlite3_stmt* checkStmt;
         bool exists = false;
@@ -272,14 +248,8 @@ private:
         }
         
         // If threat already exists for this file, skip insertion
-        // This includes files marked as safe - they should not be re-detected
         if (exists) {
-            if (isMarkedSafe) {
-                // File was marked safe, don't create new threat
-                return true;
-            }
-            // Active threat already exists, skip duplicate
-            return true;
+            return true; // Already tracked (active or marked safe)
         }
         
         const char* sql = "INSERT INTO detected_threats "
@@ -292,38 +262,36 @@ private:
             return false;
         }
         
-        // Map threat type to threat_type_id
-        // 1=ransomware, 2=malware, 3=suspicious, 4=entropy_anomaly, 5=rapid_modification, 6=mass_deletion
+        // Map threat type using DBHelper enum
         int threatTypeId = 3; // default: suspicious
         switch (alert.type) {
             case ThreatDetector::ThreatType::RANSOMWARE:
-                threatTypeId = 1;
+                threatTypeId = static_cast<int>(DBHelper::ThreatType::RANSOMWARE);
                 break;
             case ThreatDetector::ThreatType::MASS_DELETION:
-                threatTypeId = 6;
+                threatTypeId = static_cast<int>(DBHelper::ThreatType::MASS_DELETION);
                 break;
             case ThreatDetector::ThreatType::DATA_EXFILTRATION:
-                threatTypeId = 3;
+                threatTypeId = static_cast<int>(DBHelper::ThreatType::SUSPICIOUS);
                 break;
             default:
-                threatTypeId = 3;
+                threatTypeId = static_cast<int>(DBHelper::ThreatType::SUSPICIOUS);
         }
         
-        // Map severity to threat_level_id
-        // 1=low, 2=medium, 3=high, 4=critical
-        int threatLevelId = 1; // default: low
+        // Map severity using DBHelper enum
+        int threatLevelId = static_cast<int>(DBHelper::ThreatLevel::LOW);
         switch (alert.severity) {
             case ThreatDetector::Severity::CRITICAL:
-                threatLevelId = 4;
+                threatLevelId = static_cast<int>(DBHelper::ThreatLevel::CRITICAL);
                 break;
             case ThreatDetector::Severity::HIGH:
-                threatLevelId = 3;
+                threatLevelId = static_cast<int>(DBHelper::ThreatLevel::HIGH);
                 break;
             case ThreatDetector::Severity::MEDIUM:
-                threatLevelId = 2;
+                threatLevelId = static_cast<int>(DBHelper::ThreatLevel::MEDIUM);
                 break;
             default:
-                threatLevelId = 1;
+                threatLevelId = static_cast<int>(DBHelper::ThreatLevel::LOW);
         }
         
         // Get file size
