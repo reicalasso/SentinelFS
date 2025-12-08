@@ -31,9 +31,46 @@ export function QuarantineCenter({
   const [selectedThreat, setSelectedThreat] = useState<DetectedThreat | null>(
     threats.length > 0 ? threats[0] : null
   )
+  const [selectedThreats, setSelectedThreats] = useState<Set<number>>(new Set())
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('time')
+
+  // Multi-select handlers
+  const handleToggleSelect = (threatId: number) => {
+    setSelectedThreats(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(threatId)) {
+        newSet.delete(threatId)
+      } else {
+        newSet.add(threatId)
+      }
+      return newSet
+    })
+  }
+
+  const handleToggleSelectAll = () => {
+    if (filteredThreats.length === selectedThreats.size) {
+      setSelectedThreats(new Set())
+    } else {
+      setSelectedThreats(new Set(filteredThreats.map(t => t.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    for (const threatId of selectedThreats) {
+      await onDeleteThreat(threatId)
+    }
+    setSelectedThreats(new Set())
+  }
+
+  const handleBulkMarkSafe = async () => {
+    for (const threatId of selectedThreats) {
+      await onMarkSafe(threatId)
+    }
+    setSelectedThreats(new Set())
+  }
 
   // Filter and sort threats
   const filteredThreats = useMemo(() => {
@@ -81,6 +118,12 @@ export function QuarantineCenter({
         <QuarantineHeader 
           threatCount={threats.length}
           onClose={onClose}
+          multiSelectMode={multiSelectMode}
+          onToggleMultiSelect={() => {
+            setMultiSelectMode(!multiSelectMode)
+            setSelectedThreats(new Set())
+          }}
+          selectedCount={selectedThreats.size}
         />
 
         <div className="px-6 py-4 border-b border-border">
@@ -102,6 +145,10 @@ export function QuarantineCenter({
               threats={filteredThreats}
               selectedThreat={selectedThreat}
               onSelectThreat={setSelectedThreat}
+              selectedThreats={selectedThreats}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
+              multiSelectMode={multiSelectMode}
             />
           </div>
 
@@ -111,6 +158,10 @@ export function QuarantineCenter({
               threat={selectedThreat}
               onDeleteThreat={onDeleteThreat}
               onMarkSafe={onMarkSafe}
+              selectedThreats={selectedThreats}
+              onBulkDelete={handleBulkDelete}
+              onBulkMarkSafe={handleBulkMarkSafe}
+              multiSelectMode={multiSelectMode}
             />
           </div>
         </div>

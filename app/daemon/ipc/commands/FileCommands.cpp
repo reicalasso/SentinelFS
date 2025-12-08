@@ -778,13 +778,26 @@ std::string FileCommands::handleDeleteThreat(const std::string& args) {
         return "Error: Threat not found\n";
     }
     
-    // Delete quarantined file if it exists
+    // Delete both original file and quarantined file
     namespace fs = std::filesystem;
+    auto& logger = Logger::instance();
+    
+    // Delete original file if it exists
+    if (!filePath.empty() && fs::exists(filePath)) {
+        try {
+            fs::remove(filePath);
+            logger.info("Deleted original threat file: " + filePath, "FileCommands");
+        } catch (const std::exception& e) {
+            logger.warn("Failed to delete original file: " + std::string(e.what()), "FileCommands");
+        }
+    }
+    
+    // Delete quarantined file if it exists
     if (!quarantinePath.empty() && fs::exists(quarantinePath)) {
         try {
             fs::remove(quarantinePath);
+            logger.info("Deleted quarantined file: " + quarantinePath, "FileCommands");
         } catch (const std::exception& e) {
-            auto& logger = Logger::instance();
             logger.warn("Failed to delete quarantined file: " + std::string(e.what()), "FileCommands");
         }
     }
@@ -798,12 +811,12 @@ std::string FileCommands::handleDeleteThreat(const std::string& args) {
         
         if (sqlite3_step(deleteStmt) == SQLITE_DONE) {
             sqlite3_finalize(deleteStmt);
-            return "Success: Threat deleted\n";
+            return "Success: Threat deleted (original and quarantined files removed)\n";
         }
         sqlite3_finalize(deleteStmt);
     }
     
-    return "Error: Failed to delete threat\n";
+    return "Error: Failed to delete threat from database\n";
 }
 
 std::string FileCommands::handleMarkThreatSafe(const std::string& args) {

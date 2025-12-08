@@ -32,7 +32,7 @@ export function ThreatAnalysisPanel({ threatStatus, onOpenQuarantine }: ThreatAn
   }
 
   const getThreatScoreClass = () => {
-    const score = threatStatus.threatScore || 0
+    const score = (threatStatus.threatScore || 0) * 100
     if (score >= 75) return 'threat-gauge-critical'
     if (score >= 50) return 'threat-gauge-high'
     if (score >= 25) return 'threat-gauge-medium'
@@ -63,12 +63,12 @@ export function ThreatAnalysisPanel({ threatStatus, onOpenQuarantine }: ThreatAn
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-muted-foreground">Threat Score</span>
-            <span className="font-mono font-bold">{(threatStatus.threatScore || 0).toFixed(1)}%</span>
+            <span className="font-mono font-bold">{((threatStatus.threatScore || 0) * 100).toFixed(1)}%</span>
           </div>
           <div className="threat-gauge-track">
             <div 
               className={`threat-gauge-fill ${getThreatScoreClass()}`}
-              style={{ width: `${Math.min(100, threatStatus.threatScore || 0)}%` }}
+              style={{ width: `${Math.min(100, (threatStatus.threatScore || 0) * 100)}%` }}
             />
           </div>
         </div>
