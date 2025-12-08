@@ -59,16 +59,14 @@ export function QuarantineCenter({
   }
 
   const handleBulkDelete = async () => {
-    for (const threatId of selectedThreats) {
-      await onDeleteThreat(threatId)
-    }
+    const promises = Array.from(selectedThreats).map(threatId => onDeleteThreat(threatId))
+    await Promise.all(promises)
     setSelectedThreats(new Set())
   }
 
   const handleBulkMarkSafe = async () => {
-    for (const threatId of selectedThreats) {
-      await onMarkSafe(threatId)
-    }
+    const promises = Array.from(selectedThreats).map(threatId => onMarkSafe(threatId))
+    await Promise.all(promises)
     setSelectedThreats(new Set())
   }
 

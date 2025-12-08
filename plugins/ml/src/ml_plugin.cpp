@@ -227,21 +227,30 @@ private:
         if (!db) return false;
         
         // Check if threat already exists for this file (prevent duplicates)
-        const char* checkSql = "SELECT id FROM detected_threats WHERE file_path = ? AND marked_safe = 0";
+        // Check both active threats (marked_safe=0) and safe-marked threats (marked_safe=1)
+        const char* checkSql = "SELECT id, marked_safe FROM detected_threats WHERE file_path = ?";
         sqlite3_stmt* checkStmt;
         bool exists = false;
+        bool isMarkedSafe = false;
         
         if (sqlite3_prepare_v2(db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_text(checkStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
             if (sqlite3_step(checkStmt) == SQLITE_ROW) {
                 exists = true;
+                isMarkedSafe = sqlite3_column_int(checkStmt, 1) == 1;
             }
             sqlite3_finalize(checkStmt);
         }
         
         // If threat already exists for this file, skip insertion
+        // This includes files marked as safe - they should not be re-detected
         if (exists) {
-            return true; // Not an error, just already exists
+            if (isMarkedSafe) {
+                // File was marked safe, don't create new threat
+                return true;
+            }
+            // Active threat already exists, skip duplicate
+            return true;
         }
         
         const char* sql = "INSERT INTO detected_threats "

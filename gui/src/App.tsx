@@ -284,8 +284,9 @@ export default function App() {
             const res = await window.api.sendCommand(cmd)
             if (res.success) {
               addToast('Threat deleted successfully')
-              // Refresh threat list from backend
+              // Refresh threat list and dashboard metrics from backend
               await window.api.sendCommand('THREATS_JSON')
+              await window.api.sendCommand('THREAT_STATUS_JSON')
             } else {
               addToast(`Failed to delete threat: ${res.error}`)
             }
@@ -299,8 +300,9 @@ export default function App() {
             const res = await window.api.sendCommand(cmd)
             if (res.success) {
               addToast(isCurrentlySafe ? 'Unmarked as safe' : 'Marked as safe')
-              // Refresh threat list from backend
+              // Refresh threat list and dashboard metrics from backend
               await window.api.sendCommand('THREATS_JSON')
+              await window.api.sendCommand('THREAT_STATUS_JSON')
             } else {
               addToast(`Operation failed: ${res.error}`)
             }

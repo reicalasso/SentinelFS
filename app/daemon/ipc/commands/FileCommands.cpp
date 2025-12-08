@@ -831,6 +831,9 @@ std::string FileCommands::handleMarkThreatSafe(const std::string& args) {
     }
     
     sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
+    
+    // Simply mark as safe in database without deleting files
+    // This allows unmarking later without re-detection
     const char* sql = "UPDATE detected_threats SET marked_safe = 1 WHERE id = ?";
     sqlite3_stmt* stmt;
     
