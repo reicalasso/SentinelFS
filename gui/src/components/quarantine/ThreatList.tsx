@@ -1,5 +1,5 @@
-import { AlertTriangle, FileWarning, Shield, CheckCircle2 } from 'lucide-react'
-import { DetectedThreat, getFileName, formatRelativeTime, getThreatTypeLabel, getThreatLevelColor, getThreatLevelBgColor } from './types'
+import { AlertTriangle, FileWarning, Shield, CheckCircle2, Skull, FileCode, Activity } from 'lucide-react'
+import { DetectedThreat, getFileName, formatRelativeTime, getThreatTypeLabel, getThreatLevelColor, getThreatLevelBgColor, getThreatTypeIcon } from './types'
 
 interface ThreatListProps {
   threats: DetectedThreat[]
@@ -39,14 +39,29 @@ export function ThreatList({
     if (threat.markedSafe) {
       return <CheckCircle2 className="w-5 h-5 text-green-500" />
     }
-    switch (threat.threatLevel) {
-      case 'CRITICAL':
-      case 'HIGH':
-        return <AlertTriangle className="w-5 h-5 text-red-500" />
-      case 'MEDIUM':
-        return <FileWarning className="w-5 h-5 text-yellow-500" />
+    // Zer0 specific icons based on threat type
+    switch (threat.threatType) {
+      case 'HIDDEN_EXECUTABLE':
+      case 'DOUBLE_EXTENSION':
+        return <Skull className="w-5 h-5 text-red-500" />
+      case 'RANSOMWARE_PATTERN':
+        return <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
+      case 'SCRIPT_IN_DATA':
+        return <FileCode className="w-5 h-5 text-orange-500" />
+      case 'ANOMALOUS_BEHAVIOR':
+      case 'MASS_MODIFICATION':
+        return <Activity className="w-5 h-5 text-purple-500" />
       default:
-        return <FileWarning className="w-5 h-5 text-blue-500" />
+        // Fallback to level-based icons
+        switch (threat.threatLevel) {
+          case 'CRITICAL':
+          case 'HIGH':
+            return <AlertTriangle className="w-5 h-5 text-red-500" />
+          case 'MEDIUM':
+            return <FileWarning className="w-5 h-5 text-yellow-500" />
+          default:
+            return <FileWarning className="w-5 h-5 text-blue-500" />
+        }
     }
   }
 
@@ -113,9 +128,15 @@ export function ThreatList({
                 <span className={`px-2 py-0.5 text-xs rounded-full border ${getThreatLevelBgColor(threat.threatLevel)} ${getThreatLevelColor(threat.threatLevel)}`}>
                   {threat.threatLevel}
                 </span>
-                <span className="px-2 py-0.5 text-xs bg-background/50 rounded-full border border-border">
+                <span className="px-2 py-0.5 text-xs bg-background/50 rounded-full border border-border flex items-center gap-1">
+                  <span>{getThreatTypeIcon(threat.threatType)}</span>
                   {getThreatTypeLabel(threat.threatType)}
                 </span>
+                {threat.confidence !== undefined && (
+                  <span className="px-2 py-0.5 text-xs bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/20">
+                    {(threat.confidence * 100).toFixed(0)}%
+                  </span>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {formatRelativeTime(threat.detectedAt)}
                 </span>

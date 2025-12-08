@@ -36,13 +36,26 @@ interface SyncStatusData {
 }
 
 interface ThreatStatusData {
-  mlEnabled: boolean
+  // Legacy format
+  mlEnabled?: boolean
   threatLevel?: string
   threatScore?: number
   totalThreats?: number
   ransomwareAlerts?: number
   highEntropyFiles?: number
   avgFileEntropy?: number
+  // Zer0 format
+  enabled?: boolean
+  filesAnalyzed?: number
+  threatsDetected?: number
+  filesQuarantined?: number
+  hiddenExecutables?: number
+  extensionMismatches?: number
+  ransomwarePatterns?: number
+  behavioralAnomalies?: number
+  magicByteValidation?: boolean
+  behavioralAnalysis?: boolean
+  fileTypeAwareness?: boolean
 }
 
 interface ActivityData {
@@ -225,16 +238,34 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
           sub={health ? `${(health.dbSizeBytes / 1024).toFixed(0)} KB` : 'Loading...'}
         />
         <HealthCard
-          title="ML Threat Detection"
-          icon={<Brain className="w-5 h-5" />}
+          title="Zer0 Threat Detection"
+          icon={<Shield className="w-5 h-5" />}
           status={threatStatus?.threatLevel === 'HIGH' || threatStatus?.threatLevel === 'CRITICAL' ? 'error' : threatStatus?.threatLevel === 'MEDIUM' ? 'warning' : 'success'}
-          value={threatStatus?.mlEnabled ? threatStatus.threatLevel || 'Safe' : 'Disabled'}
-          sub={threatStatus?.mlEnabled ? `Score: ${(threatStatus.threatScore || 0).toFixed(1)}%` : 'Enable ML plugin'}
+          value={threatStatus?.enabled || threatStatus?.mlEnabled ? threatStatus.threatLevel || 'Safe' : 'Disabled'}
+          sub={threatStatus?.enabled || threatStatus?.mlEnabled ? `${threatStatus.filesAnalyzed || 0} files analyzed` : 'Enable Zer0 plugin'}
         />
       </div>
 
-      {/* ML Threat Detection Panel */}
-      {threatStatus && <ThreatAnalysisPanel threatStatus={threatStatus as any} onOpenQuarantine={onOpenQuarantine} />}
+      {/* Zer0 Threat Detection Panel */}
+      {(threatStatus?.enabled || threatStatus?.mlEnabled) && (
+        <ThreatAnalysisPanel 
+          threatStatus={{
+            enabled: threatStatus.enabled || threatStatus.mlEnabled || false,
+            threatLevel: threatStatus.threatLevel as any,
+            filesAnalyzed: threatStatus.filesAnalyzed || 0,
+            threatsDetected: threatStatus.threatsDetected || threatStatus.totalThreats || 0,
+            filesQuarantined: threatStatus.filesQuarantined || 0,
+            hiddenExecutables: threatStatus.hiddenExecutables || 0,
+            extensionMismatches: threatStatus.extensionMismatches || 0,
+            ransomwarePatterns: threatStatus.ransomwarePatterns || threatStatus.ransomwareAlerts || 0,
+            behavioralAnomalies: threatStatus.behavioralAnomalies || 0,
+            magicByteValidation: threatStatus.magicByteValidation ?? true,
+            behavioralAnalysis: threatStatus.behavioralAnalysis ?? true,
+            fileTypeAwareness: threatStatus.fileTypeAwareness ?? true,
+          }} 
+          onOpenQuarantine={onOpenQuarantine} 
+        />
+      )}
 
       {/* Degraded Peers Warning */}
       <DegradedPeersWarning degradedPeers={degradedPeers} />

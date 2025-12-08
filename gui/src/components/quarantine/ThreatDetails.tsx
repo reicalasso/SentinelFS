@@ -1,5 +1,5 @@
-import { AlertTriangle, FileWarning, Hash, HardDrive, Calendar, Brain, Activity, ShieldAlert, CheckCircle2 } from 'lucide-react'
-import { DetectedThreat, formatSize, formatTime, getThreatTypeLabel, getThreatLevelColor, getThreatLevelBgColor } from './types'
+import { AlertTriangle, FileWarning, Hash, HardDrive, Calendar, Shield, Activity, ShieldAlert, CheckCircle2, Cpu, FileType, Percent } from 'lucide-react'
+import { DetectedThreat, formatSize, formatTime, getThreatTypeLabel, getThreatLevelColor, getThreatLevelBgColor, getThreatTypeIcon, getFileCategoryLabel } from './types'
 
 interface ThreatDetailsProps {
   threat: DetectedThreat | null
@@ -105,9 +105,30 @@ export function ThreatDetails({ threat }: ThreatDetailsProps) {
           )}
           {threat.mlModelUsed && (
             <InfoRow
-              icon={<Brain className="w-4 h-4" />}
-              label="ML Model"
+              icon={<Shield className="w-4 h-4" />}
+              label="Detection Engine"
               value={threat.mlModelUsed}
+            />
+          )}
+          {threat.confidence !== undefined && (
+            <InfoRow
+              icon={<Percent className="w-4 h-4" />}
+              label="Confidence"
+              value={`${(threat.confidence * 100).toFixed(1)}%`}
+            />
+          )}
+          {threat.fileCategory && (
+            <InfoRow
+              icon={<FileType className="w-4 h-4" />}
+              label="File Category"
+              value={getFileCategoryLabel(threat.fileCategory)}
+            />
+          )}
+          {threat.processName && (
+            <InfoRow
+              icon={<Cpu className="w-4 h-4" />}
+              label="Process"
+              value={`${threat.processName}${threat.processPid ? ` (PID: ${threat.processPid})` : ''}`}
             />
           )}
           {threat.quarantinePath && (

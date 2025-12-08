@@ -1,10 +1,24 @@
 import { useState, useMemo } from 'react'
-import { FilesHero, FilesSearch, FilesEmpty, FileTreeItem, FilesListHeader } from './files'
+import { FilesHero, FilesSearch, FilesEmpty, FileTreeItem, FilesListHeader, FileDetails } from './files'
+
+interface FileInfo {
+  path: string
+  hash: string
+  size: number
+  mtime: number
+  mode: number
+  uid: number
+  gid: number
+  isSymlink: boolean
+  symlinkTarget?: string
+  xattrs: Record<string, string>
+}
 
 export function Files({ files }: { files?: any[] }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState('All Types')
+  const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null)
   
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
@@ -48,6 +62,21 @@ export function Files({ files }: { files?: any[] }) {
       } else {
         alert(`✗ Failed to stop watching:\n${response.error || 'Unknown error'}`)
       }
+    }
+  }
+
+  const handleFileClick = async (item: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (item.isFolder) return
+    if (!window.api) return
+    
+    try {
+      const response = await window.api.sendCommand(`IRONROOT_FILE_INFO ${item.path}`) as any
+      if (response.success && response.data) {
+        setSelectedFile(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to get file info:', error)
     }
   }
 
@@ -193,10 +222,20 @@ export function Files({ files }: { files?: any[] }) {
               formatSize={formatSize} 
               handleRemoveWatch={handleRemoveWatch}
               isFiltering={isFiltering}
+              onFileClick={handleFileClick}
             />
           ))}
         </div>
       </div>
+
+      {/* File Details Modal */}
+      {selectedFile && (
+        <FileDetails 
+          file={selectedFile} 
+          onClose={() => setSelectedFile(null)} 
+          formatSize={formatSize}
+        />
+      )}
     </div>
   )
 }

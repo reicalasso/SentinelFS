@@ -259,11 +259,12 @@ bool SQLiteHandler::createTables() {
         
         "CREATE TABLE IF NOT EXISTS detected_threats ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "file_id INTEGER NOT NULL,"
+        "file_id INTEGER,"
+        "file_path TEXT NOT NULL,"
         "threat_type_id INTEGER NOT NULL,"
         "threat_level_id INTEGER NOT NULL,"
         "threat_score REAL NOT NULL,"
-        "detected_at INTEGER NOT NULL,"
+        "detected_at TEXT NOT NULL,"
         "entropy REAL,"
         "file_size INTEGER NOT NULL,"
         "hash TEXT,"
@@ -341,15 +342,25 @@ bool SQLiteHandler::populateLookupTables() {
         "INSERT OR IGNORE INTO status_types (id, name) VALUES "
         "(1, 'active'), (2, 'pending'), (3, 'syncing'), (4, 'completed'), (5, 'failed'), (6, 'offline'), (7, 'paused');";
     
-    // Threat types
+    // Threat types (Zer0 compatible)
     const char* threatTypesSql = 
         "INSERT OR IGNORE INTO threat_types (id, name) VALUES "
-        "(1, 'ransomware'), (2, 'malware'), (3, 'suspicious'), (4, 'entropy_anomaly'), (5, 'rapid_modification'), (6, 'mass_deletion');";
+        "(0, 'UNKNOWN'), "
+        "(1, 'RANSOMWARE_PATTERN'), "
+        "(2, 'HIGH_ENTROPY_TEXT'), "
+        "(3, 'HIDDEN_EXECUTABLE'), "
+        "(4, 'EXTENSION_MISMATCH'), "
+        "(5, 'DOUBLE_EXTENSION'), "
+        "(6, 'MASS_MODIFICATION'), "
+        "(7, 'SCRIPT_IN_DATA'), "
+        "(8, 'ANOMALOUS_BEHAVIOR'), "
+        "(9, 'KNOWN_MALWARE_HASH'), "
+        "(10, 'SUSPICIOUS_RENAME');";
     
-    // Threat levels
+    // Threat levels (Zer0 compatible)
     const char* threatLevelsSql = 
         "INSERT OR IGNORE INTO threat_levels (id, name) VALUES "
-        "(1, 'low'), (2, 'medium'), (3, 'high'), (4, 'critical');";
+        "(0, 'NONE'), (1, 'INFO'), (2, 'LOW'), (3, 'MEDIUM'), (4, 'HIGH'), (5, 'CRITICAL');";
     
     bool success = true;
     

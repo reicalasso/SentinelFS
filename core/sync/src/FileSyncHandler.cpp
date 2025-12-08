@@ -58,6 +58,32 @@ bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
     
     std::string filename = std::filesystem::path(absolutePath).filename().string();
     
+    // Built-in ignore patterns (always active)
+    // Git
+    if (absolutePath.find("/.git/") != std::string::npos) return true;
+    if (filename == ".git") return true;
+    // SVN
+    if (absolutePath.find("/.svn/") != std::string::npos) return true;
+    // Node.js
+    if (absolutePath.find("/node_modules/") != std::string::npos) return true;
+    // Python
+    if (absolutePath.find("/__pycache__/") != std::string::npos) return true;
+    if (absolutePath.find("/.venv/") != std::string::npos) return true;
+    if (absolutePath.find("/venv/") != std::string::npos) return true;
+    // Build artifacts
+    if (absolutePath.find("/.pio/") != std::string::npos) return true;
+    if (absolutePath.find("/build/") != std::string::npos) return true;
+    if (absolutePath.find("/dist/") != std::string::npos) return true;
+    if (absolutePath.find("/target/") != std::string::npos) return true;  // Rust
+    // IDE
+    if (absolutePath.find("/.idea/") != std::string::npos) return true;
+    if (absolutePath.find("/.vscode/") != std::string::npos) return true;
+    // Temp files
+    if (filename.back() == '~') return true;
+    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".swp") return true;
+    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".tmp") return true;
+    if (filename.size() > 1 && filename[0] == '#' && filename.back() == '#') return true;  // Emacs
+    
     for (const auto& pattern : ignorePatterns_) {
         // 1. Check exact filename match (e.g. "*.log")
         // Using 0 instead of FNM_PATHNAME allows * to match across directories for simple globs

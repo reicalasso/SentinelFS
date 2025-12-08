@@ -278,37 +278,6 @@ export function DiscoveryPanel({
           )}
         </div>
       </div>
-      
-      {/* Your Session Code */}
-      <div className="session-code-panel">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-violet-400" />
-            <span className="font-semibold text-sm">Session Code</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400">Encrypted</span>
-          </div>
-          <button 
-            onClick={onRegenerateCode}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" /> Regenerate
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <code className="session-code-display">
-            {localSessionCode}
-          </code>
-          <button 
-            onClick={copySessionCode}
-            className={`session-code-copy-btn ${sessionCodeCopied ? 'session-code-copy-btn-success' : ''}`}
-          >
-            {sessionCodeCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Share this code with other devices. NetFalcon uses it for secure key derivation.
-        </p>
-      </div>
     </div>
   )
 }

@@ -136,8 +136,8 @@ bool DaemonCore::loadPlugins() {
 
     registerPlugin("storage", "storage/libstorage_plugin.so");
     registerPlugin("network", "netfalcon/libnetfalcon.so", {"storage"});
-    registerPlugin("filesystem", "filesystem/libfilesystem_plugin.so");
-    registerPlugin("ml", "ml/libml_plugin.so", {"storage"}, "1.0.0", true);
+    registerPlugin("filesystem", "ironroot/libironroot.so");  // IronRoot - advanced filesystem
+    registerPlugin("ml", "zer0/libzer0.so", {"storage"}, "1.0.0", true);  // Zer0 - advanced threat detection
 
     auto storagePlugin = pluginManager_.load("storage", &eventBus_);
     auto networkPlugin = pluginManager_.load("network", &eventBus_);
@@ -195,6 +195,12 @@ bool DaemonCore::loadPlugins() {
     logger.info("All critical plugins loaded successfully", "DaemonCore");
     if (mlPlugin_) {
         logger.info("ML plugin (anomaly detection) loaded", "DaemonCore");
+        
+        // Set storage reference for ML plugin (Zer0 needs DB access)
+        if (storage_) {
+            mlPlugin_->setStoragePlugin(storage_.get());
+            logger.info("Storage reference set for ML plugin", "DaemonCore");
+        }
     } else {
         logger.warn("ML plugin not loaded - anomaly detection disabled", "DaemonCore");
     }

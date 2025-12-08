@@ -5,6 +5,7 @@
 namespace SentinelFS {
 
     class EventBus; // Forward declaration
+    class IStorageAPI; // Forward declaration
 
     class IPlugin {
     public:
@@ -33,6 +34,12 @@ namespace SentinelFS {
          * @return The version string.
          */
         virtual std::string getVersion() const = 0;
+        
+        /**
+         * @brief Set storage plugin reference (optional, for plugins that need DB access)
+         * @param storage Pointer to storage API
+         */
+        virtual void setStoragePlugin(IStorageAPI* /*storage*/) {}
     };
 
 }

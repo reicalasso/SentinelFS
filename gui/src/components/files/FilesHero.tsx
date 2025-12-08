@@ -1,4 +1,4 @@
-import { FolderOpen, Plus, Folder, File, HardDrive } from 'lucide-react'
+import { FolderOpen, Plus, Folder, File, HardDrive, Shield } from 'lucide-react'
 
 interface FilesStats {
   totalFolders: number
@@ -29,10 +29,16 @@ export function FilesHero({ stats, onAddFolder, formatSize }: FilesHeroProps) {
               <FolderOpen className="w-6 h-6 sm:w-8 sm:h-8 status-success" />
             </div>
             <div>
-              <h2 className="files-hero-title">SYNC Files</h2>
+              <h2 className="files-hero-title flex items-center gap-2">
+                SYNC Files
+                <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">
+                  <Shield className="w-3 h-3" />
+                  IronRoot
+                </span>
+              </h2>
               <p className="files-hero-subtitle">
                 <span className="dot-success animate-pulse"></span>
-                Manage synchronized directories
+                Advanced filesystem monitoring with debouncing & xattr
               </p>
             </div>
           </div>

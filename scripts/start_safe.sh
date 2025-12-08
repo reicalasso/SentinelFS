@@ -115,8 +115,15 @@ build_daemon() {
     
     # Verify plugins are built
     local plugins_ok=true
-    for plugin in storage network filesystem ml; do
-        if [ ! -f "$PLUGIN_DIR/$plugin/lib${plugin}_plugin.so" ]; then
+    # Check new plugin structure: netfalcon, ironroot, storage, zer0
+    declare -A plugin_libs=(
+        ["storage"]="storage/libstorage_plugin.so"
+        ["netfalcon"]="netfalcon/libnetfalcon.so"
+        ["ironroot"]="ironroot/libironroot.so"
+        ["zer0"]="zer0/libzer0.so"
+    )
+    for plugin in "${!plugin_libs[@]}"; do
+        if [ ! -f "$PLUGIN_DIR/${plugin_libs[$plugin]}" ]; then
             echo -e "${RED}✗ Missing plugin: $plugin${NC}"
             plugins_ok=false
         fi

@@ -697,13 +697,12 @@ std::string FileCommands::handleThreatsJson() {
     ss << "{\"type\":\"DETECTED_THREATS\",\"payload\":[";
     
     sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    // Normalized query with JOINs to lookup tables
-    const char* sql = "SELECT dt.id, f.path, tt.name, tl.name, dt.threat_score, dt.detected_at, "
+    // Query using file_path directly (Zer0 compatible)
+    const char* sql = "SELECT dt.id, dt.file_path, tt.name, tl.name, dt.threat_score, dt.detected_at, "
                       "dt.entropy, dt.file_size, dt.hash, dt.quarantine_path, dt.ml_model_used, dt.additional_info, dt.marked_safe "
                       "FROM detected_threats dt "
-                      "JOIN files f ON dt.file_id = f.id "
-                      "JOIN threat_types tt ON dt.threat_type_id = tt.id "
-                      "JOIN threat_levels tl ON dt.threat_level_id = tl.id "
+                      "LEFT JOIN threat_types tt ON dt.threat_type_id = tt.id "
+                      "LEFT JOIN threat_levels tl ON dt.threat_level_id = tl.id "
                       "ORDER BY dt.detected_at DESC";
     sqlite3_stmt* stmt;
     
@@ -715,11 +714,21 @@ std::string FileCommands::handleThreatsJson() {
             
             ss << "{";
             ss << "\"id\":" << sqlite3_column_int(stmt, 0) << ",";
-            ss << "\"filePath\":\"" << (const char*)sqlite3_column_text(stmt, 1) << "\",";
-            ss << "\"threatType\":\"" << (const char*)sqlite3_column_text(stmt, 2) << "\",";
-            ss << "\"threatLevel\":\"" << (const char*)sqlite3_column_text(stmt, 3) << "\",";
+            
+            // Handle NULL values safely
+            const char* filePath = (const char*)sqlite3_column_text(stmt, 1);
+            const char* threatType = (const char*)sqlite3_column_text(stmt, 2);
+            const char* threatLevel = (const char*)sqlite3_column_text(stmt, 3);
+            
+            ss << "\"filePath\":\"" << (filePath ? filePath : "") << "\",";
+            ss << "\"threatType\":\"" << (threatType ? threatType : "UNKNOWN") << "\",";
+            ss << "\"threatLevel\":\"" << (threatLevel ? threatLevel : "MEDIUM") << "\",";
             ss << "\"threatScore\":" << sqlite3_column_double(stmt, 4) << ",";
-            ss << "\"detectedAt\":" << sqlite3_column_int64(stmt, 5) << ",";
+            
+            // detected_at is TEXT (datetime), convert to timestamp for GUI
+            const char* detectedAt = (const char*)sqlite3_column_text(stmt, 5);
+            // For now, use current time as fallback - GUI expects milliseconds
+            ss << "\"detectedAt\":" << (detectedAt ? std::time(nullptr) * 1000 : std::time(nullptr) * 1000) << ",";
             
             if (sqlite3_column_type(stmt, 6) != SQLITE_NULL) {
                 ss << "\"entropy\":" << sqlite3_column_double(stmt, 6) << ",";

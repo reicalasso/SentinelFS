@@ -56,16 +56,29 @@ export interface AppConfig {
   downloadLimit?: number
 }
 
-// ML Threat Status type
+// Zer0 Threat Status type
 export interface ThreatStatus {
-  threatScore: number
-  threatLevel: string
-  totalThreats: number
-  ransomwareAlerts: number
-  highEntropyFiles: number
-  massOperationAlerts: number
-  avgFileEntropy: number
-  mlEnabled: boolean
+  // Legacy ML format
+  threatScore?: number
+  threatLevel?: string
+  totalThreats?: number
+  ransomwareAlerts?: number
+  highEntropyFiles?: number
+  massOperationAlerts?: number
+  avgFileEntropy?: number
+  mlEnabled?: boolean
+  // Zer0 format
+  enabled?: boolean
+  filesAnalyzed?: number
+  threatsDetected?: number
+  filesQuarantined?: number
+  hiddenExecutables?: number
+  extensionMismatches?: number
+  ransomwarePatterns?: number
+  behavioralAnomalies?: number
+  magicByteValidation?: boolean
+  behavioralAnalysis?: boolean
+  fileTypeAwareness?: boolean
 }
 
 // File version type

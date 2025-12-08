@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, Folder, File, Trash2, CheckCircle2, Clock } from 'lucide-react'
+import { ChevronRight, ChevronDown, Folder, File, Trash2, CheckCircle2, Clock, Info } from 'lucide-react'
 
 interface FileTreeItemProps {
   item: any
@@ -8,6 +8,7 @@ interface FileTreeItemProps {
   formatSize: (bytes: number) => string
   handleRemoveWatch: (path: string, e: React.MouseEvent) => void
   isFiltering: boolean
+  onFileClick?: (item: any, e: React.MouseEvent) => void
 }
 
 export function FileTreeItem({ 
@@ -17,7 +18,8 @@ export function FileTreeItem({
   toggleFolder, 
   formatSize, 
   handleRemoveWatch,
-  isFiltering 
+  isFiltering,
+  onFileClick
 }: FileTreeItemProps) {
   const itemName = item.name || item.path.split('/').pop() || item.path
   const isExpanded = expandedFolders.has(item.path)
@@ -118,7 +120,17 @@ export function FileTreeItem({
           </span>
         </div>
         
-        <div className="col-span-2 text-right">
+        <div className="col-span-2 text-right flex items-center justify-end gap-1">
+          {/* File Info Button */}
+          {!item.isFolder && onFileClick && (
+            <button 
+              onClick={(e) => onFileClick(item, e)}
+              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-orange-500/20 transition-all"
+              title="View file details (IronRoot)"
+            >
+              <Info className="w-4 h-4 text-orange-400" />
+            </button>
+          )}
           {!isFiltering && !item.parent && (
             <button 
               onClick={(e) => handleRemoveWatch(item.path, e)}
@@ -144,6 +156,7 @@ export function FileTreeItem({
               formatSize={formatSize}
               handleRemoveWatch={handleRemoveWatch}
               isFiltering={isFiltering}
+              onFileClick={onFileClick}
             />
           ))}
         </div>
