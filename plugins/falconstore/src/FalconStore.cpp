@@ -891,8 +891,25 @@ void FalconStore::optimize() {
     
     std::unique_lock<std::shared_mutex> lock(impl_->dbMutex);
     
-    sqlite3_exec(impl_->db, "VACUUM;", nullptr, nullptr, nullptr);
+    // WAL checkpoint first - this is safe and reclaims WAL file space
+    int walPages = 0, checkpointedPages = 0;
+    int rc = sqlite3_wal_checkpoint_v2(impl_->db, nullptr, SQLITE_CHECKPOINT_TRUNCATE, 
+                                        &walPages, &checkpointedPages);
+    if (rc == SQLITE_OK) {
+        logger.log(LogLevel::DEBUG, "WAL checkpoint: " + std::to_string(checkpointedPages) + 
+                   " pages checkpointed", "FalconStore");
+    } else if (rc == SQLITE_BUSY) {
+        // Busy is OK - means other connections are active, checkpoint what we can
+        logger.log(LogLevel::DEBUG, "WAL checkpoint partial (database busy)", "FalconStore");
+    }
+    
+    // ANALYZE updates query planner statistics - safe in WAL mode
     sqlite3_exec(impl_->db, "ANALYZE;", nullptr, nullptr, nullptr);
+    
+    // VACUUM is problematic in WAL mode - it temporarily switches to DELETE journal mode
+    // which can cause issues with concurrent connections. Only run if explicitly needed.
+    // For routine optimization, WAL checkpoint + ANALYZE is sufficient.
+    // If VACUUM is truly needed, consider: PRAGMA wal_checkpoint(TRUNCATE); VACUUM; PRAGMA journal_mode=WAL;
     
     logger.log(LogLevel::INFO, "Database optimization complete", "FalconStore");
 }
