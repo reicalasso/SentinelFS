@@ -222,20 +222,9 @@ std::string ConfigCommands::handleAddIgnore(const std::string& args) {
         }
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    
-    // Use normalized schema - ignore_patterns table is created by SQLiteHandler
-    const char* sql = "INSERT OR REPLACE INTO ignore_patterns (pattern, created_at) VALUES (?, strftime('%s','now'))";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
-        
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Added ignore pattern: " + pattern + "\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->addIgnorePattern(pattern)) {
+        return "Success: Added ignore pattern: " + pattern + "\n";
     }
     return "Error: Failed to add ignore pattern\n";
 }
@@ -249,18 +238,9 @@ std::string ConfigCommands::handleRemoveIgnore(const std::string& args) {
         return "Error: Storage not initialized\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    const char* sql = "DELETE FROM ignore_patterns WHERE pattern = ?";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
-        
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Removed ignore pattern: " + args + "\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->removeIgnorePattern(args)) {
+        return "Success: Removed ignore pattern: " + args + "\n";
     }
     return "Error: Failed to remove ignore pattern\n";
 }

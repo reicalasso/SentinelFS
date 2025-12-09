@@ -1,5 +1,5 @@
 import { useEffect, useState, cloneElement } from 'react'
-import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle, Menu, X, ShieldAlert } from 'lucide-react'
+import { Activity, Folder, Settings as SettingsIcon, Shield, Terminal, Users, Play, Pause, RefreshCw, ArrowRightLeft, Command, AlertTriangle, Menu, X, ShieldAlert, Database } from 'lucide-react'
 import { Dashboard } from './components/Dashboard'
 import { Peers } from './components/Peers'
 import { Settings } from './components/Settings'
@@ -9,6 +9,7 @@ import { ToastList } from './components/ToastList'
 import { ConflictCenter } from './components/ConflictCenter'
 import { QuarantineCenter } from './components/QuarantineCenter'
 import { OnboardingWizard } from './components/OnboardingWizard'
+import { FalconStore } from './components/FalconStore'
 import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
 
@@ -137,6 +138,7 @@ export default function App() {
             <SidebarItem icon={<Folder />} label="SYNC Files" active={activeTab === 'files'} onClick={() => { setTab('files'); setSidebarOpen(false); }} />
             <SidebarItem icon={<Users />} label="NetFalcon" active={activeTab === 'peers'} onClick={() => { setTab('peers'); setSidebarOpen(false); }} badge={peers.length > 0 ? peers.length : undefined} />
             <SidebarItem icon={<ArrowRightLeft />} label="Transfers" active={activeTab === 'transfers'} onClick={() => { setTab('transfers'); setSidebarOpen(false); }} />
+            <SidebarItem icon={<Database />} label="FalconStore" active={activeTab === 'falconstore'} onClick={() => { setTab('falconstore'); setSidebarOpen(false); }} />
           </div>
 
           <div className="space-y-1">
@@ -367,6 +369,7 @@ export default function App() {
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
             {activeTab === 'transfers' && <Transfers metrics={metrics as any} transfers={transfers} history={transferHistory} activity={activity as any} />}
+            {activeTab === 'falconstore' && <FalconStore />}
             {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <LogsView logs={logs} onClear={clearLogs} />}
           </div>

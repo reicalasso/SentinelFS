@@ -43,53 +43,20 @@ bool DaemonCore::addWatchDirectory(const std::string& path) {
         // Add watch (filesystem plugin should support multiple watches)
         logger.info("Adding watch for directory: " + absPath, "DaemonCore");
         
-        // Save to database (or reactivate if exists)
-        // status_id: 1=active, 6=offline (from status_types lookup table)
+        // Save to database using API (tracks statistics properly)
         if (storage_) {
-            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-            
-            // First check if folder already exists
-            const char* checkSql = "SELECT status_id FROM watched_folders WHERE path = ?";
-            sqlite3_stmt* checkStmt;
-            bool exists = false;
-            
-            if (sqlite3_prepare_v2(db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(checkStmt, 1, absPath.c_str(), -1, SQLITE_TRANSIENT);
-                if (sqlite3_step(checkStmt) == SQLITE_ROW) {
-                    exists = true;
-                }
-                sqlite3_finalize(checkStmt);
-            }
+            bool exists = storage_->isWatchedFolder(absPath);
             
             if (exists) {
-                // Update existing folder to active (status_id=1)
-                const char* updateSql = "UPDATE watched_folders SET status_id = 1, added_at = ? WHERE path = ?";
-                sqlite3_stmt* updateStmt;
-                
-                if (sqlite3_prepare_v2(db, updateSql, -1, &updateStmt, nullptr) == SQLITE_OK) {
-                    sqlite3_bind_int64(updateStmt, 1, std::time(nullptr));
-                    sqlite3_bind_text(updateStmt, 2, absPath.c_str(), -1, SQLITE_TRANSIENT);
-                    
-                    if (sqlite3_step(updateStmt) == SQLITE_DONE) {
-                        logger.info("Reactivated watched folder: " + absPath, "DaemonCore");
-                    }
-                    sqlite3_finalize(updateStmt);
-                }
+                // Update existing folder to active
+                storage_->updateWatchedFolderStatus(absPath, 1);
+                logger.info("Reactivated watched folder: " + absPath, "DaemonCore");
             } else {
-                // Insert new folder (status_id=1 for active)
-                const char* insertSql = "INSERT INTO watched_folders (path, added_at, status_id) VALUES (?, ?, 1)";
-                sqlite3_stmt* insertStmt;
-                
-                if (sqlite3_prepare_v2(db, insertSql, -1, &insertStmt, nullptr) == SQLITE_OK) {
-                    sqlite3_bind_text(insertStmt, 1, absPath.c_str(), -1, SQLITE_TRANSIENT);
-                    sqlite3_bind_int64(insertStmt, 2, std::time(nullptr));
-                    
-                    if (sqlite3_step(insertStmt) == SQLITE_DONE) {
-                        logger.info("Watched folder saved to database: " + absPath, "DaemonCore");
-                    } else {
-                        logger.error("Failed to save watched folder to database: " + std::string(sqlite3_errmsg(db)), "DaemonCore");
-                    }
-                    sqlite3_finalize(insertStmt);
+                // Insert new folder
+                if (storage_->addWatchedFolder(absPath)) {
+                    logger.info("Watched folder saved to database: " + absPath, "DaemonCore");
+                } else {
+                    logger.error("Failed to save watched folder to database", "DaemonCore");
                 }
             }
         }

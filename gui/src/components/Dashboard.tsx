@@ -1,4 +1,4 @@
-import { Wifi, Zap, Network, HardDrive, Database, Brain, Shield } from 'lucide-react'
+import { Wifi, Zap, Network, HardDrive, Brain, Shield, Database } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { 
   StatCard, 
@@ -247,25 +247,27 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
       </div>
 
       {/* Zer0 Threat Detection Panel */}
-      {(threatStatus?.enabled || threatStatus?.mlEnabled) && (
-        <ThreatAnalysisPanel 
-          threatStatus={{
-            enabled: threatStatus.enabled || threatStatus.mlEnabled || false,
-            threatLevel: threatStatus.threatLevel as any,
-            filesAnalyzed: threatStatus.filesAnalyzed || 0,
-            threatsDetected: threatStatus.threatsDetected || threatStatus.totalThreats || 0,
-            filesQuarantined: threatStatus.filesQuarantined || 0,
-            hiddenExecutables: threatStatus.hiddenExecutables || 0,
-            extensionMismatches: threatStatus.extensionMismatches || 0,
-            ransomwarePatterns: threatStatus.ransomwarePatterns || threatStatus.ransomwareAlerts || 0,
-            behavioralAnomalies: threatStatus.behavioralAnomalies || 0,
-            magicByteValidation: threatStatus.magicByteValidation ?? true,
-            behavioralAnalysis: threatStatus.behavioralAnalysis ?? true,
-            fileTypeAwareness: threatStatus.fileTypeAwareness ?? true,
-          }} 
-          onOpenQuarantine={onOpenQuarantine} 
-        />
-      )}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+        {(threatStatus?.enabled || threatStatus?.mlEnabled) && (
+          <ThreatAnalysisPanel 
+            threatStatus={{
+              enabled: threatStatus.enabled || threatStatus.mlEnabled || false,
+              threatLevel: threatStatus.threatLevel as any,
+              filesAnalyzed: threatStatus.filesAnalyzed || 0,
+              threatsDetected: threatStatus.threatsDetected || threatStatus.totalThreats || 0,
+              filesQuarantined: threatStatus.filesQuarantined || 0,
+              hiddenExecutables: threatStatus.hiddenExecutables || 0,
+              extensionMismatches: threatStatus.extensionMismatches || 0,
+              ransomwarePatterns: threatStatus.ransomwarePatterns || threatStatus.ransomwareAlerts || 0,
+              behavioralAnomalies: threatStatus.behavioralAnomalies || 0,
+              magicByteValidation: threatStatus.magicByteValidation ?? true,
+              behavioralAnalysis: threatStatus.behavioralAnalysis ?? true,
+              fileTypeAwareness: threatStatus.fileTypeAwareness ?? true,
+            }} 
+            onOpenQuarantine={onOpenQuarantine} 
+          />
+        )}
+      </div>
 
       {/* Degraded Peers Warning */}
       <DegradedPeersWarning degradedPeers={degradedPeers} />

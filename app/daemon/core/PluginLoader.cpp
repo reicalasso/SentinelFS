@@ -134,8 +134,9 @@ bool DaemonCore::loadPlugins() {
         pluginManager_.registerPlugin(key, std::move(desc));
     };
 
-    registerPlugin("storage", "storage/libstorage_plugin.so");
-    registerPlugin("network", "netfalcon/libnetfalcon.so", {"storage"});
+    // Modern plugin stack
+    registerPlugin("storage", "falconstore/libfalconstore.so");  // FalconStore - high-performance storage
+    registerPlugin("network", "netfalcon/libnetfalcon.so", {"storage"});  // NetFalcon - multi-transport network
     registerPlugin("filesystem", "ironroot/libironroot.so");  // IronRoot - advanced filesystem
     registerPlugin("ml", "zer0/libzer0.so", {"storage"}, "1.0.0", true);  // Zer0 - advanced threat detection
 

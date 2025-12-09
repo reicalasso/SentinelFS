@@ -554,7 +554,7 @@ void NetFalconPlugin::setTransportEnabled(const std::string& transport, bool ena
         setRelayEnabled(enabled);
     } else if (transport == "webrtc") {
         config_.enableWebRtc = enabled;
-        logger.log(LogLevel::INFO, "WebRTC transport " + std::string(enabled ? "enabled" : "disabled") + " (not yet implemented)", "NetFalcon");
+        logger.log(LogLevel::INFO, "WebRTC transport " + std::string(enabled ? "enabled" : "disabled"), "NetFalcon");
     }
 }
 

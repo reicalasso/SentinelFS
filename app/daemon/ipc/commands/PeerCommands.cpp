@@ -88,33 +88,9 @@ std::string PeerCommands::handleBlockPeer(const std::string& args) {
         return "Error: Storage not initialized\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    
-    // Create blocked_peers table if not exists
-    const char* createSql = "CREATE TABLE IF NOT EXISTS blocked_peers (peer_id TEXT PRIMARY KEY, blocked_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
-    sqlite3_exec(db, createSql, nullptr, nullptr, nullptr);
-    
-    // Add to blocked list
-    const char* sql = "INSERT OR REPLACE INTO blocked_peers (peer_id) VALUES (?)";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            
-            // Also remove from peers table
-            const char* delSql = "DELETE FROM peers WHERE id = ?";
-            sqlite3_stmt* delStmt;
-            if (sqlite3_prepare_v2(db, delSql, -1, &delStmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(delStmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(delStmt);
-                sqlite3_finalize(delStmt);
-            }
-            
-            return "Success: Peer blocked: " + args + "\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->blockPeer(args)) {
+        return "Success: Peer blocked: " + args + "\n";
     }
     
     return "Error: Failed to block peer\n";
@@ -129,17 +105,9 @@ std::string PeerCommands::handleUnblockPeer(const std::string& args) {
         return "Error: Storage not initialized\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    const char* sql = "DELETE FROM blocked_peers WHERE peer_id = ?";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, args.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Peer unblocked: " + args + "\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->unblockPeer(args)) {
+        return "Success: Peer unblocked: " + args + "\n";
     }
     
     return "Error: Failed to unblock peer\n";
@@ -147,8 +115,7 @@ std::string PeerCommands::handleUnblockPeer(const std::string& args) {
 
 std::string PeerCommands::handleClearPeers() {
     if (ctx_.storage) {
-        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        sqlite3_exec(db, "DELETE FROM peers", nullptr, nullptr, nullptr);
+        ctx_.storage->removeAllPeers();
         return "Success: All peers cleared from database\n";
     }
     return "Error: Storage not initialized\n";

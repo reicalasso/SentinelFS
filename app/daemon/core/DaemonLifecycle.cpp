@@ -294,16 +294,9 @@ void DaemonCore::reconnectToKnownPeers() {
             } else {
                 logger.warn("Failed to reconnect to peer: " + peerId + " - will retry on discovery", "DaemonCore");
                 
-                // Mark peer as offline in database
+                // Mark peer as offline in database using API
                 if (storage_) {
-                    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-                    const char* updateSql = "UPDATE peers SET status_id = 6 WHERE id = ?"; // 6 = offline
-                    sqlite3_stmt* updateStmt;
-                    if (sqlite3_prepare_v2(db, updateSql, -1, &updateStmt, nullptr) == SQLITE_OK) {
-                        sqlite3_bind_text(updateStmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
-                        sqlite3_step(updateStmt);
-                        sqlite3_finalize(updateStmt);
-                    }
+                    storage_->updatePeerStatus(peerId, "offline");
                 }
             }
             

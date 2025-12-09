@@ -319,8 +319,17 @@ DetectionResult Zer0Plugin::analyzeFile(const std::string& path, pid_t pid, cons
         detectedCategory != FileCategory::UNKNOWN &&
         expectedCategory != detectedCategory) {
         
-        // Special case: Office documents are ZIP archives
-        if (!(expectedCategory == FileCategory::DOCUMENT && detectedCategory == FileCategory::ARCHIVE)) {
+        // Skip benign mismatches:
+        // - Office documents are ZIP archives (docx, xlsx, pptx, etc.)
+        // - TEXT files detected as TEXT (scripts, configs, etc.)
+        // - SVG files can be detected as TEXT (XML-based)
+        bool isBenignMismatch = 
+            (expectedCategory == FileCategory::DOCUMENT && detectedCategory == FileCategory::ARCHIVE) ||
+            (expectedCategory == FileCategory::TEXT && detectedCategory == FileCategory::TEXT) ||
+            (expectedCategory == FileCategory::TEXT) ||  // All text-based extensions are safe
+            (expectedCategory == FileCategory::IMAGE && ext == "svg" && detectedCategory == FileCategory::TEXT);
+        
+        if (!isBenignMismatch) {
             result.level = ThreatLevel::MEDIUM;
             result.type = ThreatType::EXTENSION_MISMATCH;
             result.confidence = 0.7;

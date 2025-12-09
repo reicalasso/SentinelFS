@@ -131,7 +131,7 @@ export interface DetectedThreat {
 
 // State
 export interface AppState {
-  activeTab: 'dashboard' | 'files' | 'peers' | 'transfers' | 'settings' | 'logs'
+  activeTab: 'dashboard' | 'files' | 'peers' | 'transfers' | 'falconstore' | 'settings' | 'logs'
   status: 'connected' | 'disconnected' | 'error'
   isPaused: boolean
   metrics: AppMetrics | null

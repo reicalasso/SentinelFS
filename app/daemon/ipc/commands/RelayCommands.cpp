@@ -35,28 +35,11 @@ std::string RelayCommands::handleRelayConnect(const std::string& args) {
         return "Error: Network subsystem not ready\n";
     }
     
-    // Store relay config
+    // Store relay config using API
     if (ctx_.storage) {
-        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        sqlite3_stmt* stmt;
-        
-        const char* updateSql = "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)";
-        if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, "relay_host", -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, host.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_step(stmt);
-            sqlite3_reset(stmt);
-            
-            sqlite3_bind_text(stmt, 1, "relay_port", -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, std::to_string(port).c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_step(stmt);
-            sqlite3_reset(stmt);
-            
-            sqlite3_bind_text(stmt, 1, "relay_session_code", -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, sessionCode.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
+        ctx_.storage->setConfig("relay_host", host);
+        ctx_.storage->setConfig("relay_port", std::to_string(port));
+        ctx_.storage->setConfig("relay_session_code", sessionCode);
     }
     
     // Attempt to connect via network API
@@ -77,11 +60,11 @@ std::string RelayCommands::handleRelayDisconnect() {
     
     ctx_.network->disconnectFromRelay();
     
-    // Clear stored config
+    // Clear stored config using API
     if (ctx_.storage) {
-        sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-        const char* sql = "DELETE FROM config WHERE key IN ('relay_host', 'relay_port', 'relay_session_code')";
-        sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
+        ctx_.storage->removeConfig("relay_host");
+        ctx_.storage->removeConfig("relay_port");
+        ctx_.storage->removeConfig("relay_session_code");
     }
     
     return "{\"success\":true,\"message\":\"Disconnected from relay server\"}\n";

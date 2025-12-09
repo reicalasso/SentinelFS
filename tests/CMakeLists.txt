@@ -100,4 +100,13 @@ add_integration_test(test_remote_sync integration/test_remote_sync.cpp sqlite3)
 # Offline Sync Test
 add_integration_test(test_offline_sync integration/test_offline_sync.cpp sqlite3)
 
+# FalconStore Test
+add_executable(test_falconstore test_falconstore.cpp)
+target_link_libraries(test_falconstore sentinel_core falconstore gtest gtest_main pthread sqlite3)
+target_include_directories(test_falconstore PRIVATE 
+    ../core/include
+    ../core/utils/include
+    ../plugins/falconstore/include
+)
+add_test(NAME test_falconstore COMMAND test_falconstore)
 

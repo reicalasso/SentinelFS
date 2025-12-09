@@ -231,6 +231,12 @@ function connectToDaemon() {
                 } else if (json.type === 'DETECTED_THREATS' && json.payload !== undefined) {
                     // Detected threats list
                     win?.webContents.send('daemon-data', { type: 'DETECTED_THREATS', payload: json.payload })
+                } else if (json.type === 'FALCONSTORE_STATUS' && json.payload !== undefined) {
+                    // FalconStore status
+                    win?.webContents.send('daemon-data', { type: 'FALCONSTORE_STATUS', payload: json.payload })
+                } else if (json.type === 'FALCONSTORE_STATS' && json.payload !== undefined) {
+                    // FalconStore stats
+                    win?.webContents.send('daemon-data', { type: 'FALCONSTORE_STATS', payload: json.payload })
                 } else if (Array.isArray(json)) {
                     // Fallback/Legacy: Distinguish between PEERS and FILES by checking first element
                     if (json.length > 0 && json[0].path !== undefined) {
@@ -339,6 +345,8 @@ function startMonitoring() {
             setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 900)
             setTimeout(() => daemonSocket?.write('THREAT_STATUS_JSON\n'), 1050)
             setTimeout(() => daemonSocket?.write('THREATS_JSON\n'), 1200)
+            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATUS\n'), 1350)
+            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATS\n'), 1500)
         }
     }, 2000)
 }

@@ -80,7 +80,8 @@ std::string FileCommands::handleFilesJson() {
         }
 
         // 2. Get all files from the files table
-        const char* sql = "SELECT path, hash, timestamp, size, synced FROM files ORDER BY timestamp DESC LIMIT 1000";
+        // FalconStore migration 7 ensures 'modified' column exists
+        const char* sql = "SELECT path, hash, modified, size, synced FROM files ORDER BY modified DESC LIMIT 1000";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -146,7 +147,7 @@ std::string FileCommands::handleActivityJson() {
         sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
         
         // Get recently synced files
-        const char* filesSql = "SELECT path, timestamp, synced FROM files ORDER BY timestamp DESC LIMIT 10";
+        const char* filesSql = "SELECT path, modified, synced FROM files ORDER BY modified DESC LIMIT 10";
         sqlite3_stmt* stmt;
         
         if (sqlite3_prepare_v2(db, filesSql, -1, &stmt, nullptr) == SQLITE_OK) {
@@ -237,55 +238,29 @@ std::string FileCommands::handleRemoveWatch(const std::string& args) {
     
     std::string cleanPath = sanitizePath(args);
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    sqlite3_stmt* stmt;
+    // Remove threats for files in this folder first
+    int threatCount = ctx_.storage->removeThreatsInFolder(cleanPath);
     
-    // Count files that will be removed from monitoring
-    std::string folderPrefix = cleanPath;
-    if (!folderPrefix.empty() && folderPrefix.back() != '/') {
-        folderPrefix += '/';
-    }
+    // Remove files from database using API (tracks statistics properly)
+    int fileCount = ctx_.storage->removeFilesInFolder(cleanPath);
     
-    int fileCount = 0;
-    const char* countSql = "SELECT COUNT(*) FROM files WHERE path LIKE ?";
-    if (sqlite3_prepare_v2(db, countSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        std::string pattern = folderPrefix + "%";
-        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            fileCount = sqlite3_column_int(stmt, 0);
+    // Remove watched folder from database using API
+    if (ctx_.storage->removeWatchedFolder(cleanPath)) {
+        // Stop filesystem watcher
+        if (ctx_.filesystem) {
+            ctx_.filesystem->stopWatching(cleanPath);
         }
-        sqlite3_finalize(stmt);
-    }
-    
-    // Remove files from database (but NOT from disk)
-    const char* deleteFilesSql = "DELETE FROM files WHERE path LIKE ?";
-    if (sqlite3_prepare_v2(db, deleteFilesSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        std::string pattern = folderPrefix + "%";
-        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-    
-    // Remove watched folder from database
-    const char* deleteFolderSql = "DELETE FROM watched_folders WHERE path = ?";
-    if (sqlite3_prepare_v2(db, deleteFolderSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, cleanPath.c_str(), -1, SQLITE_TRANSIENT);
         
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            
-            // Stop filesystem watcher
-            if (ctx_.filesystem) {
-                ctx_.filesystem->stopWatching(cleanPath);
-            }
-            
-            // Reset threat metrics since watched files changed
-            MetricsCollector::instance().resetThreatMetrics();
-            
-            return "Success: Stopped watching " + cleanPath + " (" + 
-                   std::to_string(fileCount) + " files remain on disk and will no longer be monitored)\n";
+        // Reset threat metrics since watched files changed
+        MetricsCollector::instance().resetThreatMetrics();
+        
+        std::string msg = "Success: Stopped watching " + cleanPath + " (" + 
+               std::to_string(fileCount) + " files removed from monitoring";
+        if (threatCount > 0) {
+            msg += ", " + std::to_string(threatCount) + " threats cleared";
         }
-        sqlite3_finalize(stmt);
+        msg += ")\n";
+        return msg;
     }
     
     return "Error: Failed to remove watch for: " + cleanPath + "\n";
@@ -386,10 +361,6 @@ std::string FileCommands::handleResolveConflict(const std::string& args) {
         return "Error: Storage not initialized\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    const char* sql = "UPDATE conflicts SET resolved = 1, resolved_at = datetime('now'), strategy = ? WHERE id = ?";
-    sqlite3_stmt* stmt;
-    
     int strategy = 0;
     std::string msg;
     
@@ -406,15 +377,9 @@ std::string FileCommands::handleResolveConflict(const std::string& args) {
         return "Error: Invalid resolution. Use: local, remote, or both\n";
     }
     
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, strategy);
-        sqlite3_bind_int(stmt, 2, conflictId);
-        
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Conflict resolved - " + msg + "\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->markConflictResolved(conflictId, strategy)) {
+        return "Success: Conflict resolved - " + msg + "\n";
     }
     
     return "Error: Failed to resolve conflict\n";
@@ -822,18 +787,9 @@ std::string FileCommands::handleDeleteThreat(const std::string& args) {
         }
     }
     
-    // Delete from database
-    const char* deleteSql = "DELETE FROM detected_threats WHERE id = ?";
-    sqlite3_stmt* deleteStmt;
-    
-    if (sqlite3_prepare_v2(db, deleteSql, -1, &deleteStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(deleteStmt, 1, threatId);
-        
-        if (sqlite3_step(deleteStmt) == SQLITE_DONE) {
-            sqlite3_finalize(deleteStmt);
-            return "Success: Threat deleted (original and quarantined files removed)\n";
-        }
-        sqlite3_finalize(deleteStmt);
+    // Delete from database using API
+    if (ctx_.storage->removeThreat(threatId)) {
+        return "Success: Threat deleted (original and quarantined files removed)\n";
     }
     
     return "Error: Failed to delete threat from database\n";
@@ -850,21 +806,9 @@ std::string FileCommands::handleMarkThreatSafe(const std::string& args) {
         return "Error: Storage not available\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    
-    // Simply mark as safe in database without deleting files
-    // This allows unmarking later without re-detection
-    const char* sql = "UPDATE detected_threats SET marked_safe = 1 WHERE id = ?";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, threatId);
-        
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Threat marked as safe\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->markThreatSafe(threatId, true)) {
+        return "Success: Threat marked as safe\n";
     }
     
     return "Error: Failed to mark threat as safe\n";
@@ -881,18 +825,9 @@ std::string FileCommands::handleUnmarkThreatSafe(const std::string& args) {
         return "Error: Storage not available\n";
     }
     
-    sqlite3* db = static_cast<sqlite3*>(ctx_.storage->getDB());
-    const char* sql = "UPDATE detected_threats SET marked_safe = 0 WHERE id = ?";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, threatId);
-        
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            sqlite3_finalize(stmt);
-            return "Success: Safe mark removed from threat\n";
-        }
-        sqlite3_finalize(stmt);
+    // Use API for proper statistics tracking
+    if (ctx_.storage->markThreatSafe(threatId, false)) {
+        return "Success: Safe mark removed from threat\n";
     }
     
     return "Error: Failed to unmark threat\n";

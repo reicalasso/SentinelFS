@@ -39,7 +39,7 @@ add_executable(sentinel_daemon
     ${DAEMON_CORE_SOURCES}
 )
 
-target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} dl pthread sqlite3)
+target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} falconstore dl pthread sqlite3)
 target_include_directories(sentinel_daemon PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ipc
@@ -48,5 +48,6 @@ target_include_directories(sentinel_daemon PRIVATE
     ../../core/security/include
     ../../core/sync/include
     ../../core/utils/include
+    ../../plugins/falconstore/include
     ipc/commands
 )

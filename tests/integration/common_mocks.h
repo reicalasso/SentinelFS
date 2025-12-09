@@ -162,11 +162,47 @@ public:
     bool addConflict(const ConflictInfo& conflict) override { return true; }
     std::vector<ConflictInfo> getUnresolvedConflicts() override { return {}; }
     std::vector<ConflictInfo> getConflictsForFile(const std::string& path) override { return {}; }
-    bool markConflictResolved(int conflictId) override { return true; }
+    bool markConflictResolved(int conflictId, int strategy = 0) override { return true; }
     std::pair<int, int> getConflictStats() override { return {0, 0}; }
 
     bool enqueueSyncOperation(const std::string& filePath, const std::string& opType, const std::string& status) override { return true; }
     bool logFileAccess(const std::string& filePath, const std::string& opType, const std::string& deviceId, long long timestamp) override { return true; }
+    void* getDB() override { return nullptr; }
+    
+    // New IStorageAPI methods - stub implementations
+    bool addWatchedFolder(const std::string& path) override { return true; }
+    bool removeWatchedFolder(const std::string& path) override { return true; }
+    std::vector<WatchedFolder> getWatchedFolders() override { return {}; }
+    bool isWatchedFolder(const std::string& path) override { return false; }
+    bool updateWatchedFolderStatus(const std::string& path, int statusId) override { return true; }
+    std::vector<FileMetadata> getFilesInFolder(const std::string& folderPath) override { return {}; }
+    int removeFilesInFolder(const std::string& folderPath) override { return 0; }
+    int getFileCount() override { return 0; }
+    long long getTotalFileSize() override { return 0; }
+    bool markFileSynced(const std::string& path, bool synced = true) override { return true; }
+    std::vector<FileMetadata> getPendingFiles() override { return {}; }
+    bool addIgnorePattern(const std::string& pattern) override { return true; }
+    bool removeIgnorePattern(const std::string& pattern) override { return true; }
+    std::vector<std::string> getIgnorePatterns() override { return {}; }
+    bool addThreat(const ThreatInfo& threat) override { return true; }
+    std::vector<ThreatInfo> getThreats() override { return {}; }
+    bool removeThreat(int threatId) override { return true; }
+    int removeThreatsInFolder(const std::string& folderPath) override { return 0; }
+    bool markThreatSafe(int threatId, bool safe = true) override { return true; }
+    std::vector<SyncQueueItem> getSyncQueue() override { return {}; }
+    bool updateSyncQueueStatus(int itemId, const std::string& status) override { return true; }
+    int clearCompletedSyncOperations() override { return 0; }
+    std::vector<ActivityLogEntry> getRecentActivity(int limit = 50) override { return {}; }
+    bool removeAllPeers() override { return true; }
+    bool updatePeerStatus(const std::string& peerId, const std::string& status) override { return true; }
+    bool blockPeer(const std::string& peerId) override { return true; }
+    bool unblockPeer(const std::string& peerId) override { return true; }
+    bool isPeerBlocked(const std::string& peerId) override { return false; }
+    bool setConfig(const std::string& key, const std::string& value) override { return true; }
+    std::optional<std::string> getConfig(const std::string& key) override { return std::nullopt; }
+    bool removeConfig(const std::string& key) override { return true; }
+    bool logTransfer(const std::string& filePath, const std::string& peerId, const std::string& direction, long long bytes, bool success) override { return true; }
+    std::vector<std::pair<std::string, long long>> getTransferHistory(int limit = 50) override { return {}; }
 
     std::map<std::string, FileMetadata> files;
     std::map<std::string, PeerInfo> peers;

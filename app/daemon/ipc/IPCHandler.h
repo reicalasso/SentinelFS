@@ -197,6 +197,12 @@ private:
     std::string handleNetFalconStatus();
     std::string handleNetFalconSetStrategy(const std::string& args);
     std::string handleNetFalconSetTransport(const std::string& args);
+    
+    // FalconStore command handlers
+    std::string handleFalconStoreStatus();
+    std::string handleFalconStoreStats();
+    std::string handleFalconStoreOptimize();
+    std::string handleFalconStoreBackup(const std::string& args);
 };
 
 } // namespace SentinelFS
