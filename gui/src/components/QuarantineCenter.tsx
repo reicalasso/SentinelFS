@@ -7,7 +7,8 @@ import {
   ThreatActions,
   DetectedThreat,
   ViewMode,
-  SortBy
+  SortBy,
+  Zer0ThreatLevel
 } from './quarantine'
 
 // Re-export types for external use
@@ -87,7 +88,7 @@ export function QuarantineCenter({
       case 'time':
         return filtered.sort((a, b) => b.detectedAt - a.detectedAt)
       case 'severity':
-        const severityOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 }
+        const severityOrder: Record<Zer0ThreatLevel, number> = { CRITICAL: 5, HIGH: 4, MEDIUM: 3, LOW: 2, INFO: 1, NONE: 0 }
         return filtered.sort((a, b) => severityOrder[b.threatLevel] - severityOrder[a.threatLevel])
       case 'name':
         return filtered.sort((a, b) => a.filePath.localeCompare(b.filePath))
