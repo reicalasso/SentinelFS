@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Auto-install dependencies if --install-deps flag is passed
+if [[ "${1:-}" == "--install-deps" ]]; then
+    log_info "Installing dependencies first..."
+    "$SCRIPT_DIR/install_deps.sh" --all
+    shift
+fi
+
 BUILD_DIR=${BUILD_DIR:-build}
 CMAKE_BIN=${CMAKE_BIN:-cmake}
 PREFIX=${PREFIX:-/usr/local}
@@ -10,8 +32,16 @@ CONFIG_NAME=sentinel.conf
 CACHE_FILE="${BUILD_DIR}/CMakeCache.txt"
 
 if ! command -v "${CMAKE_BIN}" >/dev/null 2>&1; then
-  echo "[!] ${CMAKE_BIN} not found in PATH. Please install CMake 3.17+." >&2
-  exit 1
+  log_warn "${CMAKE_BIN} not found in PATH."
+  echo ""
+  read -p "Would you like to install dependencies automatically? [y/N] " -n 1 -r
+  echo ""
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    "$SCRIPT_DIR/install_deps.sh" --dev
+  else
+    log_error "Please install CMake 3.17+ or run: $0 --install-deps"
+    exit 1
+  fi
 fi
 
 if [[ ! -f "${CACHE_FILE}" ]]; then

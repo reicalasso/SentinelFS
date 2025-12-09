@@ -6,7 +6,8 @@
 set -e  # Exit on error
 
 # Ensure we are in the project root
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Colors for output
@@ -30,19 +31,40 @@ CONFIG_DIR="$HOME/.config/sentinelfs"
 CONFIG_FILE="$CONFIG_DIR/sentinel.conf"
 
 # === Functions ===
+install_missing_deps() {
+    echo -e "${YELLOW}Installing missing dependencies...${NC}"
+    "$SCRIPT_DIR/install_deps.sh" --all
+    echo -e "${GREEN}✓ Dependencies installed${NC}"
+}
+
 check_dependencies() {
     echo -e "${BLUE}[1/5] Checking dependencies...${NC}"
     local missing=()
     
     command -v cmake >/dev/null 2>&1 || missing+=("cmake")
     command -v make >/dev/null 2>&1 || missing+=("make")
+    command -v g++ >/dev/null 2>&1 || missing+=("g++")
     command -v node >/dev/null 2>&1 || missing+=("nodejs")
     command -v npm >/dev/null 2>&1 || missing+=("npm")
     
     if [ ${#missing[@]} -ne 0 ]; then
-        echo -e "${RED}Missing dependencies: ${missing[*]}${NC}"
-        echo -e "${YELLOW}Install them with: sudo apt install ${missing[*]}${NC}"
-        exit 1
+        echo -e "${YELLOW}Missing dependencies: ${missing[*]}${NC}"
+        
+        # Check if --install-deps flag was passed
+        if [[ "${INSTALL_DEPS:-false}" == "true" ]]; then
+            install_missing_deps
+            return 0
+        fi
+        
+        echo ""
+        read -p "Would you like to install dependencies automatically? [y/N] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_missing_deps
+        else
+            echo -e "${RED}Please install missing dependencies or run: $0 --install-deps${NC}"
+            exit 1
+        fi
     fi
     echo -e "${GREEN}✓ All dependencies found${NC}"
 }
@@ -183,6 +205,7 @@ show_help() {
     echo "Options:"
     echo "  --daemon-only    Only start the daemon (no GUI)"
     echo "  --rebuild        Force rebuild from scratch"
+    echo "  --install-deps   Automatically install missing dependencies"
     echo "  --help           Show this help message"
     echo ""
 }
@@ -202,10 +225,27 @@ start_daemon_only() {
 }
 
 # === Main ===
+
+# Check for --install-deps flag in any position
+INSTALL_DEPS=false
+for arg in "$@"; do
+    if [[ "$arg" == "--install-deps" ]]; then
+        INSTALL_DEPS=true
+    fi
+done
+export INSTALL_DEPS
+
 case "${1:-}" in
     --help|-h)
         show_help
         exit 0
+        ;;
+    --install-deps)
+        check_dependencies
+        setup_directories
+        build_daemon
+        setup_gui
+        launch_app
         ;;
     --daemon-only)
         shift

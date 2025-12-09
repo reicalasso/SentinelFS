@@ -20,7 +20,20 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-BUILD_TYPE="${1:-all}"
+# Parse arguments
+INSTALL_DEPS=false
+BUILD_TYPE="all"
+
+for arg in "$@"; do
+    case $arg in
+        --install-deps)
+            INSTALL_DEPS=true
+            ;;
+        appimage|deb|all)
+            BUILD_TYPE="$arg"
+            ;;
+    esac
+done
 
 echo ""
 echo "=========================================="
@@ -28,22 +41,50 @@ echo "  SentinelFS Linux Package Builder"
 echo "=========================================="
 echo ""
 
+# Function to install dependencies
+install_dependencies() {
+    log_info "Installing all dependencies..."
+    "$SCRIPT_DIR/install_deps.sh" --all
+    log_success "Dependencies installed"
+}
+
 # Check dependencies
 log_info "Checking dependencies..."
 
+MISSING_DEPS=()
+
 if ! command -v cmake &> /dev/null; then
-    log_error "cmake is required but not installed."
-    exit 1
+    MISSING_DEPS+=("cmake")
 fi
 
 if ! command -v node &> /dev/null; then
-    log_error "Node.js is required but not installed."
-    exit 1
+    MISSING_DEPS+=("node")
 fi
 
 if ! command -v npm &> /dev/null; then
-    log_error "npm is required but not installed."
-    exit 1
+    MISSING_DEPS+=("npm")
+fi
+
+if ! command -v g++ &> /dev/null; then
+    MISSING_DEPS+=("g++")
+fi
+
+if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
+    log_warn "Missing dependencies: ${MISSING_DEPS[*]}"
+    
+    if [ "$INSTALL_DEPS" = true ]; then
+        install_dependencies
+    else
+        echo ""
+        read -p "Would you like to install dependencies automatically? [y/N] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_dependencies
+        else
+            log_error "Please install missing dependencies or run: $0 --install-deps"
+            exit 1
+        fi
+    fi
 fi
 
 log_success "All dependencies found"
