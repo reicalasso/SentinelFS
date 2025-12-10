@@ -278,14 +278,9 @@ bool Crypto::constantTimeCompare(
 // ==================== Argon2id Implementation ====================
 
 bool Crypto::isArgon2Available() {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    // OpenSSL 3.0+ has Argon2 support
-    EVP_KDF* kdf = EVP_KDF_fetch(nullptr, "ARGON2ID", nullptr);
-    if (kdf) {
-        EVP_KDF_free(kdf);
-        return true;
-    }
-#endif
+    // Argon2 requires OpenSSL 3.2+ with specific provider support
+    // For compatibility, we always use PBKDF2 with high iterations
+    // This can be updated when Argon2 support is more widespread
     return false;
 }
 
@@ -295,70 +290,13 @@ DerivedKeys Crypto::deriveKeyPairArgon2(
 ) {
     auto& logger = SentinelFS::Logger::instance();
     
-    logger.log(SentinelFS::LogLevel::DEBUG, "Deriving key pair using Argon2id", "Crypto");
+    // Argon2id is not widely available in OpenSSL yet
+    // Use PBKDF2 with very high iteration count as secure fallback
+    // 310,000 iterations is OWASP recommendation for PBKDF2-SHA256
+    logger.log(SentinelFS::LogLevel::DEBUG, 
+        "Using PBKDF2 with high iterations (Argon2 not available)", "Crypto");
     
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    // OpenSSL 3.0+ Argon2id implementation
-    constexpr size_t DERIVED_SIZE = 64;
-    std::vector<uint8_t> derivedKey(DERIVED_SIZE);
-    
-    EVP_KDF* kdf = EVP_KDF_fetch(nullptr, "ARGON2ID", nullptr);
-    if (!kdf) {
-        logger.log(SentinelFS::LogLevel::WARN, "Argon2id not available, falling back to PBKDF2", "Crypto");
-        return deriveKeyPair(sessionCode, salt, 100000);
-    }
-    
-    EVP_KDF_CTX* ctx = EVP_KDF_CTX_new(kdf);
-    EVP_KDF_free(kdf);
-    
-    if (!ctx) {
-        throw std::runtime_error("Failed to create Argon2 context");
-    }
-    
-    // Set Argon2id parameters
-    OSSL_PARAM params[7];
-    uint32_t threads = ARGON2_PARALLELISM;
-    uint32_t memcost = ARGON2_MEMORY_COST;
-    uint32_t iterations = ARGON2_TIME_COST;
-    
-    params[0] = OSSL_PARAM_construct_octet_string(
-        OSSL_KDF_PARAM_PASSWORD, 
-        const_cast<char*>(sessionCode.c_str()), 
-        sessionCode.length()
-    );
-    params[1] = OSSL_PARAM_construct_octet_string(
-        OSSL_KDF_PARAM_SALT,
-        const_cast<uint8_t*>(salt.data()),
-        salt.size()
-    );
-    params[2] = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_THREADS, &threads);
-    params[3] = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_ARGON2_LANES, &threads);
-    params[4] = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_ARGON2_MEMCOST, &memcost);
-    params[5] = OSSL_PARAM_construct_uint32(OSSL_KDF_PARAM_ITER, &iterations);
-    params[6] = OSSL_PARAM_construct_end();
-    
-    if (EVP_KDF_derive(ctx, derivedKey.data(), DERIVED_SIZE, params) != 1) {
-        EVP_KDF_CTX_free(ctx);
-        logger.log(SentinelFS::LogLevel::WARN, "Argon2id derivation failed, falling back to PBKDF2", "Crypto");
-        return deriveKeyPair(sessionCode, salt, 100000);
-    }
-    
-    EVP_KDF_CTX_free(ctx);
-    
-    // Split into encryption and MAC keys
-    DerivedKeys keys;
-    keys.encKey.assign(derivedKey.begin(), derivedKey.begin() + KEY_SIZE);
-    keys.macKey.assign(derivedKey.begin() + KEY_SIZE, derivedKey.end());
-    
-    OPENSSL_cleanse(derivedKey.data(), derivedKey.size());
-    
-    logger.log(SentinelFS::LogLevel::INFO, "Key pair derived using Argon2id", "Crypto");
-    return keys;
-#else
-    // Fallback for older OpenSSL
-    logger.log(SentinelFS::LogLevel::WARN, "Argon2id requires OpenSSL 3.0+, using PBKDF2", "Crypto");
-    return deriveKeyPair(sessionCode, salt, 100000);
-#endif
+    return deriveKeyPair(sessionCode, salt, 310000);
 }
 
 // ==================== AES-GCM AEAD Implementation ====================

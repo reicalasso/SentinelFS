@@ -118,8 +118,32 @@ ITransport* TransportRegistry::handleFailover(const std::string& peerId) {
     TransportType currentType = TransportType::TCP;
     
     if (bindingIt != bindings_.end()) {
+        // Check circuit breaker
+        if (bindingIt->second.circuitOpen) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                now - bindingIt->second.circuitOpenedAt);
+            
+            if (elapsed < failoverConfig_.circuitBreakerTimeout) {
+                return nullptr;  // Circuit still open
+            }
+            // Half-open: allow one attempt
+            bindingIt->second.circuitOpen = false;
+        }
+        
+        // Check backoff
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - bindingIt->second.lastFailover);
+        
+        if (elapsed < bindingIt->second.currentBackoff) {
+            return nullptr;  // Still in backoff period
+        }
+        
         currentType = bindingIt->second.activeTransport;
         bindingIt->second.failoverCount++;
+        bindingIt->second.lastFailover = now;
+        updateBackoff(bindingIt->second);
     }
     
     // Get failover order and find next transport
@@ -138,16 +162,169 @@ ITransport* TransportRegistry::handleFailover(const std::string& peerId) {
                 // Update binding
                 if (bindingIt != bindings_.end()) {
                     bindingIt->second.activeTransport = type;
+                    bindingIt->second.transportAuthenticated = false;  // Require re-auth
                 } else {
                     PeerTransportBinding binding;
                     binding.peerId = peerId;
                     binding.activeTransport = type;
                     binding.preferredTransport = type;
                     binding.boundAt = std::chrono::steady_clock::now();
+                    binding.transportAuthenticated = false;
                     bindings_[peerId] = binding;
                 }
                 return it->second.get();
             }
+        }
+    }
+    
+    // Wrap around to beginning of order
+    for (auto type : order) {
+        if (type == currentType) break;
+        
+        auto it = transports_.find(type);
+        if (it != transports_.end()) {
+            if (bindingIt != bindings_.end()) {
+                bindingIt->second.activeTransport = type;
+                bindingIt->second.transportAuthenticated = false;
+            }
+            return it->second.get();
+        }
+    }
+    
+    return nullptr;
+}
+
+void TransportRegistry::reportFailure(const std::string& peerId, TransportType type) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    auto bindingIt = bindings_.find(peerId);
+    if (bindingIt == bindings_.end()) return;
+    
+    bindingIt->second.consecutiveFailures++;
+    
+    // Check if circuit breaker should open
+    if (failoverConfig_.enableCircuitBreaker &&
+        bindingIt->second.consecutiveFailures >= failoverConfig_.circuitBreakerThreshold) {
+        bindingIt->second.circuitOpen = true;
+        bindingIt->second.circuitOpenedAt = std::chrono::steady_clock::now();
+    }
+}
+
+void TransportRegistry::reportSuccess(const std::string& peerId, TransportType type) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    auto bindingIt = bindings_.find(peerId);
+    if (bindingIt == bindings_.end()) return;
+    
+    // Reset failure state
+    bindingIt->second.consecutiveFailures = 0;
+    bindingIt->second.currentBackoff = failoverConfig_.initialBackoff;
+    bindingIt->second.circuitOpen = false;
+    bindingIt->second.transportAuthenticated = true;
+    bindingIt->second.lastAuthTime = std::chrono::steady_clock::now();
+}
+
+bool TransportRegistry::isCircuitOpen(const std::string& peerId) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    auto bindingIt = bindings_.find(peerId);
+    if (bindingIt == bindings_.end()) return false;
+    
+    if (!bindingIt->second.circuitOpen) return false;
+    
+    // Check if timeout has elapsed
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+        now - bindingIt->second.circuitOpenedAt);
+    
+    return elapsed < failoverConfig_.circuitBreakerTimeout;
+}
+
+void TransportRegistry::setLocalEnvironment(const NetworkEnvironment& env) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    localEnv_ = env;
+}
+
+void TransportRegistry::setFailoverConfig(const FailoverConfig& config) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    failoverConfig_ = config;
+}
+
+void TransportRegistry::updateBackoff(PeerTransportBinding& binding) {
+    // Exponential backoff with cap
+    auto newBackoff = std::chrono::milliseconds(
+        static_cast<long long>(binding.currentBackoff.count() * failoverConfig_.backoffMultiplier));
+    
+    if (newBackoff > failoverConfig_.maxBackoff) {
+        newBackoff = failoverConfig_.maxBackoff;
+    }
+    binding.currentBackoff = newBackoff;
+}
+
+bool TransportRegistry::shouldTriggerFailover(const ConnectionQuality& quality) const {
+    // Use EWMA values for stable decisions
+    return quality.isDegraded();
+}
+
+ITransport* TransportRegistry::selectTransport(const TransportSelectionContext& context) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return selectByEnvironment(context);
+}
+
+ITransport* TransportRegistry::selectByEnvironment(const TransportSelectionContext& context) {
+    // Priority 1: Check if RELAY is required due to NAT/firewall
+    bool needsRelay = localEnv_.needsRelay() || context.remoteEnv.needsRelay();
+    
+    if (needsRelay) {
+        auto it = transports_.find(TransportType::RELAY);
+        if (it != transports_.end()) {
+            return it->second.get();
+        }
+    }
+    
+    // Priority 2: Low latency preferred and QUIC available
+    if (context.lowLatencyPreferred && localEnv_.quicSupported && !localEnv_.udpBlocked) {
+        auto it = transports_.find(TransportType::QUIC);
+        if (it != transports_.end()) {
+            return it->second.get();
+        }
+    }
+    
+    // Priority 3: Large data transfer - prefer TCP for reliability
+    constexpr std::size_t LARGE_DATA_THRESHOLD = 1024 * 1024;  // 1 MB
+    if (context.dataSize > LARGE_DATA_THRESHOLD && context.requiresReliability) {
+        auto it = transports_.find(TransportType::TCP);
+        if (it != transports_.end()) {
+            return it->second.get();
+        }
+    }
+    
+    // Priority 4: Check quality metrics if available
+    auto qualityIt = qualityCache_.find(context.peerId);
+    if (qualityIt != qualityCache_.end() && !qualityIt->second.empty()) {
+        // Find best transport by EWMA score
+        ITransport* best = nullptr;
+        double bestScore = std::numeric_limits<double>::max();
+        
+        for (const auto& [type, quality] : qualityIt->second) {
+            double score = quality.computeScore();
+            if (score < bestScore) {
+                auto transportIt = transports_.find(type);
+                if (transportIt != transports_.end()) {
+                    best = transportIt->second.get();
+                    bestScore = score;
+                }
+            }
+        }
+        
+        if (best) return best;
+    }
+    
+    // Priority 5: Default - QUIC > TCP > RELAY
+    for (auto type : priorityOrder_) {
+        auto it = transports_.find(type);
+        if (it != transports_.end()) {
+            return it->second.get();
         }
     }
     

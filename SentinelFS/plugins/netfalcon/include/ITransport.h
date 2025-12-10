@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <memory>
 #include <chrono>
+#include <limits>
 
 namespace SentinelFS {
 namespace NetFalcon {
@@ -40,14 +41,110 @@ enum class ConnectionState {
 };
 
 /**
- * @brief Connection quality metrics
+ * @brief NAT type detection results
+ */
+enum class NatType {
+    UNKNOWN,
+    OPEN,               // No NAT, direct connection possible
+    FULL_CONE,          // NAT but easy traversal
+    RESTRICTED_CONE,    // NAT with port restriction
+    PORT_RESTRICTED,    // NAT with port + address restriction
+    SYMMETRIC           // Hardest to traverse, needs RELAY
+};
+
+/**
+ * @brief Network environment characteristics
+ */
+struct NetworkEnvironment {
+    NatType natType{NatType::UNKNOWN};
+    bool firewallDetected{false};
+    bool udpBlocked{false};
+    bool quicSupported{true};
+    std::string publicIp;
+    int publicPort{0};
+    std::chrono::steady_clock::time_point lastProbed;
+    
+    // Returns true if direct P2P is likely to work
+    bool canDirectConnect() const {
+        return natType == NatType::OPEN || 
+               natType == NatType::FULL_CONE ||
+               natType == NatType::RESTRICTED_CONE;
+    }
+    
+    // Returns true if RELAY is required
+    bool needsRelay() const {
+        return natType == NatType::SYMMETRIC || 
+               firewallDetected || 
+               udpBlocked;
+    }
+};
+
+/**
+ * @brief Connection quality metrics with filtering
  */
 struct ConnectionQuality {
+    // Raw measurements
     int rttMs{-1};
     double jitterMs{0.0};
     double packetLossPercent{0.0};
     std::size_t bytesInFlight{0};
     std::chrono::steady_clock::time_point lastUpdated;
+    
+    // Exponential weighted moving averages (EWMA)
+    double ewmaRttMs{-1.0};
+    double ewmaJitterMs{0.0};
+    double ewmaLossPercent{0.0};
+    
+    // Quality thresholds
+    static constexpr int RTT_EXCELLENT = 50;      // < 50ms
+    static constexpr int RTT_GOOD = 150;          // < 150ms
+    static constexpr int RTT_FAIR = 300;          // < 300ms
+    static constexpr double LOSS_EXCELLENT = 0.1; // < 0.1%
+    static constexpr double LOSS_GOOD = 1.0;      // < 1%
+    static constexpr double LOSS_FAIR = 5.0;      // < 5%
+    static constexpr double JITTER_EXCELLENT = 5.0;
+    static constexpr double JITTER_GOOD = 20.0;
+    static constexpr double JITTER_FAIR = 50.0;
+    
+    // EWMA alpha (0.1 = slow adaptation, 0.3 = faster)
+    static constexpr double EWMA_ALPHA = 0.2;
+    
+    // Update EWMA values with new measurement
+    void updateEwma(int newRtt, double newJitter, double newLoss) {
+        if (ewmaRttMs < 0) {
+            ewmaRttMs = newRtt;
+            ewmaJitterMs = newJitter;
+            ewmaLossPercent = newLoss;
+        } else {
+            ewmaRttMs = EWMA_ALPHA * newRtt + (1.0 - EWMA_ALPHA) * ewmaRttMs;
+            ewmaJitterMs = EWMA_ALPHA * newJitter + (1.0 - EWMA_ALPHA) * ewmaJitterMs;
+            ewmaLossPercent = EWMA_ALPHA * newLoss + (1.0 - EWMA_ALPHA) * ewmaLossPercent;
+        }
+        rttMs = newRtt;
+        jitterMs = newJitter;
+        packetLossPercent = newLoss;
+        lastUpdated = std::chrono::steady_clock::now();
+    }
+    
+    // Check if quality degraded beyond threshold
+    bool isDegraded() const {
+        return ewmaRttMs > RTT_FAIR || 
+               ewmaLossPercent > LOSS_FAIR || 
+               ewmaJitterMs > JITTER_FAIR;
+    }
+    
+    // Check if quality is excellent (don't switch)
+    bool isExcellent() const {
+        return ewmaRttMs > 0 && ewmaRttMs < RTT_EXCELLENT &&
+               ewmaLossPercent < LOSS_EXCELLENT &&
+               ewmaJitterMs < JITTER_EXCELLENT;
+    }
+    
+    // Compute composite score (lower is better)
+    double computeScore(double lossWeight = 10.0, double jitterWeight = 2.0) const {
+        if (ewmaRttMs < 0) return std::numeric_limits<double>::infinity();
+        return ewmaRttMs + (jitterWeight * ewmaJitterMs) + (lossWeight * ewmaLossPercent);
+    }
 };
 
 /**
