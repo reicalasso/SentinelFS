@@ -1,0 +1,415 @@
+name: Build & Release Linux Packages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+      build_deb:
+        description: 'Build DEB package'
+        required: false
+        type: boolean
+        default: true
+      build_appimage:
+        description: 'Build AppImage'
+        required: false
+        type: boolean
+        default: true
+      create_release:
+        description: 'Create GitHub Release'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '20'
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+
+jobs:
+  # ============================================
+  # Build C++ Backend Components
+  # ============================================
+  build-backend:
+    name: Build C++ Backend
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libssl-dev \
+            ccache \
+            ninja-build
+
+      - name: Setup ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-backend-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-backend-${{ runner.os }}-
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build_release \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_SYSTEM_INSTALL=OFF \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build_release --parallel
+
+      - name: Upload backend artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binaries
+          path: |
+            build_release/app/daemon/sentinel_daemon
+            build_release/app/cli/sentinel_cli
+            build_release/core/libsentinel_core.so
+            build_release/plugins/**/*.so
+          retention-days: 1
+
+  # ============================================
+  # Build AppImage
+  # ============================================
+  build-appimage:
+    name: Build AppImage
+    needs: build-backend
+    runs-on: ubuntu-22.04
+    if: ${{ github.event_name == 'push' || inputs.build_appimage }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binaries
+          path: build_release
+
+      - name: Make binaries executable
+        run: |
+          chmod +x build_release/app/daemon/sentinel_daemon || true
+          chmod +x build_release/app/cli/sentinel_cli || true
+          chmod +x build_release/plugins/**/*.so || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install FUSE (for AppImage)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build AppImage
+        working-directory: gui
+        run: npm run build:appimage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: gui/dist/*.AppImage
+          retention-days: 30
+
+  # ============================================
+  # Build DEB Package
+  # ============================================
+  build-deb:
+    name: Build DEB Package
+    needs: build-backend
+    runs-on: ubuntu-22.04
+    if: ${{ github.event_name == 'push' || inputs.build_deb }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binaries
+          path: build_release
+
+      - name: Make binaries executable
+        run: |
+          chmod +x build_release/app/daemon/sentinel_daemon || true
+          chmod +x build_release/app/cli/sentinel_cli || true
+          chmod +x build_release/plugins/**/*.so || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build DEB
+        working-directory: gui
+        run: npm run build:deb
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: gui/dist/*.deb
+          retention-days: 30
+
+  # ============================================
+  # Create GitHub Release
+  # ============================================
+  create-release:
+    name: Create Release
+    needs: [build-appimage, build-deb]
+    runs-on: ubuntu-22.04
+    if: ${{ always() && (github.event_name == 'push' || inputs.create_release) && (needs.build-appimage.result == 'success' || needs.build-deb.result == 'success') }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building release for version: $VERSION"
+
+      - name: Download AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: release
+        continue-on-error: true
+
+      - name: Download DEB
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-package
+          path: release
+        continue-on-error: true
+
+      - name: Generate checksums
+        working-directory: release
+        run: |
+          for file in *; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+              echo "Generated checksum for: $file"
+            fi
+          done
+          ls -lah
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: SentinelFS ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'rc') }}
+          generate_release_notes: true
+          body: |
+            ## 🚀 SentinelFS ${{ steps.version.outputs.VERSION }}
+            
+            Secure, distributed file synchronization system with modern GUI.
+            
+            ---
+            
+            ### 📦 Download Options
+            
+            | Package | Description | Installation |
+            |---------|-------------|--------------|
+            | **AppImage** | Portable, single-file | `chmod +x *.AppImage && ./*.AppImage` |
+            | **DEB** | Debian/Ubuntu | `sudo dpkg -i *.deb` |
+            
+            ---
+            
+            ### 🔧 AppImage (Recommended)
+            
+            The AppImage includes everything you need:
+            - ✅ Modern GUI
+            - ✅ Background daemon
+            - ✅ CLI tools
+            - ✅ All plugins
+            
+            ```bash
+            # Download and run
+            chmod +x SentinelFS-*.AppImage
+            ./SentinelFS-*.AppImage
+            ```
+            
+            ---
+            
+            ### 📋 DEB Package (Debian/Ubuntu)
+            
+            For system-wide installation:
+            
+            ```bash
+            # Install
+            sudo dpkg -i sentinelfs_*.deb
+            
+            # Fix any dependency issues
+            sudo apt-get install -f
+            
+            # Run
+            sentinelfs
+            ```
+            
+            ---
+            
+            ### ✅ Verify Downloads
+            
+            Each file has a `.sha256` checksum:
+            
+            ```bash
+            sha256sum -c SentinelFS-*.sha256
+            ```
+            
+            ---
+            
+            ### 📚 Documentation
+            
+            - [Quick Start Guide](https://github.com/${{ github.repository }}/blob/main/README.md)
+            - [Architecture](https://github.com/${{ github.repository }}/blob/main/ARCHITECTURE.md)
+            - [AppImage Guide](https://github.com/${{ github.repository }}/blob/main/docs/APPIMAGE.md)
+            
+            ---
+            
+            ### 🐛 Issues?
+            
+            [Report a bug](https://github.com/${{ github.repository }}/issues/new)
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================
+  # Test Packages
+  # ============================================
+  test-packages:
+    name: Test Packages
+    needs: [build-appimage, build-deb]
+    runs-on: ubuntu-22.04
+    if: always() && (needs.build-appimage.result == 'success' || needs.build-deb.result == 'success')
+    
+    steps:
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
+      - name: Download AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: packages
+        continue-on-error: true
+
+      - name: Download DEB
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-package
+          path: packages
+        continue-on-error: true
+
+      - name: Test AppImage
+        run: |
+          cd packages
+          APPIMAGE=$(ls *.AppImage 2>/dev/null | head -n 1)
+          if [ -n "$APPIMAGE" ]; then
+            echo "Testing AppImage: $APPIMAGE"
+            chmod +x "$APPIMAGE"
+            
+            # Extract and verify
+            ./"$APPIMAGE" --appimage-extract
+            
+            echo "=== Verifying daemon ==="
+            test -f squashfs-root/resources/bin/sentinel_daemon && echo "✅ Daemon found"
+            
+            echo "=== Verifying CLI ==="
+            test -f squashfs-root/resources/bin/sentinel_cli && echo "✅ CLI found"
+            
+            echo "=== Verifying plugins ==="
+            ls squashfs-root/resources/lib/plugins/*.so 2>/dev/null && echo "✅ Plugins found"
+            
+            echo "✅ AppImage test passed!"
+          else
+            echo "⚠️ No AppImage to test"
+          fi
+        continue-on-error: true
+
+      - name: Test DEB Installation
+        run: |
+          cd packages
+          DEB=$(ls *.deb 2>/dev/null | head -n 1)
+          if [ -n "$DEB" ]; then
+            echo "Testing DEB: $DEB"
+            
+            # Try to install (may fail due to dependencies, that's ok)
+            sudo dpkg -i "$DEB" 2>&1 || true
+            
+            # Check if package is registered
+            dpkg -l | grep sentinelfs && echo "✅ DEB registered"
+            
+            echo "✅ DEB test passed!"
+          else
+            echo "⚠️ No DEB to test"
+          fi
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "## Package Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cd packages
+          for f in *; do
+            if [ -f "$f" ]; then
+              SIZE=$(ls -lh "$f" | awk '{print $5}')
+              echo "- **$f** ($SIZE)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          

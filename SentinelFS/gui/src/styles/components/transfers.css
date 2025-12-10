@@ -1,0 +1,534 @@
+/* Transfers Component Styles - Modern Redesign */
+
+/* ==========================================
+   TRANSFERS HERO SECTION
+   ========================================== */
+
+.transfers-hero {
+  @apply relative overflow-hidden rounded-2xl sm:rounded-3xl border p-4 sm:p-6 lg:p-8;
+  background: linear-gradient(135deg, 
+    hsl(180 60% 50% / 0.15) 0%, 
+    hsl(var(--card)) 50%, 
+    hsl(var(--primary) / 0.1) 100%);
+  border-color: hsl(180 60% 50% / 0.2);
+}
+
+.transfers-hero-orb {
+  @apply absolute rounded-full blur-3xl animate-pulse;
+}
+
+.transfers-hero-orb-1 {
+  @apply -top-1/2 -left-1/4 w-96 h-96;
+  background: hsl(180 60% 50% / 0.2);
+}
+
+.transfers-hero-orb-2 {
+  @apply -bottom-1/4 -right-1/4 w-96 h-96;
+  background: hsl(var(--primary) / 0.15);
+  animation-delay: 1s;
+}
+
+.transfers-hero-pattern {
+  @apply absolute inset-0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.transfers-hero-icon {
+  @apply p-3 sm:p-4 rounded-xl sm:rounded-2xl backdrop-blur-sm border;
+  background: linear-gradient(135deg, hsl(180 60% 50% / 0.2), hsl(var(--primary) / 0.1));
+  border-color: hsl(180 60% 50% / 0.3);
+  color: hsl(180 60% 50%);
+  box-shadow: 0 8px 32px hsl(180 60% 50% / 0.2);
+}
+
+.transfers-hero-title {
+  @apply text-xl sm:text-2xl font-bold bg-clip-text text-transparent;
+  background-image: linear-gradient(90deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.6));
+}
+
+.transfers-hero-subtitle {
+  @apply text-xs sm:text-sm mt-1 flex items-center gap-2;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-hero-status-dot {
+  @apply w-2 h-2 rounded-full animate-pulse;
+  background: hsl(160 70% 45%);
+  box-shadow: 0 0 8px hsl(160 70% 45% / 0.5);
+}
+
+.transfers-refresh-btn {
+  @apply flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all border;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+.transfers-refresh-btn:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(180 60% 50% / 0.3);
+}
+
+/* Hero Stats */
+.transfers-hero-stat {
+  @apply flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border backdrop-blur-sm transition-transform cursor-default;
+}
+
+.transfers-hero-stat:hover {
+  transform: scale(1.02);
+}
+
+.transfers-hero-stat-download {
+  background: linear-gradient(90deg, hsl(160 70% 45% / 0.15), hsl(160 70% 45% / 0.05));
+  border-color: hsl(160 70% 45% / 0.3);
+}
+
+.transfers-hero-stat-upload {
+  background: linear-gradient(90deg, hsl(180 60% 50% / 0.15), hsl(180 60% 50% / 0.05));
+  border-color: hsl(180 60% 50% / 0.3);
+}
+
+.transfers-hero-stat-synced {
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.transfers-hero-stat-icon {
+  @apply p-1.5 sm:p-2 rounded-md sm:rounded-lg;
+  background: hsl(var(--background) / 0.5);
+}
+
+.transfers-hero-stat-download .transfers-hero-stat-icon {
+  color: hsl(160 70% 45%);
+}
+
+.transfers-hero-stat-upload .transfers-hero-stat-icon {
+  color: hsl(180 60% 50%);
+}
+
+.transfers-hero-stat-synced .transfers-hero-stat-icon {
+  color: hsl(var(--primary));
+}
+
+.transfers-hero-stat-value {
+  @apply text-sm sm:text-lg font-bold truncate;
+}
+
+.transfers-hero-stat-download .transfers-hero-stat-value {
+  color: hsl(160 70% 45%);
+}
+
+.transfers-hero-stat-upload .transfers-hero-stat-value {
+  color: hsl(180 60% 50%);
+}
+
+.transfers-hero-stat-synced .transfers-hero-stat-value {
+  color: hsl(var(--primary));
+}
+
+.transfers-hero-stat-label {
+  @apply text-[8px] sm:text-[10px] uppercase tracking-wider truncate;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ==========================================
+   TRANSFERS SECTIONS
+   ========================================== */
+
+.transfers-section {
+  @apply rounded-2xl border overflow-hidden;
+  background: hsl(var(--card) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.transfers-section-header {
+  @apply flex items-center justify-between p-4 sm:p-5 border-b;
+  background: linear-gradient(90deg, hsl(var(--secondary) / 0.3), transparent);
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.transfers-section-title-wrapper {
+  @apply flex items-center gap-3;
+}
+
+.transfers-section-icon {
+  @apply p-2 rounded-lg;
+}
+
+.transfers-section-icon-active {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+.transfers-section-icon-history {
+  background: hsl(180 60% 50% / 0.15);
+  color: hsl(180 60% 50%);
+}
+
+.transfers-section-title {
+  @apply font-semibold text-sm sm:text-base;
+}
+
+.transfers-section-count {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-section-content {
+  @apply p-4 sm:p-5;
+}
+
+.transfers-active-indicator {
+  @apply flex items-center gap-2 px-2.5 py-1 rounded-full text-xs;
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 45%);
+  border: 1px solid hsl(160 70% 45% / 0.3);
+}
+
+.transfers-active-dot {
+  @apply w-2 h-2 rounded-full animate-pulse;
+  background: hsl(160 70% 45%);
+}
+
+/* ==========================================
+   TRANSFER CARD MODERN
+   ========================================== */
+
+.transfer-card-modern {
+  @apply relative overflow-hidden rounded-xl border transition-all;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.transfer-card-modern:hover {
+  border-color: hsl(var(--border));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.transfer-card-download {
+  border-left: 3px solid hsl(160 70% 45%);
+}
+
+.transfer-card-upload {
+  border-left: 3px solid hsl(180 60% 50%);
+}
+
+.transfer-card-progress-bg {
+  @apply absolute top-0 left-0 h-full transition-all duration-500;
+  opacity: 0.08;
+}
+
+.transfer-card-progress-bg-download {
+  background: linear-gradient(90deg, hsl(160 70% 45%), transparent);
+}
+
+.transfer-card-progress-bg-upload {
+  background: linear-gradient(90deg, hsl(180 60% 50%), transparent);
+}
+
+.transfer-card-content {
+  @apply relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4;
+}
+
+.transfer-card-left {
+  @apply flex items-center gap-3;
+}
+
+.transfer-card-icon-modern {
+  @apply p-2.5 rounded-xl;
+}
+
+.transfer-card-icon-modern.transfer-card-icon-download {
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 45%);
+}
+
+.transfer-card-icon-modern.transfer-card-icon-upload {
+  background: hsl(180 60% 50% / 0.15);
+  color: hsl(180 60% 50%);
+}
+
+.transfer-card-info-modern {
+  @apply min-w-0;
+}
+
+.transfer-card-filename-modern {
+  @apply font-semibold text-sm truncate max-w-[200px] sm:max-w-[300px];
+}
+
+.transfer-card-meta-modern {
+  @apply flex items-center gap-2 text-xs mt-0.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfer-card-dot {
+  @apply hidden sm:inline;
+}
+
+.transfer-card-right {
+  @apply flex items-center gap-4;
+}
+
+.transfer-card-stats {
+  @apply text-right;
+}
+
+.transfer-card-speed-modern {
+  @apply flex items-center gap-1 font-mono text-sm font-medium;
+  color: hsl(var(--primary));
+}
+
+.transfer-card-progress-text-modern {
+  @apply text-xs font-medium;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfer-card-actions-modern {
+  @apply flex gap-1;
+}
+
+.transfer-card-action-btn {
+  @apply p-2 rounded-lg transition-all;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfer-card-action-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+.transfer-card-action-pause:hover {
+  color: hsl(var(--primary));
+}
+
+.transfer-card-action-cancel:hover {
+  background: hsl(0 72% 51% / 0.15);
+  color: hsl(0 72% 51%);
+}
+
+.transfer-card-progress-bar-modern {
+  @apply h-1 w-full;
+  background: hsl(var(--secondary) / 0.5);
+}
+
+.transfer-card-progress-fill-modern {
+  @apply h-full transition-all duration-500;
+}
+
+.transfer-progress-download {
+  background: linear-gradient(90deg, hsl(160 70% 45%), hsl(160 70% 55%));
+}
+
+.transfer-progress-upload {
+  background: linear-gradient(90deg, hsl(180 60% 50%), hsl(180 60% 60%));
+}
+
+/* ==========================================
+   TRANSFERS EMPTY MODERN
+   ========================================== */
+
+.transfers-empty-modern {
+  @apply relative flex flex-col items-center justify-center py-12 px-6 rounded-xl;
+  background: linear-gradient(135deg, hsl(var(--secondary) / 0.3), hsl(var(--secondary) / 0.1));
+  border: 1px dashed hsl(var(--border) / 0.5);
+}
+
+.transfers-empty-icon-wrapper {
+  @apply relative mb-4;
+}
+
+.transfers-empty-glow {
+  @apply absolute inset-0 rounded-2xl blur-xl;
+  background: hsl(160 70% 45% / 0.2);
+}
+
+.transfers-empty-icon {
+  @apply relative p-4 rounded-2xl;
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 45%);
+  border: 1px solid hsl(160 70% 45% / 0.3);
+}
+
+.transfers-empty-content {
+  @apply text-center;
+}
+
+.transfers-empty-title {
+  @apply font-semibold text-base mb-1;
+}
+
+.transfers-empty-desc {
+  @apply text-sm;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-empty-sparkles {
+  @apply absolute top-4 right-4;
+  color: hsl(var(--primary) / 0.5);
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ==========================================
+   TRANSFERS HISTORY MODERN
+   ========================================== */
+
+.transfers-history-modern {
+  @apply space-y-2;
+}
+
+.transfers-history-empty-modern {
+  @apply flex flex-col items-center justify-center gap-2 py-8 text-sm;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-history-item-modern {
+  @apply flex items-center justify-between p-3 rounded-xl transition-colors;
+  background: hsl(var(--secondary) / 0.2);
+}
+
+.transfers-history-item-modern:hover {
+  background: hsl(var(--secondary) / 0.4);
+}
+
+.transfers-history-item-left {
+  @apply flex items-center gap-3 min-w-0;
+}
+
+.transfers-history-icon-modern {
+  @apply p-2 rounded-lg flex-shrink-0;
+}
+
+.transfers-history-icon-modern.transfers-history-icon-download {
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 45%);
+}
+
+.transfers-history-icon-modern.transfers-history-icon-upload {
+  background: hsl(180 60% 50% / 0.15);
+  color: hsl(180 60% 50%);
+}
+
+.transfers-history-icon-modern.transfers-history-icon-delete {
+  background: hsl(0 72% 51% / 0.15);
+  color: hsl(0 72% 51%);
+}
+
+.transfers-history-info {
+  @apply min-w-0;
+}
+
+.transfers-history-filename-modern {
+  @apply font-medium text-sm truncate max-w-[150px] sm:max-w-[250px];
+}
+
+.transfers-history-meta {
+  @apply flex items-center gap-2 mt-0.5;
+}
+
+.transfers-history-type-badge {
+  @apply px-2 py-0.5 rounded text-[10px] font-bold uppercase;
+}
+
+.transfers-history-type-badge.badge-download {
+  background: hsl(160 70% 45% / 0.15);
+  color: hsl(160 70% 50%);
+}
+
+.transfers-history-type-badge.badge-upload {
+  background: hsl(180 60% 50% / 0.15);
+  color: hsl(180 60% 55%);
+}
+
+.transfers-history-type-badge.badge-delete {
+  background: hsl(0 72% 51% / 0.15);
+  color: hsl(0 72% 55%);
+}
+
+.transfers-history-size {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-history-item-right {
+  @apply flex items-center gap-3 flex-shrink-0;
+}
+
+.transfers-history-status {
+  @apply hidden sm:block;
+}
+
+.transfers-history-time-modern {
+  @apply flex items-center gap-1.5 text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ==========================================
+   LEGACY SUPPORT
+   ========================================== */
+
+.text-success {
+  color: hsl(160 70% 45%);
+}
+
+.transfers-history-empty {
+  @apply border rounded-xl overflow-hidden text-center p-4 sm:p-6;
+  background: hsl(var(--card) / 0.3);
+  border-color: hsl(var(--border) / 0.5);
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-history-list {
+  @apply backdrop-blur-sm border rounded-xl overflow-hidden;
+  background: hsl(var(--card) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.transfers-history-item {
+  @apply flex items-center justify-between p-3 sm:p-4 transition-colors;
+}
+
+.transfers-history-item:hover {
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.transfers-history-item-info {
+  @apply flex items-center gap-2 sm:gap-3 min-w-0;
+}
+
+.transfers-history-icon {
+  @apply p-1.5 sm:p-2 rounded-lg flex-shrink-0;
+}
+
+.transfers-history-icon-download {
+  background: hsl(var(--success-muted));
+  color: hsl(var(--success));
+}
+
+.transfers-history-icon-upload {
+  background: hsl(var(--info-muted));
+  color: hsl(var(--info));
+}
+
+.transfers-history-icon-delete {
+  background: hsl(var(--destructive-muted, var(--destructive) / 0.15));
+  color: hsl(var(--destructive));
+}
+
+.transfers-history-filename {
+  @apply font-medium text-sm truncate;
+}
+
+.transfers-history-type {
+  @apply text-xs capitalize;
+  color: hsl(var(--muted-foreground));
+}
+
+.transfers-history-time {
+  @apply flex items-center gap-1 sm:gap-2 text-xs flex-shrink-0 ml-2;
+  color: hsl(var(--muted-foreground));
+}

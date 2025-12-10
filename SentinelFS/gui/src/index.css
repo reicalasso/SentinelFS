@@ -1,0 +1,79 @@
+/* SentinelFS - Main Stylesheet */
+/* Modular CSS Architecture */
+
+/* ==========================================
+   ALL IMPORTS MUST BE AT THE TOP
+   ========================================== */
+
+/* Core (includes Tailwind directives) */
+@import './styles/base.css';
+@import './styles/theme.css';
+@import './styles/animations.css';
+@import './styles/utilities.css';
+@import './styles/semantic.css';
+
+/* UI Components */
+@import './styles/components/ui.css';
+
+/* Page Components */
+@import './styles/components/dashboard.css';
+@import './styles/components/peers.css';
+@import './styles/components/settings.css';
+@import './styles/components/files.css';
+@import './styles/components/transfers.css';
+@import './styles/components/conflicts.css';
+@import './styles/components/toast.css';
+
+/* ==========================================
+   RESPONSIVE UTILITIES
+   ========================================== */
+
+/* Hide scrollbar on touch */
+@media (pointer: coarse) {
+  .no-scrollbar-mobile::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar-mobile {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Responsive container */
+.container-responsive {
+  @apply w-full px-3 sm:px-6 lg:px-8;
+}
+
+/* ==========================================
+   FONT OVERRIDE (Final)
+   ========================================== */
+
+/* Maximum specificity font override */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video, button, input, select, textarea {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Recharts specific overrides */
+.recharts-text, .recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text, .recharts-tooltip-label,
+.recharts-tooltip-item-name, .recharts-tooltip-item-value {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+
+/* Number and text in charts */
+.recharts-surface text {
+  font-family: 'Pixellet TH', system-ui, sans-serif !important;
+}
+

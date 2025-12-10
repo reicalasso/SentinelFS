@@ -1,0 +1,138 @@
+{
+  "name": "sentinelfs-gui",
+  "version": "1.0.0",
+  "description": "Modern Desktop GUI for SentinelFS",
+  "author": "SentinelFS Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reicalasso/SentinelFS.git"
+  },
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "build:linux": "tsc && vite build && electron-builder --linux",
+    "build:appimage": "tsc && vite build && electron-builder --linux AppImage",
+    "build:deb": "tsc && vite build && electron-builder --linux deb",
+    "build:all": "tsc && vite build && electron-builder --linux AppImage deb",
+    "preview": "vite preview",
+    "electron:dev": "vite",
+    "electron:build": "vite build && tsc"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.300.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.10.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.32",
+    "postcss-import": "^16.1.1",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "vite-plugin-electron": "^0.15.4",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "build": {
+    "appId": "com.sentinelfs.gui",
+    "productName": "SentinelFS",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "icon": "assets/icons",
+      "desktop": {
+        "Name": "SentinelFS",
+        "Comment": "Secure Distributed File System",
+        "Categories": "Utility;FileTools;Network;",
+        "StartupWMClass": "SentinelFS",
+        "Keywords": "sync;p2p;file;cloud;backup;"
+      },
+      "executableName": "sentinelfs",
+      "maintainer": "SentinelFS Team <team@sentinelfs.io>",
+      "vendor": "SentinelFS"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ],
+      "recommends": [
+        "libfuse2"
+      ],
+      "priority": "optional",
+      "packageCategory": "utils",
+      "afterInstall": "scripts/postinst.sh",
+      "afterRemove": "scripts/postrm.sh"
+    },
+    "appImage": {
+      "license": "../LICENSE",
+      "synopsis": "Secure Delta-Sync File System with GUI and Daemon",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "extraResources": [
+      {
+        "from": "../build_release/app/daemon/sentinel_daemon",
+        "to": "bin/sentinel_daemon"
+      },
+      {
+        "from": "../build_release/app/cli/sentinel_cli",
+        "to": "bin/sentinel_cli"
+      },
+      {
+        "from": "../build_release/core/libsentinel_core.so",
+        "to": "lib/libsentinel_core.so"
+      },
+      {
+        "from": "../build_release/plugins",
+        "to": "lib/plugins",
+        "filter": [
+          "**/*.so"
+        ]
+      },
+      {
+        "from": "../config/sentinel.conf",
+        "to": "config/sentinel.conf"
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    }
+  }
+}

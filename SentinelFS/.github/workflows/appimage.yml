@@ -1,0 +1,98 @@
+name: AppImage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: appimage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-appimage:
+    name: Build SentinelFS AppImage
+    runs-on: ubuntu-22.04
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev \
+            libfuse2 desktop-file-utils ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-appimage-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Configure C++ build
+        run: |
+          cmake -S . -B build_release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_SYSTEM_INSTALL=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build C++ components
+        run: |
+          cmake --build build_release --parallel $(nproc)
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build Electron GUI and AppImage
+        working-directory: gui
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List build artifacts
+        run: |
+          echo "=== AppImage artifacts ==="
+          find gui/dist -name "*.AppImage" -type f -ls || echo "No AppImage found"
+          echo "=== All dist contents ==="
+          ls -lah gui/dist/ || echo "No dist directory"
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SentinelFS-AppImage
+          path: gui/dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Test AppImage (basic check)
+        run: |
+          APPIMAGE=$(find gui/dist -name "*.AppImage" -type f | head -n 1)
+          if [ -n "$APPIMAGE" ]; then
+            chmod +x "$APPIMAGE"
+            # Extract to verify contents
+            "$APPIMAGE" --appimage-extract
+            echo "=== Checking daemon binary ==="
+            ls -lh squashfs-root/resources/bin/sentinel_daemon
+            echo "=== Checking plugins ==="
+            ls -lh squashfs-root/resources/lib/plugins/
+            echo "=== Checking GUI files ==="
+            ls -lh squashfs-root/resources/app.asar
+          else
+            echo "AppImage not found!"
+            exit 1
+          fi
+
+

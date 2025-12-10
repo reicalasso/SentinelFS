@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-packages:
+    name: Build Linux Packages
+    runs-on: ubuntu-22.04
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev \
+            libfuse2 desktop-file-utils rpm ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-release-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: gui/package-lock.json
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "TAG=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure C++ build
+        run: |
+          cmake -S . -B build_release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_SYSTEM_INSTALL=OFF \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build C++ components
+        run: |
+          cmake --build build_release --parallel $(nproc)
+
+      - name: Create DEB package
+        run: |
+          cd build_release
+          cpack -G DEB
+
+      - name: Create RPM package
+        run: |
+          cd build_release
+          cpack -G RPM
+
+      - name: Create TGZ package
+        run: |
+          cd build_release
+          cpack -G TGZ
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build AppImage
+        working-directory: gui
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List all packages
+        run: |
+          echo "=== DEB/RPM/TGZ packages ==="
+          ls -lh build_release/*.deb build_release/*.rpm build_release/*.tar.gz || true
+          echo ""
+          echo "=== AppImage ==="
+          ls -lh gui/dist/*.AppImage || true
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release_artifacts
+          
+          # Copy traditional packages
+          cp build_release/*.deb release_artifacts/ || true
+          cp build_release/*.rpm release_artifacts/ || true
+          cp build_release/*.tar.gz release_artifacts/ || true
+          
+          # Copy AppImage
+          cp gui/dist/*.AppImage release_artifacts/ || true
+          
+          # Generate checksums
+          cd release_artifacts
+          for file in *; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+          
+          ls -lh
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.TAG }}
+          name: SentinelFS ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## SentinelFS ${{ steps.get_version.outputs.VERSION }}
+            
+            ### 📦 Downloads
+            
+            **AppImage (Recommended for Linux)**
+            - ✅ Portable, single-file application
+            - ✅ Includes GUI + Daemon + CLI
+            - ✅ No installation required
+            - Download: `SentinelFS-*.AppImage`
+            - Usage: `chmod +x SentinelFS-*.AppImage && ./SentinelFS-*.AppImage`
+            
+            **DEB Package (Debian/Ubuntu)**
+            - For system-wide installation
+            - Includes systemd service
+            - Install: `sudo dpkg -i sentinelfs_*.deb`
+            
+            **RPM Package (Fedora/RHEL/CentOS)**
+            - For system-wide installation
+            - Includes systemd service
+            - Install: `sudo rpm -i sentinelfs-*.rpm`
+            
+            **TGZ Archive**
+            - Manual installation
+            - Extract and run
+            
+            ### 📋 Verification
+            
+            Each package includes a `.sha256` file for verification:
+            ```bash
+            sha256sum -c SentinelFS-*.AppImage.sha256
+            ```
+            
+            ### 📚 Documentation
+            - [Installation Guide](https://github.com/${{ github.repository }}/blob/main/docs/APPIMAGE.md)
+            - [Architecture](https://github.com/${{ github.repository }}/blob/main/ARCHITECTURE.md)
+            - [User Guide](https://github.com/${{ github.repository }}/blob/main/README.md)
+            
+            ### 🐛 Bug Reports
+            If you encounter any issues, please [open an issue](https://github.com/${{ github.repository }}/issues).
+          files: |
+            release_artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: release_artifacts/*
+          retention-days: 90
+
+  test-appimage:
+    name: Test AppImage
+    needs: build-packages
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+
+      - name: Install FUSE
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
+      - name: Test AppImage extraction
+        run: |
+          APPIMAGE=$(ls *.AppImage | head -n 1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "No AppImage found!"
+            exit 1
+          fi
+          
+          chmod +x "$APPIMAGE"
+          
+          # Extract
+          ./"$APPIMAGE" --appimage-extract
+          
+          # Verify contents
+          echo "=== Checking daemon binary ==="
+          test -f squashfs-root/resources/bin/sentinel_daemon || exit 1
+          ls -lh squashfs-root/resources/bin/sentinel_daemon
+          
+          echo "=== Checking CLI binary ==="
+          test -f squashfs-root/resources/bin/sentinel_cli || exit 1
+          ls -lh squashfs-root/resources/bin/sentinel_cli
+          
+          echo "=== Checking plugins ==="
+          test -d squashfs-root/resources/lib/plugins || exit 1
+          ls -lh squashfs-root/resources/lib/plugins/
+          
+          echo "=== Checking GUI files ==="
+          test -f squashfs-root/resources/app.asar || exit 1
+          ls -lh squashfs-root/resources/app.asar
+          
+          echo "=== All checks passed! ==="
+
+      - name: Verify checksums
+        run: |
+          for file in *.sha256; do
+            if [ -f "$file" ]; then
+              echo "Verifying: $file"
+              sha256sum -c "$file" || exit 1
+            fi
+          done
+          echo "All checksums verified!"

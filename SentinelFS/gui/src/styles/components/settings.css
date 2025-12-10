@@ -1,0 +1,340 @@
+/* Settings Component Styles */
+
+/* ==========================================
+   SETTINGS HEADER
+   ========================================== */
+
+.settings-header {
+  @apply flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8;
+}
+
+.settings-header-icon {
+  @apply p-2 sm:p-3 rounded-xl sm:rounded-2xl border;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+/* ==========================================
+   SETTINGS NAVIGATION
+   ========================================== */
+
+.settings-nav {
+  @apply space-y-1 sm:space-y-2 p-2 sm:p-3 rounded-xl sm:rounded-2xl border h-fit lg:sticky lg:top-4 overflow-x-auto lg:overflow-x-visible;
+  background: hsl(var(--card) / 0.3);
+  border-color: hsl(var(--border) / 0.3);
+}
+
+/* ==========================================
+   SETTINGS TAB
+   ========================================== */
+
+.settings-tab {
+  @apply w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200;
+}
+
+.settings-tab-active {
+  @apply text-primary border shadow-sm;
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.settings-tab-inactive {
+  @apply text-muted-foreground;
+}
+
+.settings-tab-inactive:hover {
+  @apply text-foreground;
+  background: hsl(var(--secondary) / 0.6);
+}
+
+.settings-tab-indicator {
+  @apply ml-auto w-1.5 h-1.5 rounded-full bg-primary;
+}
+
+/* ==========================================
+   SETTINGS SECTION
+   ========================================== */
+
+.settings-section {
+  @apply p-6 rounded-2xl border shadow-sm backdrop-blur-sm transition-colors;
+  background: hsl(var(--card) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-section:hover {
+  border-color: hsl(var(--border) / 0.8);
+}
+
+.settings-section-title {
+  @apply font-semibold mb-4 pb-3 border-b text-foreground flex items-center gap-2;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-section-accent {
+  @apply w-1 h-4 rounded-full;
+  background: hsl(var(--primary) / 0.6);
+}
+
+/* ==========================================
+   SETTINGS TOGGLE
+   ========================================== */
+
+.settings-toggle {
+  @apply w-11 h-6 rounded-full relative cursor-pointer transition-all duration-300;
+}
+
+.settings-toggle-on {
+  @apply shadow-sm;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+}
+
+.settings-toggle-off {
+  @apply border;
+  background: hsl(var(--secondary) / 0.8);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-toggle-knob {
+  @apply absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300;
+}
+
+/* ==========================================
+   SETTINGS INPUTS
+   ========================================== */
+
+.settings-input {
+  @apply px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border text-sm transition-all;
+  background: hsl(var(--background) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-input:focus {
+  @apply outline-none;
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+.settings-label {
+  @apply block text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider;
+}
+
+/* ==========================================
+   SETTINGS BUTTONS
+   ========================================== */
+
+.settings-btn {
+  @apply px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 shadow-sm;
+}
+
+.settings-btn-primary {
+  @apply text-primary-foreground;
+  background: hsl(var(--primary));
+}
+
+.settings-btn-primary:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.settings-btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.settings-btn-secondary {
+  @apply text-foreground border;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.settings-btn-secondary:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-btn-secondary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.settings-btn-outline {
+  @apply text-primary border;
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.settings-btn-outline:hover {
+  background: hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.settings-btn-destructive {
+  @apply text-destructive border;
+  background: hsl(0 72% 51% / 0.1);
+  border-color: hsl(0 72% 51% / 0.2);
+}
+
+.settings-btn-destructive:hover {
+  background: hsl(0 72% 51% / 0.2);
+  border-color: hsl(0 72% 51% / 0.3);
+}
+
+/* ==========================================
+   SETTINGS INFO CARD
+   ========================================== */
+
+.settings-info-card {
+  @apply rounded-xl p-3 sm:p-4 mb-4;
+}
+
+.settings-info-card-primary {
+  background: hsl(var(--primary) / 0.05);
+  border: 1px solid hsl(var(--primary) / 0.1);
+}
+
+.settings-info-icon {
+  @apply p-1.5 sm:p-2 rounded-lg;
+  background: hsl(var(--primary) / 0.1);
+}
+
+/* ==========================================
+   SETTINGS STATUS CARDS
+   ========================================== */
+
+.settings-success-card {
+  @apply p-4 rounded-xl border;
+  background: hsl(160 70% 45% / 0.15);
+  border-color: hsl(160 70% 45% / 0.2);
+}
+
+.settings-warning-card {
+  @apply p-4 rounded-xl border;
+  background: hsl(45 100% 55% / 0.15);
+  border-color: hsl(45 100% 55% / 0.2);
+}
+
+.settings-muted-card {
+  @apply p-4 rounded-xl border;
+  background: hsl(var(--secondary) / 0.3);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+/* ==========================================
+   SETTINGS SESSION CODE
+   ========================================== */
+
+.settings-session-code-display {
+  @apply mb-6 p-5 rounded-xl border;
+  background: hsl(var(--primary) / 0.05);
+  border-color: hsl(var(--primary) / 0.15);
+}
+
+.settings-session-code-icon {
+  @apply p-3 rounded-xl border;
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.settings-session-code-value {
+  @apply font-mono text-2xl font-bold tracking-widest text-primary mt-1;
+}
+
+.settings-copy-btn {
+  @apply p-2.5 rounded-xl transition-colors border;
+  background: hsl(var(--secondary) / 0.5);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-copy-btn:hover {
+  background: hsl(var(--secondary));
+}
+
+/* ==========================================
+   SETTINGS PATTERN ITEM
+   ========================================== */
+
+.settings-pattern-item {
+  @apply flex items-center justify-between p-3 rounded-xl border;
+  background: hsl(var(--secondary) / 0.3);
+  border-color: hsl(var(--border) / 0.3);
+}
+
+.settings-pattern-remove-btn {
+  @apply p-1.5 rounded-lg text-muted-foreground transition-colors;
+}
+
+.settings-pattern-remove-btn:hover {
+  background: hsl(0 72% 51% / 0.1);
+  color: hsl(0 72% 51%);
+}
+
+.settings-empty-state {
+  @apply text-xs text-muted-foreground text-center py-6 rounded-xl border border-dashed;
+  background: hsl(var(--secondary) / 0.2);
+  border-color: hsl(var(--border) / 0.5);
+}
+
+/* ==========================================
+   SETTINGS THEME BUTTON
+   ========================================== */
+
+.settings-theme-btn {
+  @apply relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-theme-btn:hover {
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.settings-theme-btn-active {
+  @apply shadow-sm;
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+}
+
+.settings-theme-preview {
+  @apply w-12 h-12 rounded-lg shadow-sm flex-shrink-0 border;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================
+   SETTINGS FONT BUTTON
+   ========================================== */
+
+.settings-font-btn {
+  @apply flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.settings-font-btn:hover {
+  border-color: hsl(var(--border));
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.settings-font-btn-active {
+  @apply shadow-sm;
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+}
+
+.settings-font-radio {
+  @apply w-4 h-4 rounded-full border-2 transition-all;
+  border-color: hsl(var(--border));
+}
+
+.settings-font-btn:hover .settings-font-radio {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.settings-font-radio-active {
+  @apply bg-primary border-primary;
+}
+
+.settings-font-radio-dot {
+  @apply w-full h-full flex items-center justify-center;
+}
+
+.settings-font-radio-dot::after {
+  content: '';
+  @apply w-1.5 h-1.5 rounded-full bg-primary-foreground;
+}

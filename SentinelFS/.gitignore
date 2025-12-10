@@ -1,0 +1,10 @@
+build/
+gui/node_modules/
+build_release/
+gui/dist/
+gui/dist-electron/
+data/
+sentinel.db
+logs/
+*.log
+deliverables/presentation/PRESENTATIONN.md

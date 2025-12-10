@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  lint:
+    name: Lint / Werror build
+    runs-on: ubuntu-22.04
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      BUILD_TYPE: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-lint-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Configure (warnings as errors)
+        run: |
+          cmake -S . -B build-lint \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DSKIP_SYSTEM_INSTALL=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_FLAGS="-Wall -Wextra -Werror"
+
+      - name: Build core targets
+        run: cmake --build build-lint --target sentinel_core --parallel
+
+  test:
+    name: Build & Test
+    runs-on: ubuntu-22.04
+    needs: lint
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      BUILD_TYPE: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev ccache
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-test-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DSKIP_SYSTEM_INSTALL=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build (all)
+        run: cmake --build build --parallel
+
+      - name: Run unit/integration tests
+        working-directory: build
+        run: ctest --output-on-failure
+
+      - name: Run UDP discovery smoke test
+        working-directory: build
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/build/plugins/network:${LD_LIBRARY_PATH}"
+          ./tests/test_udp_discovery
+
+      - name: Run auto-remesh integration test
+        run: ./build/tests/test_auto_remesh
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs
+          path: build/Testing/**/Testing.xml
+          if-no-files-found: ignore
+          retention-days: 14
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-22.04
+    needs: test
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Init CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev
+
+      - name: Configure for analysis
+        run: |
+          cmake -S . -B build-codeql \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DSKIP_SYSTEM_INSTALL=ON
+
+      - name: Build for analysis
+        run: cmake --build build-codeql --parallel
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  package-snapshot:
+    name: Snapshot package
+    runs-on: ubuntu-22.04
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev
+
+      - name: Configure Release
+        run: |
+          cmake -S . -B build-release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_SYSTEM_INSTALL=ON
+
+      - name: Build Release
+        run: cmake --build build-release --parallel
+
+      - name: Package TGZ
+        run: |
+          cd build-release
+          cpack -G TGZ
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-release-snapshot
+          path: build-release/*.tar.gz
+          retention-days: 14
