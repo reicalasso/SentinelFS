@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 // THEME DEFINITIONS
 // ==========================================
 
-export type ThemeId = 'ocean-sunset' | 'midnight-blue' | 'forest-green' | 'purple-haze' | 'monochrome' | 'christmas'
+export type ThemeId = 'ocean-sunset' | 'midnight-blue' | 'forest-green' | 'purple-haze' | 'monochrome' | 'forward-to-past'
 
 export interface ThemeColors {
   primary: string       // Main accent color (HSL values)
@@ -216,44 +216,46 @@ const monochrome: Theme = {
   },
 }
 
-// Christmas - Festive holiday theme
-const christmas: Theme = {
-  id: 'christmas',
-  name: 'Christmas',
-  description: 'Festive red and green holiday theme',
+// Forward to the Past - Windows 3.1/95 Retro Theme
+const forwardToPast: Theme = {
+  id: 'forward-to-past',
+  name: 'Forward to the Past',
+  description: 'Retro Windows 3.1/95 nostalgia',
   colors: {
     dark: {
-      primary: '0 85% 50%',         // Christmas Red
-      secondary: '140 60% 18%',      // Dark Pine Green
-      accent: '45 100% 50%',         // Gold
-      success: '140 70% 40%',        // Christmas Green
-      warning: '45 100% 55%',        // Gold warning
-      error: '0 72% 51%',
-      info: '200 70% 55%',           // Ice Blue
-      background: '150 40% 8%',      // Very dark green
-      foreground: '0 0% 95%',        // Snow white
-      card: '150 35% 12%',           // Dark forest
-      border: '0 60% 30%',           // Dark red border
-      muted: '140 20% 55%',
+      // Dark mode: CRT monitor aesthetic with readable contrast
+      primary: '213 100% 50%',         // Bright blue for visibility (#0066FF)
+      secondary: '0 0% 20%',           // Dark gray panels
+      accent: '180 100% 35%',          // Teal accent (#00B3B3)
+      success: '120 100% 35%',         // Bright green (#00B300)
+      warning: '45 100% 50%',          // Amber (#FFB300)
+      error: '0 85% 55%',              // Bright red (#E53935)
+      info: '195 100% 45%',            // Cyan (#00B8E6)
+      background: '220 15% 10%',       // Dark blue-gray CRT (#161A1F)
+      foreground: '60 10% 90%',        // Warm white text (#E6E4DF)
+      card: '220 12% 16%',             // Slightly lighter card (#24282E)
+      border: '220 10% 25%',           // Visible border (#383D45)
+      muted: '220 10% 55%',            // Readable muted text (#848A94)
     },
     light: {
-      primary: '0 80% 45%',          // Christmas Red
-      secondary: '140 30% 90%',      // Light mint
-      accent: '45 90% 45%',          // Gold
-      success: '140 65% 35%',        // Christmas Green
-      warning: '45 100% 50%',
-      error: '0 84% 60%',
-      info: '200 70% 45%',
-      background: '140 25% 96%',     // Very light green tint
-      foreground: '150 50% 15%',     // Dark green text
-      card: '0 0% 100%',
-      border: '0 40% 85%',           // Light red border
-      muted: '140 25% 40%',
+      // Light mode: Classic Windows 95 desktop
+      primary: '240 100% 30%',         // Navy Blue (#000099)
+      secondary: '0 0% 85%',           // Light silver (#D9D9D9)
+      accent: '180 100% 28%',          // Classic Teal (#008F8F)
+      success: '120 100% 28%',         // DOS Green (#008F00)
+      warning: '40 100% 40%',          // Dark amber for contrast (#CC8800)
+      error: '0 85% 45%',              // Dark red (#D32F2F)
+      info: '200 100% 35%',            // Dark cyan (#0077B3)
+      background: '180 60% 35%',       // Classic Teal Desktop (#248F8F)
+      foreground: '0 0% 0%',           // Pure black text
+      card: '0 0% 75%',                // Classic silver (#C0C0C0)
+      border: '0 0% 45%',              // Medium gray border (#737373)
+      muted: '0 0% 30%',               // Dark gray muted (#4D4D4D)
     },
   },
 }
 
-export const themes: Theme[] = [oceanSunset, midnightBlue, forestGreen, purpleHaze, monochrome, christmas]
+export const themes: Theme[] = [oceanSunset, midnightBlue, forestGreen, purpleHaze, monochrome, forwardToPast]
 
 // ==========================================
 // FONT DEFINITIONS
@@ -453,7 +455,10 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     Object.entries(colors).forEach(([key, value]) => {
       root.style.setProperty(`--${key}`, value)
     })
-  }, [currentTheme, settings.colorMode])
+    
+    // Set data-theme attribute for theme-specific CSS (e.g., retro theme)
+    root.setAttribute('data-theme', settings.themeId)
+  }, [currentTheme, settings.colorMode, settings.themeId])
 
   // Apply font family
   useEffect(() => {
