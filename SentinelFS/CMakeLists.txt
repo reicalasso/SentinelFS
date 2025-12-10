@@ -32,13 +32,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/systemd/sentinel_daemon.servic
                @ONLY)
 
 add_subdirectory(core)
-# add_subdirectory(plugins/filesystem)  # Legacy - kept for compatibility
+add_subdirectory(plugins/deprecated/filesystem)  # Legacy - needed for tests
 add_subdirectory(plugins/ironroot)    # New advanced filesystem plugin
 # add_subdirectory(plugins/network)  # Deprecated: replaced by NetFalcon
 add_subdirectory(plugins/netfalcon)
 # add_subdirectory(plugins/storage)     # Legacy storage - disabled, using FalconStore
 add_subdirectory(plugins/falconstore) # New high-performance storage
-# add_subdirectory(plugins/ml)          # Legacy ML - kept for compatibility
+add_subdirectory(plugins/deprecated/ml)  # Legacy ML - needed for tests
 add_subdirectory(plugins/zer0)        # New advanced threat detection
 add_subdirectory(app/cli)
 add_subdirectory(app/daemon)

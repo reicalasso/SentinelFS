@@ -32,12 +32,21 @@ void SessionManager::setSessionCode(const std::string& sessionCode, bool enableE
     encryptionEnabled_ = enableEncryption;
     
     if (enableEncryption && !sessionCode.empty()) {
-        encryptionKey_ = deriveKey(sessionCode, DEFAULT_SALT);
+        // Use key separation: derive separate keys for encryption and MAC
+        // Prefer Argon2id if available (memory-hard, GPU/ASIC resistant)
+        if (Crypto::isArgon2Available()) {
+            keys_ = Crypto::deriveKeyPairArgon2(sessionCode, DEFAULT_SALT);
+        } else {
+            // Fallback to PBKDF2 with high iteration count
+            keys_ = Crypto::deriveKeyPair(sessionCode, DEFAULT_SALT, 100000);
+        }
     } else {
-        encryptionKey_.clear();
+        keys_.encKey.clear();
+        keys_.macKey.clear();
     }
     
     keyRotationCounter_ = 0;
+    messageSequence_ = 0;
 }
 
 std::string SessionManager::getSessionCode() const {
@@ -98,10 +107,15 @@ void SessionManager::setEncryptionEnabled(bool enable) {
     std::lock_guard<std::mutex> lock(mutex_);
     encryptionEnabled_ = enable;
     
-    if (enable && !primarySessionCode_.empty() && encryptionKey_.empty()) {
-        encryptionKey_ = deriveKey(primarySessionCode_, DEFAULT_SALT);
+    if (enable && !primarySessionCode_.empty() && keys_.encKey.empty()) {
+        if (Crypto::isArgon2Available()) {
+            keys_ = Crypto::deriveKeyPairArgon2(primarySessionCode_, DEFAULT_SALT);
+        } else {
+            keys_ = Crypto::deriveKeyPair(primarySessionCode_, DEFAULT_SALT, 100000);
+        }
     } else if (!enable) {
-        encryptionKey_.clear();
+        keys_.encKey.clear();
+        keys_.macKey.clear();
     }
 }
 
@@ -112,7 +126,7 @@ std::vector<uint8_t> SessionManager::deriveKey(const std::string& sessionCode, c
 
 std::vector<uint8_t> SessionManager::getEncryptionKey() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return encryptionKey_;
+    return keys_.encKey;
 }
 
 void SessionManager::rotateKey() {
@@ -129,25 +143,44 @@ void SessionManager::rotateKey() {
     rotatedSalt.push_back(static_cast<uint8_t>(keyRotationCounter_ >> 8));
     rotatedSalt.push_back(static_cast<uint8_t>(keyRotationCounter_));
     
-    encryptionKey_ = deriveKey(primarySessionCode_, rotatedSalt);
+    // Derive new key pair with rotated salt
+    keys_ = Crypto::deriveKeyPair(primarySessionCode_, rotatedSalt);
 }
 
 std::vector<uint8_t> SessionManager::encrypt(const std::vector<uint8_t>& plaintext, const std::string& peerId) const {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!encryptionEnabled_ || encryptionKey_.empty()) {
+    if (!encryptionEnabled_ || keys_.encKey.empty()) {
         return plaintext;
     }
     
     try {
-        auto iv = Crypto::generateIV();
-        auto ciphertext = Crypto::encrypt(plaintext, encryptionKey_, iv);
-        auto hmac = Crypto::hmacSHA256(ciphertext, encryptionKey_);
-        
         EncryptedMessage msg;
-        msg.iv = iv;
-        msg.ciphertext = ciphertext;
-        msg.hmac = hmac;
+        msg.version = EncryptedMessage::CURRENT_VERSION;
+        msg.sequence = const_cast<SessionManager*>(this)->messageSequence_++;  // Atomic increment
+        
+        if (msg.isAead()) {
+            // AES-256-GCM (AEAD) - recommended
+            auto nonce = Crypto::generateGcmNonce();
+            auto aad = msg.getAuthenticatedData();  // version || sequence
+            
+            // GCM provides both encryption and authentication
+            auto ciphertextWithTag = Crypto::encryptGcm(plaintext, keys_.encKey, nonce, aad);
+            
+            msg.iv = nonce;
+            msg.ciphertext = ciphertextWithTag;  // Includes 16-byte auth tag
+            // msg.hmac is empty for GCM
+        } else {
+            // AES-256-CBC + HMAC (legacy fallback)
+            auto iv = Crypto::generateIV();
+            auto ciphertext = Crypto::encrypt(plaintext, keys_.encKey, iv);
+            
+            msg.iv = iv;
+            msg.ciphertext = ciphertext;
+            
+            // Encrypt-then-MAC
+            msg.hmac = Crypto::hmacSHA256(msg.getAuthenticatedData(), keys_.macKey);
+        }
         
         return msg.serialize();
     } catch (const std::exception&) {
@@ -158,20 +191,50 @@ std::vector<uint8_t> SessionManager::encrypt(const std::vector<uint8_t>& plainte
 std::vector<uint8_t> SessionManager::decrypt(const std::vector<uint8_t>& ciphertext, const std::string& peerId) const {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!encryptionEnabled_ || encryptionKey_.empty()) {
+    if (!encryptionEnabled_ || keys_.encKey.empty()) {
         return ciphertext;
     }
     
     try {
         auto msg = EncryptedMessage::deserialize(ciphertext);
         
-        // Verify HMAC
-        auto expectedHmac = Crypto::hmacSHA256(msg.ciphertext, encryptionKey_);
-        if (msg.hmac != expectedHmac) {
-            return {};
+        // Check version compatibility
+        if (msg.version > EncryptedMessage::CURRENT_VERSION) {
+            return {};  // Unsupported version
         }
         
-        return Crypto::decrypt(msg.ciphertext, encryptionKey_, msg.iv);
+        std::vector<uint8_t> plaintext;
+        
+        if (msg.isAead()) {
+            // AES-256-GCM (AEAD)
+            auto aad = msg.getAuthenticatedData();  // version || sequence
+            
+            // GCM decryption verifies authenticity automatically
+            // Returns empty vector on auth failure
+            plaintext = Crypto::decryptGcm(msg.ciphertext, keys_.encKey, msg.iv, aad);
+            
+            if (plaintext.empty()) {
+                return {};  // Authentication failed
+            }
+        } else {
+            // AES-256-CBC + HMAC (legacy)
+            // CRITICAL: Verify MAC BEFORE decryption (Encrypt-then-MAC)
+            auto expectedHmac = Crypto::hmacSHA256(msg.getAuthenticatedData(), keys_.macKey);
+            
+            // Constant-time comparison to prevent timing attacks
+            if (!Crypto::constantTimeCompare(msg.hmac, expectedHmac)) {
+                return {};  // MAC verification failed - do NOT attempt decryption
+            }
+            
+            plaintext = Crypto::decrypt(msg.ciphertext, keys_.encKey, msg.iv);
+        }
+        
+        // Verify sequence number for replay protection
+        if (!const_cast<SessionManager*>(this)->verifyMessageCounter(peerId, msg.sequence)) {
+            return {};  // Replay attack detected
+        }
+        
+        return plaintext;
     } catch (const std::exception&) {
         return {};
     }

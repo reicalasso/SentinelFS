@@ -167,7 +167,6 @@ public:
 
     bool enqueueSyncOperation(const std::string& filePath, const std::string& opType, const std::string& status) override { return true; }
     bool logFileAccess(const std::string& filePath, const std::string& opType, const std::string& deviceId, long long timestamp) override { return true; }
-    void* getDB() override { return nullptr; }
     
     // New IStorageAPI methods - stub implementations
     bool addWatchedFolder(const std::string& path) override { return true; }

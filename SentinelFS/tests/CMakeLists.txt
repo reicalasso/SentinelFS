@@ -26,10 +26,10 @@ function(add_integration_test TEST_NAME SOURCE_FILE)
         ../core/sync/include
         ../core/utils/include
         ../core/storage/include
-        ../plugins/filesystem/include
-        ../plugins/network/include
-        ../plugins/storage/include
-        ../plugins/ml/include
+        ../plugins/deprecated/filesystem/include
+        ../plugins/deprecated/network/include
+        ../plugins/deprecated/storage/include
+        ../plugins/deprecated/ml/include
     )
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
@@ -85,7 +85,7 @@ add_sentinel_test(test_plugin_loader unit/test_plugin_loader.cpp)
 # add_integration_test(test_handshake_protocol unit/test_handshake_protocol.cpp netfalcon)
 # add_integration_test(test_tcp_handler unit/test_tcp_handler.cpp netfalcon)
 # add_integration_test(test_udp_discovery unit/test_udp_discovery.cpp netfalcon)
-add_integration_test(test_storage_managers unit/test_storage_managers.cpp storage_plugin sqlite3)
+# add_integration_test(test_storage_managers unit/test_storage_managers.cpp storage_plugin sqlite3)  # Disabled: storage_plugin deprecated
 
 # ============================================
 # INTEGRATION TESTS - Add tests here

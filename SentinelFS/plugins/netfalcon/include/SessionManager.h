@@ -19,6 +19,8 @@
 #include <chrono>
 #include <functional>
 #include <cstdint>
+#include <atomic>
+#include "Crypto.h"  // For DerivedKeys
 
 namespace SentinelFS {
 namespace NetFalcon {
@@ -248,7 +250,10 @@ private:
     std::string localPeerId_;
     std::string primarySessionCode_;
     bool encryptionEnabled_{false};
-    std::vector<uint8_t> encryptionKey_;
+    
+    // Separate keys for encryption and MAC (key separation)
+    DerivedKeys keys_;  // encKey for AES, macKey for HMAC
+    std::atomic<uint64_t> messageSequence_{0};  // Global sequence counter
     uint32_t keyRotationCounter_{0};
     
     std::map<std::string, SessionInfo> sessions_;
