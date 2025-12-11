@@ -19,6 +19,10 @@ namespace SentinelFS {
 class FileSyncHandler;
 class DeltaSyncProtocolHandler;
 
+namespace Sync {
+class SyncPipeline;
+}
+
 /**
  * @brief Event handler coordinator
  * 
@@ -88,6 +92,10 @@ private:
     // Specialized handlers
     std::unique_ptr<FileSyncHandler> fileSyncHandler_;
     std::unique_ptr<DeltaSyncProtocolHandler> deltaProtocolHandler_;
+    
+    // 7-stage sync pipeline (new wire-level protocol)
+    std::unique_ptr<Sync::SyncPipeline> syncPipeline_;
+    bool useNewPipeline_{false};  // Feature flag for gradual rollout
     
     // Ignore list to prevent sync loops
     std::mutex ignoreMutex_;

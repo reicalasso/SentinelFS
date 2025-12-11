@@ -1,6 +1,7 @@
 #include "EventHandlers.h"
 #include "DeltaSyncProtocolHandler.h"
 #include "FileSyncHandler.h"
+#include "SyncPipeline.h"
 #include "DeltaSerialization.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
@@ -27,11 +28,35 @@ EventHandlers::EventHandlers(EventBus& eventBus,
     fileSyncHandler_ = std::make_unique<FileSyncHandler>(network, storage, watchDirectory);
     deltaProtocolHandler_ = std::make_unique<DeltaSyncProtocolHandler>(network, storage, filesystem, watchDirectory);
     
-    // Connect handlers
-    deltaProtocolHandler_->setMarkAsPatchedCallback([this](const std::string& filename) {
+    // Create 7-stage sync pipeline
+    syncPipeline_ = std::make_unique<Sync::SyncPipeline>(network, storage, filesystem, watchDirectory);
+    
+    // Connect handlers - mark files as patched to prevent sync loops
+    auto markAsPatchedCallback = [this](const std::string& filename) {
         std::lock_guard<std::mutex> lock(ignoreMutex_);
         ignoreList_[filename] = std::chrono::steady_clock::now();
+    };
+    
+    deltaProtocolHandler_->setMarkAsPatchedCallback(markAsPatchedCallback);
+    syncPipeline_->setMarkAsPatchedCallback(markAsPatchedCallback);
+    
+    // Setup progress callback for new pipeline
+    syncPipeline_->setCompleteCallback([](const std::string& transferId, bool success, const std::string& error) {
+        auto& logger = Logger::instance();
+        if (success) {
+            logger.info("✅ Transfer " + transferId + " completed successfully", "SyncPipeline");
+        } else {
+            logger.error("❌ Transfer " + transferId + " failed: " + error, "SyncPipeline");
+        }
     });
+    
+    // Check environment variable to enable new pipeline
+    const char* usePipeline = std::getenv("SENTINEL_USE_NEW_PIPELINE");
+    useNewPipeline_ = (usePipeline != nullptr && std::string(usePipeline) == "1");
+    
+    if (useNewPipeline_) {
+        Logger::instance().info("🚀 Using new 7-stage sync pipeline", "EventHandlers");
+    }
     
     // Setup offline queue for operations when peers are unavailable
     setupOfflineQueue();
@@ -245,14 +270,26 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
         }
         
         // Trigger file sync after peer connection is established
-        // This broadcasts all local files to the newly connected peer
         if (syncEnabled_) {
-            logger.info("Triggering file sync to newly connected peer: " + peerId, "EventHandlers");
-            // Use a small delay to ensure connection is fully established
-            std::thread([this, peerId]() {
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                fileSyncHandler_->broadcastAllFilesToPeer(peerId);
-            }).detach();
+            if (useNewPipeline_) {
+                // New pipeline: initiate handshake first, then sync
+                logger.info("Initiating handshake with newly connected peer: " + peerId, "EventHandlers");
+                std::thread([this, peerId]() {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    if (syncPipeline_->initiateHandshake(peerId)) {
+                        // After handshake, broadcast files
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                        fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+                    }
+                }).detach();
+            } else {
+                // Legacy: broadcast all files directly
+                logger.info("Triggering file sync to newly connected peer: " + peerId, "EventHandlers");
+                std::thread([this, peerId]() {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+                }).detach();
+            }
         }
         
     } catch (const std::exception& e) {
@@ -378,9 +415,26 @@ void EventHandlers::handleDataReceived(const std::any& data) {
 
         logger.debug("Received " + std::to_string(rawData.size()) + " bytes from peer " + peerId, "EventHandlers");
 
-        // Route to appropriate handler
+        // Check for new wire protocol (binary messages start with magic bytes)
+        constexpr uint32_t PROTOCOL_MAGIC = 0x53454E54;  // "SENT"
+        if (rawData.size() >= 4) {
+            uint32_t magic = *reinterpret_cast<const uint32_t*>(rawData.data());
+            if (magic == PROTOCOL_MAGIC) {
+                // New 7-stage pipeline message
+                logger.debug("Routing to SyncPipeline (wire protocol)", "EventHandlers");
+                syncPipeline_->handleMessage(peerId, rawData);
+                return;
+            }
+        }
+
+        // Legacy text-based protocol - route to appropriate handler
         if (msg.find("UPDATE_AVAILABLE|") == 0) {
-            deltaProtocolHandler_->handleUpdateAvailable(peerId, rawData);
+            if (useNewPipeline_) {
+                // Convert to new pipeline format
+                syncPipeline_->handleMessage(peerId, rawData);
+            } else {
+                deltaProtocolHandler_->handleUpdateAvailable(peerId, rawData);
+            }
         }
         else if (msg.find("REQUEST_DELTA|") == 0) {
             deltaProtocolHandler_->handleDeltaRequest(peerId, rawData);

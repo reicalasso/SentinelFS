@@ -49,6 +49,14 @@ set(CORE_SOURCES
     sync/src/delta/DeltaRequestHandler.cpp
     sync/src/delta/DeltaDataHandler.cpp
     sync/src/delta/FileTransferHandler.cpp
+    
+    # Pipeline sources (7-stage sync)
+    sync/src/pipeline/SyncPipelineCore.cpp
+    sync/src/pipeline/HandshakeHandler.cpp
+    sync/src/pipeline/MetaTransferHandler.cpp
+    sync/src/pipeline/DeltaSyncHandler.cpp
+    sync/src/pipeline/BlockStreamHandler.cpp
+    sync/src/pipeline/FinalizeHandler.cpp
 
     # Storage sources
     storage/src/FileVersionManager.cpp
