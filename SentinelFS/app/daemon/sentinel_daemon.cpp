@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
     }
 
     // --- RTT Measurement + Auto-Remesh Thread ---
-    std::thread rttThread([&]() {
+    daemon.registerThread(std::thread([&]() {
         while (daemon.isRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(15));
             
@@ -440,7 +440,7 @@ int main(int argc, char* argv[]) {
     });
 
     // --- Status Display Thread ---
-    std::thread statusThread([&]() {
+    daemon.registerThread(std::thread([&]() {
         int loopCount = 0;
         
         while (daemon.isRunning()) {
@@ -472,7 +472,7 @@ int main(int argc, char* argv[]) {
             
             loopCount++;
         }
-    });
+    }));
 
     // --- Run Daemon ---
     daemon.run();

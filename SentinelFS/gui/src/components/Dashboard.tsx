@@ -1,5 +1,5 @@
 import { Wifi, Zap, Network, HardDrive, Brain, Shield, Database } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { 
   StatCard, 
   HealthCard, 
@@ -93,7 +93,8 @@ function formatBytes(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-export function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus, onOpenQuarantine }: DashboardProps) {
+// Memoized component for better performance
+export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus, onOpenQuarantine }: DashboardProps) {
   const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryItem[]>([])
   const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null)
   const [peakUpload, setPeakUpload] = useState(0)
@@ -273,4 +274,4 @@ export function Dashboard({ metrics, syncStatus, peersCount, activity, threatSta
       <DegradedPeersWarning degradedPeers={degradedPeers} />
     </div>
   )
-}
+})

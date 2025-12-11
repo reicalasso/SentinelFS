@@ -60,6 +60,27 @@ DaemonCore::~DaemonCore() {
     shutdown();
 }
 
+void DaemonCore::registerThread(std::thread&& thread) {
+    std::lock_guard<std::mutex> lock(threadMutex_);
+    managedThreads_.push_back(std::move(thread));
+}
+
+void DaemonCore::stopAllThreads() {
+    auto& logger = Logger::instance();
+    
+    std::lock_guard<std::mutex> lock(threadMutex_);
+    logger.info("Stopping " + std::to_string(managedThreads_.size()) + " managed threads...", "DaemonCore");
+    
+    for (auto& thread : managedThreads_) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+    
+    managedThreads_.clear();
+    logger.info("All threads stopped successfully", "DaemonCore");
+}
+
 bool DaemonCore::initialize() {
     auto& logger = Logger::instance();
     logger.info("SentinelFS Daemon initializing...", "DaemonCore");

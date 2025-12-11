@@ -21,6 +21,21 @@ namespace SentinelFS {
     class DeltaEngine {
     public:
         static const size_t BLOCK_SIZE = 4096;
+        
+        /**
+         * @brief Get optimal block size based on file size
+         * @param fileSize Total file size in bytes
+         * @return Optimal block size for delta computation
+         */
+        static size_t getOptimalBlockSize(size_t fileSize) {
+            if (fileSize < 1024 * 1024) {           // < 1MB
+                return 32 * 1024;                    // 32KB
+            } else if (fileSize < 100 * 1024 * 1024) { // < 100MB
+                return 128 * 1024;                   // 128KB
+            } else {
+                return 256 * 1024;                   // 256KB for large files
+            }
+        }
 
         /**
          * @brief Calculate Adler-32 rolling checksum.

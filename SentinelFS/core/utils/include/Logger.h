@@ -24,6 +24,11 @@ namespace SentinelFS {
         void setLevel(LogLevel level);
         void setMaxFileSize(size_t maxSizeMB); // Set max log file size before rotation
         void setComponent(const std::string& component); // Set default component name
+        
+        // Level checking for conditional logging (avoid string construction overhead)
+        bool isDebugEnabled() const { return currentLevel_ <= LogLevel::DEBUG; }
+        bool isInfoEnabled() const { return currentLevel_ <= LogLevel::INFO; }
+        LogLevel getLevel() const { return currentLevel_; }
 
         void log(LogLevel level, const std::string& message, const std::string& component = "");
 

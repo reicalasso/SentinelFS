@@ -66,6 +66,15 @@ namespace SentinelFS {
             metrics.incrementSyncErrors();
             return signatures;
         }
+        
+        // Get file size for adaptive block sizing
+        file.seekg(0, std::ios::end);
+        size_t fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        
+        size_t blockSize = getOptimalBlockSize(fileSize);
+        logger.log(LogLevel::DEBUG, "Using block size: " + std::to_string(blockSize) + 
+                   " bytes for file size: " + std::to_string(fileSize), "DeltaEngine");
 
         // Batch processing: read multiple blocks before submitting to thread pool
         // This reduces task scheduling overhead
@@ -103,9 +112,9 @@ namespace SentinelFS {
             }));
         };
 
-        std::vector<uint8_t> buffer(BLOCK_SIZE);
+        std::vector<uint8_t> buffer(blockSize);
         while (file) {
-            file.read(reinterpret_cast<char*>(buffer.data()), BLOCK_SIZE);
+            file.read(reinterpret_cast<char*>(buffer.data()), blockSize);
             size_t bytesRead = static_cast<size_t>(file.gcount());
 
             if (bytesRead == 0) break;

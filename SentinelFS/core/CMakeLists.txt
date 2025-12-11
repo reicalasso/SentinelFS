@@ -1,18 +1,13 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(SentinelCore)
+project(SentinelCore VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Include all subdirectories
-include_directories(
-    include
-    network/include
-    security/include
-    sync/include
-    storage/include
-    utils/include
-)
+# Modern CMake: No global include_directories
+# Use target_include_directories instead
 
 find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
@@ -77,21 +72,30 @@ set(CORE_SOURCES
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})
 
-target_include_directories(sentinel_core PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/network/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/security/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/sync/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/storage/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils/include
-    ${OPENSSL_INCLUDE_DIR}
-    ${SQLite3_INCLUDE_DIRS}
+# Modern CMake: Use target_include_directories with PUBLIC/PRIVATE
+target_include_directories(sentinel_core 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/network/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/security/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sync/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/storage/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/utils/include>
+        $<INSTALL_INTERFACE:include>
 )
 
 find_package(ZLIB REQUIRED)
 
-target_link_libraries(sentinel_core ${CMAKE_DL_LIBS} OpenSSL::SSL OpenSSL::Crypto ${SQLite3_LIBRARIES} ZLIB::ZLIB)
+# Modern CMake: Explicit PUBLIC/PRIVATE linkage
+target_link_libraries(sentinel_core 
+    PUBLIC
+        OpenSSL::SSL 
+        OpenSSL::Crypto 
+        SQLite::SQLite3
+        ZLIB::ZLIB
+    PRIVATE
+        ${CMAKE_DL_LIBS}
+)
 
 # Export for parent CMakeLists
 set(SENTINEL_CORE_LIB sentinel_core PARENT_SCOPE)
-

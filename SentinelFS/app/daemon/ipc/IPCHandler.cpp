@@ -373,7 +373,11 @@ void IPCHandler::handleClient(int clientSocket) {
             break;
         }
         
-        usleep(10000);
+        // Non-blocking wait with poll instead of busy-wait usleep
+        struct pollfd pfd;
+        pfd.fd = socket;
+        pfd.events = POLLIN;
+        poll(&pfd, 1, 10); // 10ms timeout
     }
 }
 

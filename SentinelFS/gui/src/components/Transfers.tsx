@@ -1,4 +1,5 @@
 import { ArrowRightLeft, TrendingUp, Zap, RefreshCw, Download, Upload, Activity, Clock, CheckCircle2 } from 'lucide-react'
+import { memo } from 'react'
 import { TransfersStats, TransferCard, TransfersHistory, TransfersEmpty } from './transfers'
 
 interface ActivityItem {
@@ -15,7 +16,7 @@ interface TransfersProps {
   activity?: ActivityItem[]
 }
 
-export function Transfers({ metrics, transfers, history, activity }: TransfersProps) {
+export const Transfers = memo(function Transfers({ metrics, transfers, history, activity }: TransfersProps) {
   const formatSize = (bytes: number) => {
     if (!bytes) return '0 B'
     if (bytes < 1024) return bytes + ' B'
@@ -163,4 +164,4 @@ export function Transfers({ metrics, transfers, history, activity }: TransfersPr
       </div>
     </div>
   )
-}
+})

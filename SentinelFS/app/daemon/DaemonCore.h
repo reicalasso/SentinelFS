@@ -11,6 +11,8 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
+#include <thread>
+#include <vector>
 
 namespace SentinelFS {
 
@@ -89,6 +91,17 @@ public:
      * @return true if successfully added
      */
     bool addWatchDirectory(const std::string& path);
+    
+    /**
+     * @brief Register a managed thread (will be joined on shutdown)
+     * @param thread Thread to manage
+     */
+    void registerThread(std::thread&& thread);
+    
+    /**
+     * @brief Stop all managed threads gracefully
+     */
+    void stopAllThreads();
 
     struct InitializationStatus {
         enum class Result {
@@ -125,6 +138,10 @@ private:
     std::mutex runMutex_;
     std::condition_variable runCv_;
     InitializationStatus initStatus_;
+    
+    // Thread management
+    std::vector<std::thread> managedThreads_;
+    std::mutex threadMutex_;
     
     bool loadPlugins();
     void setupEventHandlers();

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { FilesHero, FilesSearch, FilesEmpty, FileTreeItem, FilesListHeader, FileDetails } from './files'
 
 interface FileInfo {
@@ -14,7 +14,7 @@ interface FileInfo {
   xattrs: Record<string, string>
 }
 
-export function Files({ files }: { files?: any[] }) {
+export const Files = memo(function Files({ files }: { files?: any[] }) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState('All Types')
@@ -238,4 +238,4 @@ export function Files({ files }: { files?: any[] }) {
       )}
     </div>
   )
-}
+})
