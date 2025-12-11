@@ -102,9 +102,9 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
   const [currentUploadRate, setCurrentUploadRate] = useState(0)
   const [currentDownloadRate, setCurrentDownloadRate] = useState(0)
   
-  // Format metrics from daemon
-  const totalUploaded = metrics?.totalUploaded || 0
-  const totalDownloaded = metrics?.totalDownloaded || 0
+  // Format metrics from daemon with better fallbacks
+  const totalUploaded = metrics?.totalUploaded || metrics?.bytesUploaded || 0
+  const totalDownloaded = metrics?.totalDownloaded || metrics?.bytesDownloaded || 0
   const recentActivity = activity || []
   
   // Health data from syncStatus
@@ -143,19 +143,19 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
     
     setLastMetrics(metrics)
     
-    // Store as KB/s for chart
+    // Store as bytes/s for chart, convert to KB/s for display
     setTrafficHistory(prev => {
       const newHistory = [...prev, { 
         time: timeStr, 
-        upload: Math.round(uploadRate / 1024), 
-        download: Math.round(downloadRate / 1024),
+        upload: uploadRate / 1024, // Store as KB/s (decimal)
+        download: downloadRate / 1024, // Store as KB/s (decimal)
         uploadBytes: uploadRate,
         downloadBytes: downloadRate
       }]
       // Keep last 30 data points
       return newHistory.slice(-30)
     })
-  }, [metrics, lastMetrics, peakUpload, peakDownload])
+  }, [metrics])
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">

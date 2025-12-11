@@ -112,7 +112,8 @@ export function NetworkTrafficChart({
               fontSize={11} 
               tickLine={false} 
               axisLine={false} 
-              tickFormatter={(value) => `${value} KB/s`} 
+              tickFormatter={(value) => `${value.toFixed(2)} KB/s`}
+              domain={[0, 'auto']}
             />
             <Tooltip 
               contentStyle={{ 
