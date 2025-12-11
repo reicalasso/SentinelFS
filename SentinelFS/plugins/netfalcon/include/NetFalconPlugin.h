@@ -184,11 +184,11 @@ private:
     DiscoveryService discoveryService_;
     BandwidthManager bandwidthManager_;
     
-    // Relay transport (owned separately for direct access)
-    std::unique_ptr<RelayTransport> relayTransport_;
+    // Relay transport (owned by TransportRegistry, raw pointer for direct access)
+    RelayTransport* relayTransport_{nullptr};
     
-    // WebRTC transport
-    std::unique_ptr<WebRTCTransport> webrtcTransport_;
+    // WebRTC transport (owned by TransportRegistry, raw pointer for direct access)
+    WebRTCTransport* webrtcTransport_{nullptr};
     
     // State
     int listeningPort_{0};

@@ -483,9 +483,9 @@ std::vector<uint8_t> SessionManager::computeAuthDigest(
     data.insert(data.end(), serverPeerId.begin(), serverPeerId.end());
     data.insert(data.end(), primarySessionCode_.begin(), primarySessionCode_.end());
     
-    // HMAC with encryption key or derived key
-    if (!encryptionKey_.empty()) {
-        return Crypto::hmacSHA256(data, encryptionKey_);
+    // HMAC with MAC key (key separation) or derived key
+    if (!keys_.macKey.empty()) {
+        return Crypto::hmacSHA256(data, keys_.macKey);
     }
     
     // Fallback: hash with session code as key

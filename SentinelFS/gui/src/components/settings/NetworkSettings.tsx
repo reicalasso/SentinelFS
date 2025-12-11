@@ -19,10 +19,33 @@ interface NetworkSettingsProps {
 type TransportStrategy = 'FALLBACK_CHAIN' | 'PREFER_FAST' | 'PREFER_RELIABLE' | 'ADAPTIVE'
 
 const strategyDescriptions: Record<TransportStrategy, string> = {
-  'FALLBACK_CHAIN': 'Try transports in order: TCP → QUIC → Relay',
-  'PREFER_FAST': 'Select transport with lowest latency',
-  'PREFER_RELIABLE': 'Select transport with lowest packet loss',
-  'ADAPTIVE': 'Dynamically select based on network conditions'
+  'ADAPTIVE': 'Akıllı seçim: NAT, gecikme ve dosya boyutuna göre',
+  'PREFER_FAST': 'En düşük gecikme (QUIC öncelikli)',
+  'PREFER_RELIABLE': 'En güvenilir bağlantı (TCP öncelikli)',
+  'FALLBACK_CHAIN': 'Sırayla dene: QUIC → TCP → WebRTC → Relay'
+}
+
+const transportInfo: Record<string, { description: string; useCase: string; color: string }> = {
+  tcp: {
+    description: 'Güvenilir, garanti teslimat',
+    useCase: 'Büyük dosyalar, güvenilir ağ',
+    color: 'emerald'
+  },
+  quic: {
+    description: 'Düşük gecikme, 0-RTT bağlantı',
+    useCase: 'Varsayılan, hızlı ağlar',
+    color: 'orange'
+  },
+  relay: {
+    description: 'NAT/Firewall arkası için köprü',
+    useCase: 'Firewall/Symmetric NAT',
+    color: 'violet'
+  },
+  webrtc: {
+    description: 'Tarayıcı tabanlı P2P',
+    useCase: 'Web arayüzü, NAT traversal dahili',
+    color: 'cyan'
+  }
 }
 
 const STORAGE_KEY_STRATEGY = 'netfalcon_strategy'
@@ -55,7 +78,7 @@ export function NetworkSettings({
         return JSON.parse(saved)
       } catch {}
     }
-    return { tcp: true, quic: false, relay: true, webrtc: false }
+    return { quic: true, tcp: true, webrtc: false, relay: true }
   })
   
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -153,57 +176,115 @@ export function NetworkSettings({
       </Section>
 
       {/* Active Transports */}
-      <Section title="Active Transports">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => toggleTransport('tcp')}
-            className={`px-4 py-2 rounded-lg border font-medium text-sm transition-all flex items-center gap-2 ${
-              transports.tcp
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                : 'border-border text-muted-foreground hover:border-emerald-500/50'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full ${transports.tcp ? 'bg-emerald-500' : 'bg-muted'}`} />
-            TCP
-          </button>
-          <button
+      <Section title="Transport Protokolleri">
+        <div className="space-y-3">
+          {/* QUIC - Varsayılan */}
+          <div 
             onClick={() => toggleTransport('quic')}
-            className={`px-4 py-2 rounded-lg border font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
               transports.quic
-                ? 'border-orange-500 bg-orange-500/10 text-orange-300'
-                : 'border-border text-muted-foreground hover:border-orange-500/50'
+                ? 'border-orange-500 bg-orange-500/10 ring-1 ring-orange-500/30'
+                : 'border-border hover:border-orange-500/50'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full ${transports.quic ? 'bg-orange-400' : 'bg-muted'}`} />
-            QUIC
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-300">ngtcp2</span>
-          </button>
-          <button
-            onClick={() => toggleTransport('relay')}
-            className={`px-4 py-2 rounded-lg border font-medium text-sm transition-all flex items-center gap-2 ${
-              transports.relay
-                ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                : 'border-border text-muted-foreground hover:border-violet-500/50'
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${transports.quic ? 'bg-orange-400' : 'bg-muted'}`} />
+                <div>
+                  <div className="font-semibold flex items-center gap-2">
+                    QUIC
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-300">Varsayılan</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{transportInfo.quic.description}</p>
+                </div>
+              </div>
+              <div className="text-xs text-right text-muted-foreground">
+                <div className="font-medium text-orange-400">Hızlı ağlar</div>
+                <div>0-RTT bağlantı</div>
+              </div>
+            </div>
+          </div>
+
+          {/* TCP */}
+          <div 
+            onClick={() => toggleTransport('tcp')}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              transports.tcp
+                ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30'
+                : 'border-border hover:border-emerald-500/50'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full ${transports.relay ? 'bg-violet-500' : 'bg-muted'}`} />
-            Relay
-          </button>
-          <button
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${transports.tcp ? 'bg-emerald-500' : 'bg-muted'}`} />
+                <div>
+                  <div className="font-semibold">TCP</div>
+                  <p className="text-xs text-muted-foreground">{transportInfo.tcp.description}</p>
+                </div>
+              </div>
+              <div className="text-xs text-right text-muted-foreground">
+                <div className="font-medium text-emerald-400">Büyük dosyalar</div>
+                <div>Garanti teslimat</div>
+              </div>
+            </div>
+          </div>
+
+          {/* WebRTC */}
+          <div 
             onClick={() => toggleTransport('webrtc')}
-            className={`px-4 py-2 rounded-lg border font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
               transports.webrtc
-                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                : 'border-border text-muted-foreground hover:border-cyan-500/50'
+                ? 'border-cyan-500 bg-cyan-500/10 ring-1 ring-cyan-500/30'
+                : 'border-border hover:border-cyan-500/50'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full ${transports.webrtc ? 'bg-cyan-400' : 'bg-muted'}`} />
-            WebRTC
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-300">P2P</span>
-          </button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${transports.webrtc ? 'bg-cyan-400' : 'bg-muted'}`} />
+                <div>
+                  <div className="font-semibold flex items-center gap-2">
+                    WebRTC
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-300">P2P</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{transportInfo.webrtc.description}</p>
+                </div>
+              </div>
+              <div className="text-xs text-right text-muted-foreground">
+                <div className="font-medium text-cyan-400">Tarayıcı erişimi</div>
+                <div>NAT traversal dahili</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Relay */}
+          <div 
+            onClick={() => toggleTransport('relay')}
+            className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              transports.relay
+                ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/30'
+                : 'border-border hover:border-violet-500/50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${transports.relay ? 'bg-violet-500' : 'bg-muted'}`} />
+                <div>
+                  <div className="font-semibold flex items-center gap-2">
+                    Relay
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-300">Fallback</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{transportInfo.relay.description}</p>
+                </div>
+              </div>
+              <div className="text-xs text-right text-muted-foreground">
+                <div className="font-medium text-violet-400">Her zaman çalışır</div>
+                <div>Firewall/Symmetric NAT</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          NetFalcon automatically selects the best transport based on your strategy
+        <p className="text-xs text-muted-foreground mt-3">
+          NetFalcon seçilen stratejiye göre en uygun transport'u otomatik seçer
         </p>
       </Section>
 

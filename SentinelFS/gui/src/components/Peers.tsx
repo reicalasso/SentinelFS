@@ -192,7 +192,8 @@ export function Peers({ peers }: { peers?: any[] }) {
       status: p.status || 'Disconnected',
       trusted: true,
       latency: p.latency >= 0 ? p.latency : -1,
-      lastSeen: p.latency >= 0 ? `${p.latency}ms` : 'Unknown'
+      lastSeen: p.latency >= 0 ? `${p.latency}ms` : 'Unknown',
+      transport: p.transport || 'QUIC' as 'TCP' | 'QUIC' | 'WebRTC' | 'Relay'
     })) : []
 
   return (

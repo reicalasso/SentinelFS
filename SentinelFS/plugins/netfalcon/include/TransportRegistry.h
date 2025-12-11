@@ -236,7 +236,7 @@ private:
     std::map<std::string, std::map<TransportType, ConnectionQuality>> qualityCache_;
     
     TransportStrategy strategy_{TransportStrategy::ADAPTIVE};
-    std::vector<TransportType> priorityOrder_{TransportType::QUIC, TransportType::TCP, TransportType::RELAY};
+    std::vector<TransportType> priorityOrder_{TransportType::QUIC, TransportType::TCP, TransportType::WEBRTC, TransportType::RELAY};
     NetworkEnvironment localEnv_;
     FailoverConfig failoverConfig_;
 };

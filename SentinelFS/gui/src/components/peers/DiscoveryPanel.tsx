@@ -35,7 +35,7 @@ export function DiscoveryPanel({
   const [sessionCodeCopied, setSessionCodeCopied] = useState(false)
   const [transportStatus, setTransportStatus] = useState<TransportStatus>({
     tcp: { enabled: true, listening: false },
-    quic: { enabled: false, listening: false },
+    quic: { enabled: true, listening: false },
     relay: { enabled: true, connected: false },
     webrtc: { enabled: false, ready: false }
   })
@@ -51,10 +51,10 @@ export function DiscoveryPanel({
       try {
         const parsed = JSON.parse(savedTransports)
         setTransportStatus(prev => ({
+          quic: { ...prev.quic, enabled: parsed.quic ?? true },
           tcp: { ...prev.tcp, enabled: parsed.tcp ?? true },
-          quic: { ...prev.quic, enabled: parsed.quic ?? false },
-          relay: { ...prev.relay, enabled: parsed.relay ?? true },
-          webrtc: { ...prev.webrtc, enabled: parsed.webrtc ?? false }
+          webrtc: { ...prev.webrtc, enabled: parsed.webrtc ?? false },
+          relay: { ...prev.relay, enabled: parsed.relay ?? true }
         }))
       } catch {}
     }
@@ -154,14 +154,8 @@ export function DiscoveryPanel({
           </div>
         </div>
         
-        {/* Transport Status Indicators */}
+        {/* Transport Status Indicators - Priority Order: QUIC > TCP > WebRTC > Relay */}
         <div className="hidden sm:flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
-            transportStatus.tcp.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-muted text-muted-foreground'
-          }`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${transportStatus.tcp.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'}`} />
-            TCP
-          </div>
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
             transportStatus.quic.enabled ? 'bg-orange-500/20 text-orange-300' : 'bg-muted text-muted-foreground'
           }`}>
@@ -169,16 +163,22 @@ export function DiscoveryPanel({
             QUIC
           </div>
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
-            transportStatus.relay.enabled ? 'bg-violet-500/20 text-violet-400' : 'bg-muted text-muted-foreground'
+            transportStatus.tcp.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-muted text-muted-foreground'
           }`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${transportStatus.relay.enabled ? 'bg-violet-500 animate-pulse' : 'bg-muted-foreground'}`} />
-            Relay
+            <div className={`w-1.5 h-1.5 rounded-full ${transportStatus.tcp.enabled ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground'}`} />
+            TCP
           </div>
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
             transportStatus.webrtc.enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-muted text-muted-foreground'
           }`}>
             <div className={`w-1.5 h-1.5 rounded-full ${transportStatus.webrtc.enabled ? 'bg-cyan-400 animate-pulse' : 'bg-muted-foreground'}`} />
             WebRTC
+          </div>
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+            transportStatus.relay.enabled ? 'bg-violet-500/20 text-violet-400' : 'bg-muted text-muted-foreground'
+          }`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${transportStatus.relay.enabled ? 'bg-violet-500 animate-pulse' : 'bg-muted-foreground'}`} />
+            Relay
           </div>
         </div>
       </div>
@@ -244,7 +244,16 @@ export function DiscoveryPanel({
           </div>
           <span className="text-xs text-muted-foreground">Strategy: {strategy.replace('_', ' ')}</span>
         </div>
+        {/* Priority Order: QUIC > TCP > WebRTC > Relay */}
         <div className="flex items-center gap-4 text-xs flex-wrap">
+          {transportStatus.quic.enabled && (
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-orange-400" />
+              <span className="font-medium text-orange-300">QUIC</span>
+              <span className="text-[10px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-300">Varsayılan</span>
+              {transportStatus.quic.listening && <span className="text-muted-foreground">(listening)</span>}
+            </div>
+          )}
           {transportStatus.tcp.enabled && (
             <div className="flex items-center gap-1.5">
               <Network className="w-3.5 h-3.5 text-emerald-400" />
@@ -252,25 +261,19 @@ export function DiscoveryPanel({
               {transportStatus.tcp.listening && <span className="text-muted-foreground">(listening)</span>}
             </div>
           )}
-          {transportStatus.quic.enabled && (
+          {transportStatus.webrtc.enabled && (
             <div className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-orange-400" />
-              <span className="font-medium text-orange-300">QUIC</span>
-              {transportStatus.quic.listening && <span className="text-muted-foreground">(listening)</span>}
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="font-medium text-cyan-400">WebRTC</span>
+              {transportStatus.webrtc.ready && <span className="text-emerald-400">(ready)</span>}
             </div>
           )}
           {transportStatus.relay.enabled && (
             <div className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-violet-400" />
               <span className="font-medium text-violet-400">Relay</span>
+              <span className="text-[10px] px-1 py-0.5 rounded bg-violet-500/20 text-violet-300">Fallback</span>
               {transportStatus.relay.connected && <span className="text-emerald-400">(connected)</span>}
-            </div>
-          )}
-          {transportStatus.webrtc.enabled && (
-            <div className="flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="font-medium text-cyan-400">WebRTC</span>
-              {transportStatus.webrtc.ready && <span className="text-emerald-400">(ready)</span>}
             </div>
           )}
           {!transportStatus.tcp.enabled && !transportStatus.quic.enabled && !transportStatus.relay.enabled && !transportStatus.webrtc.enabled && (

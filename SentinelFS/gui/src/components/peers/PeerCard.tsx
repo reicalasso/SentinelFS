@@ -11,7 +11,7 @@ interface PeerCardProps {
     trusted: boolean
     latency: number
     lastSeen: string
-    transport?: 'TCP' | 'QUIC' | 'Relay'
+    transport?: 'TCP' | 'QUIC' | 'WebRTC' | 'Relay'
   }
   index: number
   latencyHistory?: { time: string; latency: number }[]
@@ -88,10 +88,12 @@ export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps
               <Network className="w-3 h-3" /> Transport
             </div>
             <div className={`peer-card-stat-value text-xs ${
+              peer.transport === 'QUIC' ? 'text-orange-400' :
               peer.transport === 'TCP' ? 'text-emerald-400' : 
-              peer.transport === 'Relay' ? 'text-violet-400' : 'text-amber-400'
+              peer.transport === 'WebRTC' ? 'text-cyan-400' :
+              peer.transport === 'Relay' ? 'text-violet-400' : 'text-orange-400'
             }`}>
-              {peer.transport || 'TCP'}
+              {peer.transport || 'QUIC'}
             </div>
           </div>
         </div>

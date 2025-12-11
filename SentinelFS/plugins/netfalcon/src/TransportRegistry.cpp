@@ -276,14 +276,20 @@ ITransport* TransportRegistry::selectByEnvironment(const TransportSelectionConte
     bool needsRelay = localEnv_.needsRelay() || context.remoteEnv.needsRelay();
     
     if (needsRelay) {
-        auto it = transports_.find(TransportType::RELAY);
-        if (it != transports_.end()) {
-            return it->second.get();
+        // Try WebRTC first (has built-in NAT traversal via ICE)
+        auto webrtcIt = transports_.find(TransportType::WEBRTC);
+        if (webrtcIt != transports_.end()) {
+            return webrtcIt->second.get();
+        }
+        // Fall back to RELAY
+        auto relayIt = transports_.find(TransportType::RELAY);
+        if (relayIt != transports_.end()) {
+            return relayIt->second.get();
         }
     }
     
-    // Priority 2: Low latency preferred and QUIC available
-    if (context.lowLatencyPreferred && localEnv_.quicSupported && !localEnv_.udpBlocked) {
+    // Priority 2: Default - QUIC for fast networks (0-RTT, low latency)
+    if (localEnv_.quicSupported && !localEnv_.udpBlocked) {
         auto it = transports_.find(TransportType::QUIC);
         if (it != transports_.end()) {
             return it->second.get();
@@ -299,7 +305,7 @@ ITransport* TransportRegistry::selectByEnvironment(const TransportSelectionConte
         }
     }
     
-    // Priority 4: Check quality metrics if available
+    // Priority 4: Check quality metrics if available (EWMA-based selection)
     auto qualityIt = qualityCache_.find(context.peerId);
     if (qualityIt != qualityCache_.end() && !qualityIt->second.empty()) {
         // Find best transport by EWMA score
@@ -320,7 +326,7 @@ ITransport* TransportRegistry::selectByEnvironment(const TransportSelectionConte
         if (best) return best;
     }
     
-    // Priority 5: Default - QUIC > TCP > RELAY
+    // Priority 5: Default fallback order - QUIC > TCP > WebRTC > RELAY
     for (auto type : priorityOrder_) {
         auto it = transports_.find(type);
         if (it != transports_.end()) {

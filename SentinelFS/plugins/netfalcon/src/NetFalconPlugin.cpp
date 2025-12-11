@@ -86,30 +86,17 @@ void NetFalconPlugin::setupTransports() {
         }
     }
     
-    // Create Relay transport
-    if (config_.enableRelay) {
-        relayTransport_ = std::make_unique<RelayTransport>(eventBus_, &sessionManager_);
-        
-        relayTransport_->setEventCallback([this](const TransportEventData& event) {
-            handleTransportEvent(event);
-        });
-        
-        // Note: RelayTransport is not registered in TransportRegistry because
-        // it requires explicit server connection. It's accessed directly.
-        logger.log(LogLevel::DEBUG, "Relay transport created", "NetFalcon");
-    }
-    
-    // Create WebRTC transport
+    // Create WebRTC transport (before Relay - it has built-in NAT traversal)
     if (config_.enableWebRtc) {
         if (WebRTCTransport::isAvailable()) {
-            webrtcTransport_ = std::make_unique<WebRTCTransport>(eventBus_, &sessionManager_, &bandwidthManager_);
+            auto webrtcTransport = std::make_unique<WebRTCTransport>(eventBus_, &sessionManager_, &bandwidthManager_);
             
-            webrtcTransport_->setEventCallback([this](const TransportEventData& event) {
+            webrtcTransport->setEventCallback([this](const TransportEventData& event) {
                 handleTransportEvent(event);
             });
             
             // WebRTC requires signaling - set up callback for SDP/ICE exchange
-            webrtcTransport_->setSignalingCallback([this](const std::string& peerId, 
+            webrtcTransport->setSignalingCallback([this](const std::string& peerId, 
                                                           const std::string& type,
                                                           const std::string& data) {
                 // Publish signaling data through event bus for relay/other transport
@@ -118,10 +105,31 @@ void NetFalconPlugin::setupTransports() {
                 }
             });
             
-            logger.log(LogLevel::DEBUG, "WebRTC transport created", "NetFalcon");
+            // Keep a raw pointer for direct access
+            webrtcTransport_ = webrtcTransport.get();
+            
+            // Register in TransportRegistry for automatic selection
+            transportRegistry_.registerTransport(TransportType::WEBRTC, std::move(webrtcTransport));
+            logger.log(LogLevel::DEBUG, "WebRTC transport registered", "NetFalcon");
         } else {
             logger.log(LogLevel::WARN, "WebRTC enabled but library not available", "NetFalcon");
         }
+    }
+    
+    // Create Relay transport (fallback - always works)
+    if (config_.enableRelay) {
+        auto relayTransport = std::make_unique<RelayTransport>(eventBus_, &sessionManager_);
+        
+        relayTransport->setEventCallback([this](const TransportEventData& event) {
+            handleTransportEvent(event);
+        });
+        
+        // Keep a raw pointer for direct access (relay server connection)
+        relayTransport_ = relayTransport.get();
+        
+        // Register in TransportRegistry for automatic selection
+        transportRegistry_.registerTransport(TransportType::RELAY, std::move(relayTransport));
+        logger.log(LogLevel::DEBUG, "Relay transport registered", "NetFalcon");
     }
     
     // Set transport strategy
@@ -375,10 +383,13 @@ void NetFalconPlugin::setRelayEnabled(bool enabled) {
     logger.log(LogLevel::INFO, "Relay transport " + std::string(enabled ? "enabled" : "disabled"), "NetFalcon");
     
     if (enabled && !relayTransport_) {
-        relayTransport_ = std::make_unique<RelayTransport>(eventBus_, &sessionManager_);
-        relayTransport_->setEventCallback([this](const TransportEventData& event) {
+        // Create and register relay transport
+        auto relayTransport = std::make_unique<RelayTransport>(eventBus_, &sessionManager_);
+        relayTransport->setEventCallback([this](const TransportEventData& event) {
             handleTransportEvent(event);
         });
+        relayTransport_ = relayTransport.get();
+        transportRegistry_.registerTransport(TransportType::RELAY, std::move(relayTransport));
     } else if (!enabled && relayTransport_) {
         relayTransport_->disconnectFromServer();
     }
