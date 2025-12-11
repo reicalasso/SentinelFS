@@ -21,6 +21,7 @@
 #include <sys/un.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <poll.h>
 #include <sqlite3.h>
 #include <filesystem>
 #include <algorithm>
@@ -375,7 +376,7 @@ void IPCHandler::handleClient(int clientSocket) {
         
         // Non-blocking wait with poll instead of busy-wait usleep
         struct pollfd pfd;
-        pfd.fd = socket;
+        pfd.fd = clientSocket;
         pfd.events = POLLIN;
         poll(&pfd, 1, 10); // 10ms timeout
     }

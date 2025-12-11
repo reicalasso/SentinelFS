@@ -13,6 +13,7 @@
 #include "IStorageAPI.h"
 #include <vector>
 #include <string>
+#include <map>
 #include <functional>
 
 namespace SentinelFS {

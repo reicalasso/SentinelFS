@@ -11,6 +11,7 @@ find_package(SQLite3 REQUIRED)
 set(FALCON_SOURCES
     src/FalconStore.cpp
     src/MigrationManager.cpp
+    src/BatchOperations.cpp
 )
 
 # Header files

@@ -9,6 +9,7 @@
 #include <openssl/rand.h>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <sys/stat.h>
 
 namespace SentinelFS {
@@ -250,7 +251,37 @@ bool FileKeyStore::changePassword(const std::string& oldPassword,
     // Re-encrypt all keys with new password
     auto newMasterKey = deriveMasterKey(newPassword);
     
-    // TODO: Re-encrypt all stored keys
+    // Re-encrypt all stored keys
+    namespace fs = std::filesystem;
+    std::vector<std::string> keyIds;
+    
+    for (const auto& entry : fs::directory_iterator(storagePath_)) {
+        if (entry.path().extension() == ".key") {
+            keyIds.push_back(entry.path().stem().string());
+        }
+    }
+    
+    // Decrypt with old key, encrypt with new key
+    for (const auto& keyId : keyIds) {
+        auto keyData = load(keyId);  // Uses old masterKey_
+        if (keyData.empty()) continue;
+        
+        // Temporarily switch to new key
+        auto oldKey = masterKey_;
+        masterKey_ = newMasterKey;
+        
+        // Re-encrypt
+        std::string keyPath = keyFilePath(keyId);
+        std::vector<uint8_t> encrypted = encryptKey(keyData);
+        
+        std::ofstream keyFile(keyPath, std::ios::binary);
+        if (keyFile.good()) {
+            keyFile.write(reinterpret_cast<char*>(encrypted.data()), encrypted.size());
+            chmod(keyPath.c_str(), 0600);
+        }
+        
+        masterKey_ = oldKey;  // Restore for next iteration
+    }
     
     masterKey_ = newMasterKey;
     return true;

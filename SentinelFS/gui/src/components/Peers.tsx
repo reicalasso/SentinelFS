@@ -23,7 +23,7 @@ interface RelayPeer {
   }
 }
 
-export function Peers({ peers }: { peers?: any[] }) {
+export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [discoverySettings, setDiscoverySettings] = useState({ udp: true, tcp: false })
   const [relayStatus, setRelayStatus] = useState({ enabled: false, connected: false })
@@ -250,4 +250,4 @@ export function Peers({ peers }: { peers?: any[] }) {
       />
     </div>
   )
-}
+})

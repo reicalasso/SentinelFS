@@ -5,6 +5,7 @@
 
 #include "BatchQueries.h"
 #include "Logger.h"
+#include <map>
 #include <sqlite3.h>
 
 namespace SentinelFS {

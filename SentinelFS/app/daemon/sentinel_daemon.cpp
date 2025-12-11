@@ -437,7 +437,7 @@ int main(int argc, char* argv[]) {
                           << ", disconnected=" << disconnectCount << std::endl;
             }
         }
-    });
+    }));
 
     // --- Status Display Thread ---
     daemon.registerThread(std::thread([&]() {
@@ -478,8 +478,7 @@ int main(int argc, char* argv[]) {
     daemon.run();
 
     // --- Cleanup ---
-    if (statusThread.joinable()) statusThread.join();
-    if (rttThread.joinable()) rttThread.join();
+    // Threads are managed by daemon.registerThread() and cleaned up in DaemonCore::shutdown()
     
     ipcHandler.stop();
     metricsServer.stop();

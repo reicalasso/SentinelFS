@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 #include <functional>
 #include <chrono>
 #include <optional>
@@ -383,6 +384,11 @@ public:
     bool blockPeer(const std::string& peerId) override;
     bool unblockPeer(const std::string& peerId) override;
     bool isPeerBlocked(const std::string& peerId) override;
+    
+    // Batch operations for performance
+    bool batchUpdatePeerLatencies(const std::map<std::string, int>& latencies);
+    int batchUpsertPeers(const std::vector<PeerInfo>& peers);
+    std::map<std::string, PeerInfo> batchGetPeers(const std::vector<std::string>& peerIds);
     
     // Config storage
     bool setConfig(const std::string& key, const std::string& value) override;
