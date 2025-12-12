@@ -80,7 +80,8 @@ namespace SentinelFS {
         // This reduces task scheduling overhead
         constexpr size_t BATCH_SIZE = 16;  // Process 16 blocks per task
         
-        ThreadPool pool(0); // Use hardware concurrency by default
+        // Use global thread pool to avoid repeated construction overhead
+        ThreadPool& pool = ThreadPool::global();
         std::vector<std::future<void>> futures;
         std::mutex sigMutex;
 
@@ -199,6 +200,11 @@ namespace SentinelFS {
 
         fillBuffer();
 
+        // Use rolling hash for efficient sliding window
+        RollingAdler32 rollingHash;
+        bool hashInitialized = false;
+        size_t currentWindowSize = 0;
+
         while (bufSize > 0 || !eof) {
             if (bufSize == 0 && eof) {
                 break;
@@ -218,7 +224,17 @@ namespace SentinelFS {
             size_t windowSize = (bufSize < BLOCK_SIZE) ? bufSize : BLOCK_SIZE;
             const uint8_t* base = buffer.data() + bufStart;
 
-            uint32_t currentAdler = calculateAdler32(base, windowSize);
+            // Initialize or update rolling hash
+            uint32_t currentAdler;
+            if (!hashInitialized || windowSize != currentWindowSize) {
+                // First time or window size changed - compute from scratch
+                rollingHash.init(base, windowSize);
+                hashInitialized = true;
+                currentWindowSize = windowSize;
+                currentAdler = rollingHash.get();
+            } else {
+                currentAdler = rollingHash.get();
+            }
             
             bool matchFound = false;
             auto it = signatureMap.find(currentAdler);
@@ -240,6 +256,8 @@ namespace SentinelFS {
                         bufStart += windowSize;
                         bufSize  -= windowSize;
                         matchFound = true;
+                        // Reset hash - next window needs fresh computation
+                        hashInitialized = false;
                         break;
                     }
                 }
@@ -248,6 +266,17 @@ namespace SentinelFS {
             if (!matchFound) {
                 // No matching block: emit one literal byte and advance by 1
                 literalBuffer.push_back(*base);
+                
+                // Roll the hash forward by 1 byte if we have enough data
+                if (bufSize > windowSize && hashInitialized) {
+                    uint8_t oldByte = *base;
+                    uint8_t newByte = *(base + windowSize);
+                    rollingHash.roll(oldByte, newByte, windowSize);
+                } else {
+                    // Not enough data to roll, will reinitialize next iteration
+                    hashInitialized = false;
+                }
+                
                 bufStart += 1;
                 bufSize  -= 1;
             }

@@ -139,17 +139,40 @@ void OfflineQueue::processLoop() {
                 if (op.retryCount < MAX_RETRIES) {
                     std::lock_guard<std::mutex> lock(mutex_);
                     queue_.push(op);
-                    logger.warn("Retry " + std::to_string(op.retryCount) + 
-                               " for: " + op.filePath, "OfflineQueue");
+                    
+                    int backoffDelay = calculateBackoffDelay(op.retryCount);
+                    logger.warn("Retry " + std::to_string(op.retryCount) + "/" + 
+                               std::to_string(MAX_RETRIES) + " for: " + op.filePath + 
+                               " (next attempt in " + std::to_string(backoffDelay/1000) + "s)", 
+                               "OfflineQueue");
+                    
+                    // Exponential backoff delay before next attempt
+                    std::this_thread::sleep_for(std::chrono::milliseconds(backoffDelay));
                 } else {
-                    logger.error("Max retries exceeded for: " + op.filePath, "OfflineQueue");
+                    logger.error("Max retries (" + std::to_string(MAX_RETRIES) + 
+                                ") exceeded for: " + op.filePath + " - operation dropped", 
+                                "OfflineQueue");
                 }
-                
-                // Delay before next attempt
-                std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
             }
         }
     }
+}
+
+int OfflineQueue::calculateBackoffDelay(int retryCount) {
+    // Exponential backoff: base * 2^retry with jitter
+    // Retry 1: 1s, Retry 2: 2s, Retry 3: 4s, Retry 4: 8s, Retry 5: 16s (capped at 60s)
+    int delay = BASE_RETRY_DELAY_MS * (1 << retryCount);
+    
+    // Cap at maximum delay
+    if (delay > MAX_RETRY_DELAY_MS) {
+        delay = MAX_RETRY_DELAY_MS;
+    }
+    
+    // Add jitter (±20%) to prevent thundering herd
+    int jitter = (delay * 20) / 100;
+    delay += (std::rand() % (2 * jitter + 1)) - jitter;
+    
+    return delay;
 }
 
 bool OfflineQueue::tryProcess(QueuedOperation& op) {

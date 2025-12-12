@@ -235,6 +235,52 @@ export function DiscoveryPanel({
         </div>
       </div>
 
+      {/* Session Code Section */}
+      <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Key className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Session Code</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {localSessionCode ? (
+              <>
+                <code className="px-3 py-1.5 rounded-lg bg-background/50 border border-border font-mono text-sm tracking-widest">
+                  {localSessionCode.length === 6 
+                    ? `${localSessionCode.slice(0, 3)}-${localSessionCode.slice(3)}`
+                    : localSessionCode}
+                </code>
+                <button
+                  onClick={copySessionCode}
+                  className="p-2 rounded-lg hover:bg-background/50 transition-colors"
+                  title="Copy session code"
+                >
+                  {sessionCodeCopied ? (
+                    <Check className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-amber-400 px-2 py-1 rounded bg-amber-500/10">Not Set</span>
+            )}
+            <button
+              onClick={onRegenerateCode}
+              className="p-2 rounded-lg hover:bg-background/50 transition-colors"
+              title={localSessionCode ? "Generate new code" : "Generate code"}
+            >
+              <RefreshCw className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          {localSessionCode 
+            ? "Share this code with peers to enable secure connections"
+            : "Click refresh to generate a session code for secure peer connections"}
+        </p>
+      </div>
+
       {/* Connection Quality Indicator */}
       <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
         <div className="flex items-center justify-between mb-2">

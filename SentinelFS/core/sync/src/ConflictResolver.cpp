@@ -108,20 +108,21 @@ bool ConflictResolver::applyNewestWins(
     const std::string& localPath,
     const std::vector<uint8_t>& remoteData
 ) {
+    auto& logger = Logger::instance();
     try {
         if (conflict.remoteTimestamp > conflict.localTimestamp) {
             // Remote is newer, overwrite local
             std::ofstream file(localPath, std::ios::binary);
             file.write(reinterpret_cast<const char*>(remoteData.data()), remoteData.size());
             file.close();
-            std::cout << "✓ Applied NEWEST_WINS: Remote version is newer" << std::endl;
+            logger.info("Applied NEWEST_WINS: Remote version is newer", "ConflictResolver");
         } else {
             // Local is newer or equal, keep it
-            std::cout << "✓ Applied NEWEST_WINS: Local version is newer/equal" << std::endl;
+            logger.info("Applied NEWEST_WINS: Local version is newer/equal", "ConflictResolver");
         }
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Failed to apply NEWEST_WINS: " << e.what() << std::endl;
+        logger.error("Failed to apply NEWEST_WINS: " + std::string(e.what()), "ConflictResolver");
         return false;
     }
 }
@@ -131,6 +132,7 @@ bool ConflictResolver::applyKeepBoth(
     const std::string& localPath,
     const std::vector<uint8_t>& remoteData
 ) {
+    auto& logger = Logger::instance();
     try {
         namespace fs = std::filesystem;
         
@@ -147,7 +149,7 @@ bool ConflictResolver::applyKeepBoth(
         std::string localConflictPath = generateConflictPath(localPath, "local_" + timestamp);
         if (fs::exists(localPath)) {
             fs::copy_file(localPath, localConflictPath, fs::copy_options::overwrite_existing);
-            std::cout << "✓ Saved local version: " << localConflictPath << std::endl;
+            logger.info("Saved local version: " + localConflictPath, "ConflictResolver");
         }
         
         // Save remote version with .conflict.remote suffix
@@ -158,12 +160,12 @@ bool ConflictResolver::applyKeepBoth(
         std::ofstream remoteFile(remoteConflictPath, std::ios::binary);
         remoteFile.write(reinterpret_cast<const char*>(remoteData.data()), remoteData.size());
         remoteFile.close();
-        std::cout << "✓ Saved remote version: " << remoteConflictPath << std::endl;
+        logger.info("Saved remote version: " + remoteConflictPath, "ConflictResolver");
         
         // Keep local as-is (user decides which to use)
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Failed to apply KEEP_BOTH: " << e.what() << std::endl;
+        logger.error("Failed to apply KEEP_BOTH: " + std::string(e.what()), "ConflictResolver");
         return false;
     }
 }
@@ -173,21 +175,23 @@ bool ConflictResolver::applyLargestWins(
     const std::string& localPath,
     const std::vector<uint8_t>& remoteData
 ) {
+    auto& logger = Logger::instance();
     try {
         if (conflict.remoteSize > conflict.localSize) {
             // Remote is larger, overwrite local
             std::ofstream file(localPath, std::ios::binary);
             file.write(reinterpret_cast<const char*>(remoteData.data()), remoteData.size());
             file.close();
-            std::cout << "✓ Applied LARGEST_WINS: Remote version is larger (" 
-                      << conflict.remoteSize << " > " << conflict.localSize << " bytes)" << std::endl;
+            logger.info("Applied LARGEST_WINS: Remote version is larger (" + 
+                       std::to_string(conflict.remoteSize) + " > " + 
+                       std::to_string(conflict.localSize) + " bytes)", "ConflictResolver");
         } else {
             // Local is larger or equal, keep it
-            std::cout << "✓ Applied LARGEST_WINS: Local version is larger/equal" << std::endl;
+            logger.info("Applied LARGEST_WINS: Local version is larger/equal", "ConflictResolver");
         }
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Failed to apply LARGEST_WINS: " << e.what() << std::endl;
+        logger.error("Failed to apply LARGEST_WINS: " + std::string(e.what()), "ConflictResolver");
         return false;
     }
 }

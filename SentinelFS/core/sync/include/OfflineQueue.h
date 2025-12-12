@@ -153,8 +153,16 @@ private:
     std::thread processorThread_;
     
     static constexpr int MAX_RETRIES = 5;
-    static constexpr int RETRY_DELAY_MS = 5000;
+    static constexpr int BASE_RETRY_DELAY_MS = 1000;  // 1 second base delay
+    static constexpr int MAX_RETRY_DELAY_MS = 60000;  // Max 60 seconds
     static constexpr int PROCESS_INTERVAL_MS = 1000;
+    
+    /**
+     * @brief Calculate exponential backoff delay
+     * @param retryCount Current retry attempt (0-based)
+     * @return Delay in milliseconds with exponential backoff and jitter
+     */
+    static int calculateBackoffDelay(int retryCount);
 };
 
 } // namespace sfs::sync

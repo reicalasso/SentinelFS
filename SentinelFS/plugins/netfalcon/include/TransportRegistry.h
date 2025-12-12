@@ -213,6 +213,11 @@ public:
     void shutdownAll();
 
     /**
+     * @brief Get list of currently connected peer IDs
+     */
+    std::vector<std::string> getConnectedPeerIds() const;
+
+    /**
      * @brief Convert transport type to string
      */
     static std::string transportTypeToString(TransportType type);

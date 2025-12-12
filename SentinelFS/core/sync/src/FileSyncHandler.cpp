@@ -10,7 +10,6 @@
 #include <iomanip>
 #include <sstream>
 #include <regex>
-#include <sqlite3.h>
 #include <fnmatch.h>
 
 namespace SentinelFS {
@@ -26,25 +25,38 @@ void FileSyncHandler::loadIgnorePatterns() {
     ignorePatterns_.clear();
     if (!storage_) return;
     
-    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-    if (!db) return;
-    
-    const char* sql = "SELECT pattern FROM ignore_patterns WHERE active = 1";
-    sqlite3_stmt* stmt;
-    
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            const char* pattern = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            if (pattern) {
-                ignorePatterns_.push_back(pattern);
-            }
-        }
-        sqlite3_finalize(stmt);
-    }
+    // Use IStorageAPI abstraction instead of direct SQLite access
+    ignorePatterns_ = storage_->getIgnorePatterns();
     
     auto& logger = Logger::instance();
     logger.debug("Loaded " + std::to_string(ignorePatterns_.size()) + " ignore patterns", "FileSyncHandler");
 }
+
+// Default ignore patterns - can be overridden via database
+const std::vector<std::string> FileSyncHandler::DEFAULT_IGNORE_PATTERNS = {
+    // Version control
+    ".git/",
+    ".svn/",
+    ".hg/",
+    // Package managers
+    "node_modules/",
+    "__pycache__/",
+    ".venv/",
+    "venv/",
+    // Build artifacts
+    ".pio/",
+    "build/",
+    "dist/",
+    "target/",
+    ".cache/",
+    // IDE
+    ".idea/",
+    ".vscode/",
+    // Temp files
+    "*.swp",
+    "*.tmp",
+    "*~"
+};
 
 bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
     // Calculate relative path
@@ -58,35 +70,12 @@ bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
     
     std::string filename = std::filesystem::path(absolutePath).filename().string();
     
-    // Built-in ignore patterns (always active)
-    // Git
-    if (absolutePath.find("/.git/") != std::string::npos) return true;
-    if (filename == ".git") return true;
-    // SVN
-    if (absolutePath.find("/.svn/") != std::string::npos) return true;
-    // Node.js
-    if (absolutePath.find("/node_modules/") != std::string::npos) return true;
-    // Python
-    if (absolutePath.find("/__pycache__/") != std::string::npos) return true;
-    if (absolutePath.find("/.venv/") != std::string::npos) return true;
-    if (absolutePath.find("/venv/") != std::string::npos) return true;
-    // Build artifacts
-    if (absolutePath.find("/.pio/") != std::string::npos) return true;
-    if (absolutePath.find("/build/") != std::string::npos) return true;
-    if (absolutePath.find("/dist/") != std::string::npos) return true;
-    if (absolutePath.find("/target/") != std::string::npos) return true;  // Rust
-    // IDE
-    if (absolutePath.find("/.idea/") != std::string::npos) return true;
-    if (absolutePath.find("/.vscode/") != std::string::npos) return true;
-    // Temp files
-    if (filename.back() == '~') return true;
-    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".swp") return true;
-    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".tmp") return true;
-    if (filename.size() > 1 && filename[0] == '#' && filename.back() == '#') return true;  // Emacs
+    // Check Emacs autosave files (special pattern: #filename#)
+    if (filename.size() > 1 && filename[0] == '#' && filename.back() == '#') return true;
     
-    for (const auto& pattern : ignorePatterns_) {
+    // Helper lambda to check a single pattern
+    auto matchesPattern = [&](const std::string& pattern) -> bool {
         // 1. Check exact filename match (e.g. "*.log")
-        // Using 0 instead of FNM_PATHNAME allows * to match across directories for simple globs
         if (fnmatch(pattern.c_str(), filename.c_str(), 0) == 0) {
             return true;
         }
@@ -97,7 +86,7 @@ bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
         }
         
         // 3. Check directory patterns (ending with /)
-        if (pattern.back() == '/') {
+        if (!pattern.empty() && pattern.back() == '/') {
             std::string dirPattern = pattern.substr(0, pattern.length() - 1);
             
             // Check if this IS the ignored directory
@@ -107,11 +96,23 @@ bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
             if (relativePath.find(pattern) == 0) return true;
             
             // Check if it's a component in the path (e.g. "src/node_modules/foo")
-            // We want to match "/node_modules/" inside the path
             std::string component = "/" + dirPattern + "/";
             if (("/" + relativePath).find(component) != std::string::npos) return true;
         }
+        
+        return false;
+    };
+    
+    // Check default patterns first
+    for (const auto& pattern : DEFAULT_IGNORE_PATTERNS) {
+        if (matchesPattern(pattern)) return true;
     }
+    
+    // Check user-configured patterns from database
+    for (const auto& pattern : ignorePatterns_) {
+        if (matchesPattern(pattern)) return true;
+    }
+    
     return false;
 }
 
@@ -201,6 +202,26 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
     }
 }
 
+FileSyncHandler::FileMetadataResult FileSyncHandler::computeFileMetadata(const std::string& fullPath) {
+    FileMetadataResult result{};
+    result.valid = false;
+    
+    try {
+        if (!std::filesystem::exists(fullPath)) {
+            return result;
+        }
+        
+        result.hash = calculateFileHash(fullPath);
+        result.size = std::filesystem::file_size(fullPath);
+        result.timestamp = std::time(nullptr);
+        result.valid = true;
+    } catch (const std::exception&) {
+        // Leave result.valid = false
+    }
+    
+    return result;
+}
+
 bool FileSyncHandler::updateFileInDatabase(const std::string& fullPath) {
     auto& logger = Logger::instance();
     
@@ -241,7 +262,7 @@ bool FileSyncHandler::updateFileInDatabase(const std::string& fullPath) {
     }
 }
 
-void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
+void FileSyncHandler::broadcastUpdate(const std::string& fullPath, const std::string& precomputedHash, long long precomputedSize) {
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
     
@@ -258,9 +279,19 @@ void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
             return;
         }
 
-        // Get file info for broadcast
-        std::string hash = calculateFileHash(fullPath);
-        long long size = std::filesystem::file_size(fullPath);
+        // Use pre-computed values if available, otherwise compute
+        std::string hash = precomputedHash;
+        long long size = precomputedSize;
+        
+        if (hash.empty() || size < 0) {
+            auto metadata = computeFileMetadata(fullPath);
+            if (!metadata.valid) {
+                logger.warn("Cannot broadcast - failed to compute metadata: " + filename, "FileSyncHandler");
+                return;
+            }
+            hash = metadata.hash;
+            size = metadata.size;
+        }
         
         // Get connected peers
         auto peers = storage_->getAllPeers();
@@ -269,14 +300,7 @@ void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
             logger.debug("No peers connected, marking file as synced locally: " + filename, "FileSyncHandler");
             
             // Mark as synced even without peers (no one to broadcast to)
-            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-            const char* updateSyncedSql = "UPDATE files SET synced = 1 WHERE path = ?";
-            sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, updateSyncedSql, -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
+            storage_->markFileSynced(fullPath, true);
             return;
         }
         
@@ -318,14 +342,7 @@ void FileSyncHandler::broadcastUpdate(const std::string& fullPath) {
             metrics.incrementFilesSynced();
             
             // Mark file as synced after successful broadcast
-            sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-            const char* updateSyncedSql = "UPDATE files SET synced = 1 WHERE path = ?";
-            sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, updateSyncedSql, -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
+            storage_->markFileSynced(fullPath, true);
         }
         
         if (failCount > 0) {
@@ -358,14 +375,28 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         return;
     }
     
-    // ALWAYS update database (even when sync is paused)
-    // This ensures GUI shows correct file information
-    bool dbUpdated = updateFileInDatabase(fullPath);
-    
-    if (!dbUpdated) {
-        logger.warn("Skipping broadcast - database update failed for: " + filename, "FileSyncHandler");
+    // Compute metadata ONCE for both database update and broadcast
+    auto metadata = computeFileMetadata(fullPath);
+    if (!metadata.valid) {
+        // File might have been deleted
+        if (!std::filesystem::exists(fullPath)) {
+            storage_->removeFile(fullPath);
+            logger.info("File removed from DB: " + filename, "FileSyncHandler");
+        } else {
+            logger.warn("Failed to compute metadata for: " + filename, "FileSyncHandler");
+        }
         return;
     }
+    
+    // ALWAYS update database (even when sync is paused)
+    // This ensures GUI shows correct file information
+    if (!storage_->addFile(fullPath, metadata.hash, metadata.timestamp, metadata.size)) {
+        logger.error("Failed to update database for file: " + filename, "FileSyncHandler");
+        return;
+    }
+    
+    logger.info("💾 Database updated for file: " + filename + " (" + std::to_string(metadata.size) + " bytes)" + 
+               (syncEnabled_ ? " [will broadcast]" : " [pending - paused]"), "FileSyncHandler");
     
     // Only broadcast if sync is enabled
     if (!syncEnabled_) {
@@ -373,8 +404,8 @@ void FileSyncHandler::handleFileModified(const std::string& fullPath) {
         return;
     }
     
-    // Broadcast to peers
-    broadcastUpdate(fullPath);
+    // Broadcast to peers with pre-computed hash and size (avoids re-computation)
+    broadcastUpdate(fullPath, metadata.hash, metadata.size);
 }
 
 void FileSyncHandler::broadcastDelete(const std::string& fullPath) {
@@ -456,50 +487,29 @@ void FileSyncHandler::broadcastAllFilesToPeer(const std::string& peerId) {
     logger.info("Broadcasting all files to newly connected peer: " + peerId, "FileSyncHandler");
     
     try {
-        // Get all files from database
-        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-        if (!db) {
-            logger.error("Database connection is null", "FileSyncHandler");
-            return;
-        }
-        
-        const char* selectSql = "SELECT path, hash, size FROM files";
-        sqlite3_stmt* stmt;
-        
-        if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) {
-            logger.error("Failed to prepare select statement for files", "FileSyncHandler");
-            return;
-        }
+        // Get all files from database using IStorageAPI abstraction
+        auto files = storage_->getFilesInFolder(watchDirectory_);
         
         int successCount = 0;
         int failCount = 0;
         
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            const char* pathRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            const char* hashRaw = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            int64_t size = sqlite3_column_int64(stmt, 2);
-            
-            if (!pathRaw || !hashRaw) continue;
-            
-            std::string fullPath = pathRaw;
-            std::string hash = hashRaw;
-            
+        for (const auto& file : files) {
             // Check if file still exists
-            if (!std::filesystem::exists(fullPath)) {
+            if (!std::filesystem::exists(file.path)) {
                 continue;
             }
             
             // Calculate relative path
-            std::string relativePath = fullPath;
-            if (fullPath.find(watchDirectory_) == 0) {
-                relativePath = fullPath.substr(watchDirectory_.length());
+            std::string relativePath = file.path;
+            if (file.path.find(watchDirectory_) == 0) {
+                relativePath = file.path.substr(watchDirectory_.length());
                 if (!relativePath.empty() && relativePath[0] == '/') {
                     relativePath = relativePath.substr(1);
                 }
             }
             
             // Send UPDATE_AVAILABLE to specific peer
-            std::string updateMsg = "UPDATE_AVAILABLE|" + relativePath + "|" + hash + "|" + std::to_string(size);
+            std::string updateMsg = "UPDATE_AVAILABLE|" + relativePath + "|" + file.hash + "|" + std::to_string(file.size);
             std::vector<uint8_t> payload(updateMsg.begin(), updateMsg.end());
             
             if (network_->sendData(peerId, payload)) {
@@ -508,8 +518,6 @@ void FileSyncHandler::broadcastAllFilesToPeer(const std::string& peerId) {
                 failCount++;
             }
         }
-        
-        sqlite3_finalize(stmt);
         
         logger.info("Sent " + std::to_string(successCount) + " file update(s) to peer " + peerId + 
                    (failCount > 0 ? " (" + std::to_string(failCount) + " failed)" : ""), "FileSyncHandler");
@@ -538,34 +546,13 @@ void FileSyncHandler::handleFileDeleted(const std::string& fullPath) {
     
     logger.info("File deleted: " + filename + " - removing from database", "FileSyncHandler");
 
-    // Remove from database
-    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-    if (!db) {
-        logger.error("Database connection is null", "FileSyncHandler");
-        return;
-    }
-
-    const char* deleteSql = "DELETE FROM files WHERE path = ?";
-    sqlite3_stmt* stmt;
-    
-    bool dbUpdated = false;
-    if (sqlite3_prepare_v2(db, deleteSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, fullPath.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_DONE) {
-            dbUpdated = true;
-            logger.debug("Removed file from database: " + filename, "FileSyncHandler");
-        } else {
-            logger.error("Failed to execute delete statement for: " + filename, "FileSyncHandler");
-        }
-        sqlite3_finalize(stmt);
-    } else {
-        logger.error("Failed to prepare delete statement for: " + filename, "FileSyncHandler");
-    }
-    
-    if (!dbUpdated) {
+    // Remove from database using IStorageAPI abstraction
+    if (!storage_->removeFile(fullPath)) {
         logger.warn("Skipping broadcast - database deletion failed for: " + filename, "FileSyncHandler");
         return;
     }
+    
+    logger.debug("Removed file from database: " + filename, "FileSyncHandler");
     
     // Only broadcast if sync is enabled
     if (!syncEnabled_) {

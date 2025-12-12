@@ -16,11 +16,24 @@ namespace SentinelFS {
      *
      * Lightweight utility used via composition (e.g. by DeltaEngine)
      * to parallelize independent jobs without introducing global state.
+     * 
+     * For shared usage across components, use the global() singleton.
      */
     class ThreadPool {
     public:
         explicit ThreadPool(std::size_t threadCount);
         ~ThreadPool();
+        
+        /**
+         * @brief Get the global shared thread pool instance.
+         * 
+         * Uses hardware concurrency by default. Thread-safe lazy initialization.
+         * Prefer this over creating new ThreadPool instances for short-lived operations.
+         */
+        static ThreadPool& global() {
+            static ThreadPool instance(std::thread::hardware_concurrency());
+            return instance;
+        }
 
         ThreadPool(const ThreadPool&) = delete;
         ThreadPool& operator=(const ThreadPool&) = delete;

@@ -352,6 +352,24 @@ void TransportRegistry::shutdownAll() {
     qualityCache_.clear();
 }
 
+std::vector<std::string> TransportRegistry::getConnectedPeerIds() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> connectedPeers;
+    
+    // Check each transport for connected peers
+    for (const auto& [type, transport] : transports_) {
+        auto peers = transport->getConnectedPeers();
+        for (const auto& peerId : peers) {
+            // Avoid duplicates
+            if (std::find(connectedPeers.begin(), connectedPeers.end(), peerId) == connectedPeers.end()) {
+                connectedPeers.push_back(peerId);
+            }
+        }
+    }
+    
+    return connectedPeers;
+}
+
 std::string TransportRegistry::transportTypeToString(TransportType type) {
     switch (type) {
         case TransportType::TCP: return "TCP";

@@ -73,8 +73,10 @@ public:
     /**
      * @brief Broadcast file update to peers (only when sync enabled)
      * @param fullPath Absolute path to modified file
+     * @param hash Pre-computed hash (optional, avoids re-computation)
+     * @param size Pre-computed size (optional, avoids re-computation)
      */
-    void broadcastUpdate(const std::string& fullPath);
+    void broadcastUpdate(const std::string& fullPath, const std::string& hash = "", long long size = -1);
 
     /**
      * @brief Broadcast file deletion to peers (only when sync enabled)
@@ -89,6 +91,31 @@ public:
      * Used when a new peer connects to send them our file list.
      */
     void broadcastAllFilesToPeer(const std::string& peerId);
+
+    /**
+     * @brief Result of file metadata computation
+     */
+    struct FileMetadataResult {
+        std::string hash;
+        long long size;
+        long long timestamp;
+        bool valid;
+    };
+    
+    /**
+     * @brief Compute file metadata (hash, size, timestamp)
+     * @param fullPath Absolute path to file
+     * @return FileMetadataResult with computed values
+     */
+    FileMetadataResult computeFileMetadata(const std::string& fullPath);
+
+    /**
+     * @brief Default ignore patterns (VCS, build artifacts, IDE files, temp files)
+     * 
+     * These patterns are always applied. Users can add additional patterns
+     * via the database which are checked after these defaults.
+     */
+    static const std::vector<std::string> DEFAULT_IGNORE_PATTERNS;
 
 private:
     std::string calculateFileHash(const std::string& path);

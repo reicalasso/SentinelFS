@@ -44,6 +44,47 @@ namespace SentinelFS {
          * @return 32-bit Adler checksum.
          */
         static uint32_t calculateAdler32(const uint8_t* data, size_t len);
+        
+        /**
+         * @brief Rolling Adler-32 state for efficient sliding window computation
+         */
+        struct RollingAdler32 {
+            uint32_t a = 1;
+            uint32_t b = 0;
+            static constexpr uint32_t MOD_ADLER = 65521;
+            
+            /**
+             * @brief Initialize with a block of data
+             */
+            void init(const uint8_t* data, size_t len) {
+                a = 1;
+                b = 0;
+                for (size_t i = 0; i < len; ++i) {
+                    a = (a + data[i]) % MOD_ADLER;
+                    b = (b + a) % MOD_ADLER;
+                }
+            }
+            
+            /**
+             * @brief Roll the hash by removing oldByte and adding newByte
+             * @param oldByte The byte leaving the window
+             * @param newByte The byte entering the window
+             * @param windowSize The size of the sliding window
+             */
+            void roll(uint8_t oldByte, uint8_t newByte, size_t windowSize) {
+                // Remove contribution of oldByte
+                a = (a - oldByte + newByte + MOD_ADLER) % MOD_ADLER;
+                // b loses oldByte * windowSize and gains new 'a'
+                b = (b - (windowSize * oldByte) % MOD_ADLER + a - 1 + MOD_ADLER) % MOD_ADLER;
+            }
+            
+            /**
+             * @brief Get the current hash value
+             */
+            uint32_t get() const {
+                return (b << 16) | a;
+            }
+        };
 
         /**
          * @brief Calculate SHA-256 checksum.

@@ -222,6 +222,14 @@ namespace SentinelFS {
         virtual std::vector<std::string> getAvailableTransports() const {
             return {"tcp"};
         }
+        
+        /**
+         * @brief Get list of currently connected peer IDs.
+         * @return Vector of peer IDs that are currently connected.
+         */
+        virtual std::vector<std::string> getConnectedPeerIds() const {
+            return {};
+        }
     };
 }
 

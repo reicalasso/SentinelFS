@@ -40,15 +40,48 @@ export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
   const [relayPeers, setRelayPeers] = useState<RelayPeer[]>([])
   const [isLoadingRelayPeers, setIsLoadingRelayPeers] = useState(false)
   
-  // Local session code (generated or loaded)
+  // Local session code - synced between localStorage and daemon
   const [localSessionCode, setLocalSessionCode] = useState<string>(() => {
-    const saved = localStorage.getItem('sentinelfs_session_code')
-    if (saved) return saved
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    const code = Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-    localStorage.setItem('sentinelfs_session_code', code)
-    return code
+    // Initialize from localStorage
+    return localStorage.getItem('sentinelfs_session_code') || ''
   })
+  
+  // Fetch session code from daemon on mount and sync
+  useEffect(() => {
+    const fetchAndSyncSessionCode = async () => {
+      if (window.api) {
+        try {
+          const result = await window.api.sendCommand('NETFALCON_STATUS') as { success: boolean; output?: string }
+          if (result.success && result.output) {
+            const status = JSON.parse(result.output)
+            if (status.sessionCode) {
+              // Daemon has a code - use it and save to localStorage
+              setLocalSessionCode(status.sessionCode)
+              localStorage.setItem('sentinelfs_session_code', status.sessionCode)
+            } else {
+              // Daemon has no code - check if we have one in localStorage to send
+              const savedCode = localStorage.getItem('sentinelfs_session_code')
+              if (savedCode) {
+                await window.api.sendCommand(`SET_SESSION_CODE ${savedCode}`)
+                setLocalSessionCode(savedCode)
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+    fetchAndSyncSessionCode()
+    
+    // Also listen for config updates
+    const handleConfigUpdate = (event: CustomEvent) => {
+      if (event.detail?.sessionCode) {
+        setLocalSessionCode(event.detail.sessionCode)
+        localStorage.setItem('sentinelfs_session_code', event.detail.sessionCode)
+      }
+    }
+    window.addEventListener('config-updated' as any, handleConfigUpdate)
+    return () => window.removeEventListener('config-updated' as any, handleConfigUpdate)
+  }, [])
   
   // Load discovery settings from localStorage on mount
   useEffect(() => {
@@ -116,8 +149,8 @@ export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
   }
   
   const handleConnectRemote = async () => {
-    if (!remoteForm.hostname || !remoteForm.sessionCode) {
-      setConnectionError('Hostname and session code are required')
+    if (!remoteForm.hostname) {
+      setConnectionError('Hostname/IP is required')
       return
     }
     
@@ -125,25 +158,19 @@ export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
     setConnectionError(null)
     
     try {
-      const relayConfig = {
-        host: remoteForm.hostname,
-        port: parseInt(remoteForm.port) || 9000,
-        sessionCode: remoteForm.sessionCode
-      }
-      localStorage.setItem('sentinelfs_relay_config', JSON.stringify(relayConfig))
+      const host = remoteForm.hostname
+      const port = parseInt(remoteForm.port) || 9002
       
       if (window.api) {
-        const result = await window.api.sendCommand(`RELAY_CONNECT ${relayConfig.host}:${relayConfig.port} ${remoteForm.sessionCode}`)
-        if (!result.success) {
-          throw new Error(result.error || 'Connection failed')
+        // Use ADD_PEER for direct TCP connection
+        const result = await window.api.sendCommand(`ADD_PEER ${host}:${port}`) as { success: boolean; output?: string; error?: string }
+        if (!result.success || result.output?.includes('Error')) {
+          throw new Error(result.output || result.error || 'Connection failed')
         }
       }
       
-      await fetchRelayPeers(relayConfig.host, relayConfig.port, remoteForm.sessionCode)
-      
-      setRelayStatus({ enabled: true, connected: true })
       setShowAddRemote(false)
-      setRemoteForm({ hostname: '', port: '9000', sessionCode: '' })
+      setRemoteForm({ hostname: '', port: '9002', sessionCode: '' })
     } catch (err) {
       setConnectionError(err instanceof Error ? err.message : 'Connection failed')
     } finally {
@@ -166,11 +193,21 @@ export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
     }
   }
   
-  const regenerateSessionCode = () => {
+  const regenerateSessionCode = async () => {
+    // Generate 6-character code (same format as SecuritySettings)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    const code = Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    const code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    
+    // Save to localStorage immediately
     localStorage.setItem('sentinelfs_session_code', code)
     setLocalSessionCode(code)
+    
+    // Send to daemon
+    if (window.api) {
+      await window.api.sendCommand(`SET_SESSION_CODE ${code}`)
+      // Dispatch event so Settings page can update too
+      window.dispatchEvent(new CustomEvent('config-updated', { detail: { sessionCode: code } }))
+    }
   }
   
   const handleRefreshRelayPeers = () => {

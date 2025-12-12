@@ -124,6 +124,7 @@ public:
     void setTransportEnabled(const std::string& transport, bool enabled) override;
     bool isTransportEnabled(const std::string& transport) const override;
     std::vector<std::string> getAvailableTransports() const override;
+    std::vector<std::string> getConnectedPeerIds() const override;
 
     // NetFalcon-specific API
     

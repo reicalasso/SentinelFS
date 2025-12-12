@@ -3,6 +3,7 @@
 #include "IStorageAPI.h"
 #include <sstream>
 #include <sqlite3.h>
+#include <algorithm>
 
 namespace SentinelFS {
 
@@ -128,9 +129,11 @@ std::string PeerCommands::handlePeersJson() {
     // Get local peer info to filter out ourselves
     std::string localPeerId;
     int localPort = 0;
+    std::vector<std::string> connectedPeerIds;
     if (ctx_.network) {
         localPeerId = ctx_.network->getLocalPeerId();
         localPort = ctx_.network->getLocalPort();
+        connectedPeerIds = ctx_.network->getConnectedPeerIds();
     }
     
     ss << "{\"peers\": [";
@@ -148,6 +151,10 @@ std::string PeerCommands::handlePeersJson() {
             continue;
         }
         
+        // Check if peer is actually connected
+        bool isConnected = std::find(connectedPeerIds.begin(), connectedPeerIds.end(), p.id) != connectedPeerIds.end();
+        std::string actualStatus = isConnected ? "active" : "disconnected";
+        
         if (!first) ss << ",";
         first = false;
         
@@ -156,7 +163,7 @@ std::string PeerCommands::handlePeersJson() {
         ss << "\"ip\": \"" << p.ip << "\",";
         ss << "\"port\": " << p.port << ",";
         ss << "\"latency\": " << p.latency << ",";
-        ss << "\"status\": \"" << p.status << "\"";
+        ss << "\"status\": \"" << actualStatus << "\"";
         ss << "}";
     }
     ss << "]}\n";

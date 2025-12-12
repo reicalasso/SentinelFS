@@ -586,6 +586,10 @@ std::vector<std::string> NetFalconPlugin::getAvailableTransports() const {
     return transports;
 }
 
+std::vector<std::string> NetFalconPlugin::getConnectedPeerIds() const {
+    return transportRegistry_.getConnectedPeerIds();
+}
+
 } // namespace NetFalcon
 
 // Plugin factory functions

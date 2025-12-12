@@ -47,7 +47,7 @@ IPCHandler::IPCHandler(const std::string& socketPath,
     securityConfig_.socketPermissions = 0660;  // rw-rw----
     securityConfig_.requireSameUid = true;
     securityConfig_.auditConnections = false;
-    securityConfig_.maxCommandsPerMinute = 0;  // Disable rate limiting by default
+    securityConfig_.maxCommandsPerMinute = 12000;  // 1200 commands/minute (20/sec) - GUI needs higher limit
     
     initializeCommandHandlers();
 }
@@ -580,6 +580,7 @@ std::string IPCHandler::handleNetFalconStatus() {
     ss << "  \"strategy\": \"" << strategyName << "\",\n";
     ss << "  \"localPeerId\": \"" << (network_ ? network_->getLocalPeerId() : "N/A") << "\",\n";
     ss << "  \"listeningPort\": " << (network_ ? network_->getLocalPort() : 0) << ",\n";
+    ss << "  \"sessionCode\": \"" << (network_ ? network_->getSessionCode() : "") << "\",\n";
     ss << "  \"encryptionEnabled\": " << (network_ && network_->isEncryptionEnabled() ? "true" : "false") << "\n";
     ss << "}\n";
     return ss.str();
