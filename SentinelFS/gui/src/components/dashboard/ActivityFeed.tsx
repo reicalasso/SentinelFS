@@ -1,11 +1,13 @@
 import { Shield, Activity } from 'lucide-react'
 import { ActivityItem, ActivityType } from './ActivityItem'
 
-interface ActivityData {
+export interface ActivityData {
   type: ActivityType
-  file: string
-  time: string
-  details: string
+  file?: string
+  path?: string
+  time?: string
+  timestamp?: number
+  details?: string
 }
 
 interface ActivityFeedProps {
@@ -46,9 +48,9 @@ export function ActivityFeed({ recentActivity }: ActivityFeedProps) {
             <ActivityItem 
               key={i}
               type={item.type}
-              file={item.file}
-              time={item.time}
-              details={item.details}
+              file={item.file ?? item.path ?? 'Unknown'}
+              time={item.time ?? new Date(item.timestamp ?? Date.now()).toLocaleTimeString()}
+              details={item.details ?? ''}
             />
           ))
         )}

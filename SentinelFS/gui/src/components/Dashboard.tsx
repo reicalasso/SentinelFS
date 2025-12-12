@@ -1,44 +1,62 @@
 import { Wifi, Zap, Network, HardDrive, Brain, Shield, Database } from 'lucide-react'
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, useMemo, useCallback } from 'react'
 import { 
   StatCard, 
   HealthCard, 
   HeroSection, 
   NetworkTrafficChart, 
-  ActivityFeed, 
+  ActivityFeed,
+  type ActivityData,
   ThreatAnalysisPanel,
   DegradedPeersWarning 
 } from './dashboard'
 
-// Types - using any for flexibility with different data sources
+// Constants
+const POLLING_INTERVAL_SECONDS = 2
+const MAX_TRAFFIC_HISTORY_POINTS = 30
+const BYTES_TO_KB = 1024
+const BYTES_TO_MB = 1024 * 1024
+const BYTES_TO_GB = 1024 * 1024 * 1024
+const DISK_WARNING_THRESHOLD = 75
+const DISK_ERROR_THRESHOLD = 90
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const
+
+// Types
+type ThreatLevel = 'NONE' | 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+
 interface MetricsData {
   totalUploaded?: number
   totalDownloaded?: number
   bytesUploaded?: number
   bytesDownloaded?: number
-  [key: string]: any
+  timestamp?: number
+}
+
+interface HealthData {
+  healthy: boolean
+  statusMessage: string
+  activeWatcherCount?: number
+  diskUsagePercent: number
+  diskFreeBytes: number
+  dbConnected: boolean
+  dbSizeBytes: number
+}
+
+interface PeerHealthData {
+  degraded: boolean
+  peerId?: string
 }
 
 interface SyncStatusData {
   syncStatus: string
   pendingFiles?: number
-  health?: {
-    healthy: boolean
-    statusMessage: string
-    activeWatcherCount?: number
-    diskUsagePercent: number
-    diskFreeBytes: number
-    dbConnected: boolean
-    dbSizeBytes: number
-  }
+  health?: HealthData
   anomaly?: unknown
-  peerHealth?: Array<{ degraded: boolean }>
+  peerHealth?: PeerHealthData[]
 }
 
 interface ThreatStatusData {
-  // Legacy format
-  mlEnabled?: boolean
-  threatLevel?: string
+  threatLevel?: ThreatLevel
   threatScore?: number
   totalThreats?: number
   ransomwareAlerts?: number
@@ -58,15 +76,6 @@ interface ThreatStatusData {
   fileTypeAwareness?: boolean
 }
 
-interface ActivityData {
-  type: string
-  file?: string
-  path?: string
-  time?: string
-  timestamp?: number
-  details?: string
-}
-
 interface TrafficHistoryItem {
   time: string
   upload: number
@@ -84,87 +93,157 @@ interface DashboardProps {
   onOpenQuarantine?: () => void
 }
 
-// Helper function
+interface NetworkRates {
+  upload: number
+  download: number
+}
+
+interface NetworkPeaks {
+  upload: number
+  download: number
+}
+
+// Helper functions
 function formatBytes(bytes: number): string {
-  if (!bytes || bytes === 0) return '0 B'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
-  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+  if (bytes === 0) return '0 B'
+  const i = Math.floor(Math.log(bytes) / Math.log(BYTES_TO_KB))
+  const unitIndex = Math.min(i, BYTE_UNITS.length - 1)
+  const value = bytes / Math.pow(BYTES_TO_KB, unitIndex)
+  return `${value.toFixed(unitIndex === 0 ? 0 : 2)} ${BYTE_UNITS[unitIndex]}`
+}
+
+function getThreatStatusLevel(threatStatus: ThreatStatusData | null): 'error' | 'warning' | 'success' {
+  if (!threatStatus?.threatLevel) return 'success'
+  const level = threatStatus.threatLevel
+  if (level === 'HIGH' || level === 'CRITICAL') return 'error'
+  if (level === 'MEDIUM' || level === 'INFO') return 'warning'
+  return 'success'
+}
+
+function getDiskStatusLevel(diskUsagePercent?: number): 'error' | 'warning' | 'success' {
+  if (!diskUsagePercent) return 'success'
+  if (diskUsagePercent > DISK_ERROR_THRESHOLD) return 'error'
+  if (diskUsagePercent > DISK_WARNING_THRESHOLD) return 'warning'
+  return 'success'
+}
+
+// Custom hook for network traffic management
+function useNetworkTraffic(metrics: MetricsData | null) {
+  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryItem[]>([])
+  const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null)
+  const [peaks, setPeaks] = useState<NetworkPeaks>({ upload: 0, download: 0 })
+  const [currentRates, setCurrentRates] = useState<NetworkRates>({ upload: 0, download: 0 })
+
+  useEffect(() => {
+    if (!metrics) return
+
+    const now = new Date()
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+
+    let uploadRate = 0
+    let downloadRate = 0
+
+    if (lastMetrics) {
+      const currUp = metrics.totalUploaded ?? metrics.bytesUploaded ?? 0
+      const lastUp = lastMetrics.totalUploaded ?? lastMetrics.bytesUploaded ?? 0
+      const currDown = metrics.totalDownloaded ?? metrics.bytesDownloaded ?? 0
+      const lastDown = lastMetrics.totalDownloaded ?? lastMetrics.bytesDownloaded ?? 0
+
+      // Calculate rates with validation
+      if (POLLING_INTERVAL_SECONDS > 0) {
+        uploadRate = Math.max(0, (currUp - lastUp) / POLLING_INTERVAL_SECONDS)
+        downloadRate = Math.max(0, (currDown - lastDown) / POLLING_INTERVAL_SECONDS)
+      }
+
+      setCurrentRates({ upload: uploadRate, download: downloadRate })
+
+      // Update peaks
+      setPeaks(prev => ({
+        upload: Math.max(prev.upload, uploadRate),
+        download: Math.max(prev.download, downloadRate)
+      }))
+    }
+
+    setLastMetrics(metrics)
+
+    setTrafficHistory(prev => {
+      const newHistory = [
+        ...prev,
+        {
+          time: timeStr,
+          upload: uploadRate / BYTES_TO_KB,
+          download: downloadRate / BYTES_TO_KB,
+          uploadBytes: uploadRate,
+          downloadBytes: downloadRate
+        }
+      ]
+      return newHistory.slice(-MAX_TRAFFIC_HISTORY_POINTS)
+    })
+  }, [metrics, lastMetrics])
+
+  return { trafficHistory, currentRates, peaks }
 }
 
 // Memoized component for better performance
-export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCount, activity, threatStatus, onOpenQuarantine }: DashboardProps) {
-  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryItem[]>([])
-  const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null)
-  const [peakUpload, setPeakUpload] = useState(0)
-  const [peakDownload, setPeakDownload] = useState(0)
-  const [currentUploadRate, setCurrentUploadRate] = useState(0)
-  const [currentDownloadRate, setCurrentDownloadRate] = useState(0)
+export const Dashboard = memo(function Dashboard(props: DashboardProps) {
+  const {
+    metrics = null,
+    syncStatus = null,
+    peersCount = 0,
+    activity = [],
+    threatStatus = null,
+    onOpenQuarantine
+  } = props
+
+  // Use custom hook for network traffic
+  const { trafficHistory, currentRates, peaks } = useNetworkTraffic(metrics)
   
-  // Format metrics from daemon with better fallbacks
-  const totalUploaded = metrics?.totalUploaded || metrics?.bytesUploaded || 0
-  const totalDownloaded = metrics?.totalDownloaded || metrics?.bytesDownloaded || 0
-  const recentActivity = activity || []
+  // Memoized computed values
+  const totalUploaded = useMemo(
+    () => metrics?.totalUploaded ?? metrics?.bytesUploaded ?? 0,
+    [metrics]
+  )
   
-  // Health data from syncStatus
-  const health = syncStatus?.health
-  const peerHealth = syncStatus?.peerHealth || []
-  const degradedPeers = peerHealth.filter((p) => p.degraded).length
+  const totalDownloaded = useMemo(
+    () => metrics?.totalDownloaded ?? metrics?.bytesDownloaded ?? 0,
+    [metrics]
+  )
   
-  // Track network traffic over time
-  useEffect(() => {
-    if (!metrics) return
-    
-    const now = new Date()
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-    
-    // Calculate delta (bytes/s then convert to appropriate unit)
-    let uploadRate = 0
-    let downloadRate = 0
-    
-    if (lastMetrics) {
-      const timeDiff = 2 // seconds (polling interval)
-      const currUp = metrics.totalUploaded || metrics.bytesUploaded || 0
-      const lastUp = lastMetrics.totalUploaded || lastMetrics.bytesUploaded || 0
-      const currDown = metrics.totalDownloaded || metrics.bytesDownloaded || 0
-      const lastDown = lastMetrics.totalDownloaded || lastMetrics.bytesDownloaded || 0
-      uploadRate = Math.max(0, (currUp - lastUp) / timeDiff)
-      downloadRate = Math.max(0, (currDown - lastDown) / timeDiff)
-      
-      // Update current rates
-      setCurrentUploadRate(uploadRate)
-      setCurrentDownloadRate(downloadRate)
-      
-      // Track peaks
-      if (uploadRate > peakUpload) setPeakUpload(uploadRate)
-      if (downloadRate > peakDownload) setPeakDownload(downloadRate)
-    }
-    
-    setLastMetrics(metrics)
-    
-    // Store as bytes/s for chart, convert to KB/s for display
-    setTrafficHistory(prev => {
-      const newHistory = [...prev, { 
-        time: timeStr, 
-        upload: uploadRate / 1024, // Store as KB/s (decimal)
-        download: downloadRate / 1024, // Store as KB/s (decimal)
-        uploadBytes: uploadRate,
-        downloadBytes: downloadRate
-      }]
-      // Keep last 30 data points
-      return newHistory.slice(-30)
-    })
-  }, [metrics])
+  const health = useMemo(() => syncStatus?.health, [syncStatus])
+  
+  const degradedPeersCount = useMemo(
+    () => syncStatus?.peerHealth?.filter(p => p.degraded).length ?? 0,
+    [syncStatus?.peerHealth]
+  )
+
+  const isThreatDetectionEnabled = useMemo(
+    () => Boolean(threatStatus?.enabled),
+    [threatStatus]
+  )
+
+  const syncStatusValue = useMemo(
+    () => syncStatus?.syncStatus === 'ENABLED' ? 'success' as const : 'warning' as const,
+    [syncStatus?.syncStatus]
+  )
+
+  const diskStatus = useMemo(
+    () => getDiskStatusLevel(health?.diskUsagePercent),
+    [health?.diskUsagePercent]
+  )
+
+  const threatStatusLevel = useMemo(
+    () => getThreatStatusLevel(threatStatus),
+    [threatStatus]
+  )
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
       {/* Hero Section with Animated Stats */}
       <HeroSection 
-        currentUpload={currentUploadRate}
-        currentDownload={currentDownloadRate}
-        peakUpload={peakUpload}
-        peakDownload={peakDownload}
+        currentUpload={currentRates.upload}
+        currentDownload={currentRates.download}
+        peakUpload={peaks.upload}
+        peakDownload={peaks.download}
         peersCount={peersCount}
         formatBytes={formatBytes}
       />
@@ -180,14 +259,14 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
         />
         <StatCard 
           title="Sync Status" 
-          value={syncStatus?.syncStatus || "Idle"} 
+          value={syncStatus?.syncStatus ?? "Idle"} 
           sub={syncStatus?.pendingFiles ? `${syncStatus.pendingFiles} files pending` : "Up to date"}
           icon={<Zap className="w-5 h-5 text-primary" />}
-          status={syncStatus?.syncStatus === 'ENABLED' ? "success" : "warning"}
+          status={syncStatusValue}
         />
         <StatCard 
           title="Active Peers" 
-          value={`${peersCount || 0} Devices`} 
+          value={`${peersCount} Device${peersCount !== 1 ? 's' : ''}`} 
           sub="Mesh Swarm"
           icon={<Network className="w-5 h-5 text-primary" />}
         />
@@ -206,13 +285,13 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
           trafficHistory={trafficHistory}
           totalDownloaded={totalDownloaded}
           totalUploaded={totalUploaded}
-          peakDownload={peakDownload}
-          peakUpload={peakUpload}
+          peakDownload={peaks.download}
+          peakUpload={peaks.upload}
           formatBytes={formatBytes}
         />
 
         {/* Activity Feed */}
-        <ActivityFeed recentActivity={recentActivity as any} />
+        <ActivityFeed recentActivity={activity} />
       </div>
 
       {/* Health Summary Row */}
@@ -221,46 +300,46 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
           title="System Health"
           icon={<Shield className="w-5 h-5" />}
           status={health?.healthy ? 'success' : 'warning'}
-          value={health?.statusMessage || 'Unknown'}
-          sub={health ? `${health.activeWatcherCount || 0} active watcher${(health.activeWatcherCount || 0) !== 1 ? 's' : ''}` : 'Loading...'}
+          value={health?.statusMessage ?? 'Unknown'}
+          sub={health ? `${health.activeWatcherCount ?? 0} active watcher${(health.activeWatcherCount ?? 0) !== 1 ? 's' : ''}` : 'Loading...'}
         />
         <HealthCard
           title="Disk Usage"
           icon={<HardDrive className="w-5 h-5" />}
-          status={health?.diskUsagePercent && health.diskUsagePercent > 90 ? 'error' : health?.diskUsagePercent && health.diskUsagePercent > 75 ? 'warning' : 'success'}
+          status={diskStatus}
           value={health ? `${health.diskUsagePercent.toFixed(1)}%` : '--'}
-          sub={health ? `${(health.diskFreeBytes / (1024 * 1024 * 1024)).toFixed(1)} GB free` : 'Loading...'}
+          sub={health ? `${(health.diskFreeBytes / BYTES_TO_GB).toFixed(1)} GB free` : 'Loading...'}
         />
         <HealthCard
           title="Database"
           icon={<Database className="w-5 h-5" />}
           status={health?.dbConnected ? 'success' : 'error'}
           value={health?.dbConnected ? 'Connected' : 'Disconnected'}
-          sub={health ? `${(health.dbSizeBytes / 1024).toFixed(0)} KB` : 'Loading...'}
+          sub={health ? `${(health.dbSizeBytes / BYTES_TO_KB).toFixed(0)} KB` : 'Loading...'}
         />
         <HealthCard
           title="Zer0 Threat Detection"
           icon={<Shield className="w-5 h-5" />}
-          status={threatStatus?.threatLevel === 'HIGH' || threatStatus?.threatLevel === 'CRITICAL' ? 'error' : threatStatus?.threatLevel === 'MEDIUM' ? 'warning' : 'success'}
-          value={threatStatus?.enabled || threatStatus?.mlEnabled ? threatStatus.threatLevel || 'Safe' : 'Disabled'}
-          sub={threatStatus?.enabled || threatStatus?.mlEnabled ? `${threatStatus.filesAnalyzed || 0} files analyzed` : 'Enable Zer0 plugin'}
+          status={threatStatusLevel}
+          value={isThreatDetectionEnabled ? (threatStatus?.threatLevel === 'NONE' ? 'Safe' : threatStatus?.threatLevel ?? 'Safe') : 'Disabled'}
+          sub={isThreatDetectionEnabled ? `${threatStatus?.filesAnalyzed ?? 0} files analyzed` : 'Enable Zer0 plugin'}
         />
       </div>
 
       {/* Zer0 Threat Detection Panel */}
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        {(threatStatus?.enabled || threatStatus?.mlEnabled) && (
+        {isThreatDetectionEnabled && threatStatus && (
           <ThreatAnalysisPanel 
             threatStatus={{
-              enabled: threatStatus.enabled || threatStatus.mlEnabled || false,
-              threatLevel: threatStatus.threatLevel as any,
-              filesAnalyzed: threatStatus.filesAnalyzed || 0,
-              threatsDetected: threatStatus.threatsDetected || threatStatus.totalThreats || 0,
-              filesQuarantined: threatStatus.filesQuarantined || 0,
-              hiddenExecutables: threatStatus.hiddenExecutables || 0,
-              extensionMismatches: threatStatus.extensionMismatches || 0,
-              ransomwarePatterns: threatStatus.ransomwarePatterns || threatStatus.ransomwareAlerts || 0,
-              behavioralAnomalies: threatStatus.behavioralAnomalies || 0,
+              enabled: isThreatDetectionEnabled,
+              threatLevel: threatStatus.threatLevel ?? 'NONE',
+              filesAnalyzed: threatStatus.filesAnalyzed ?? 0,
+              threatsDetected: threatStatus.threatsDetected ?? threatStatus.totalThreats ?? 0,
+              filesQuarantined: threatStatus.filesQuarantined ?? 0,
+              hiddenExecutables: threatStatus.hiddenExecutables ?? 0,
+              extensionMismatches: threatStatus.extensionMismatches ?? 0,
+              ransomwarePatterns: threatStatus.ransomwarePatterns ?? threatStatus.ransomwareAlerts ?? 0,
+              behavioralAnomalies: threatStatus.behavioralAnomalies ?? 0,
               magicByteValidation: threatStatus.magicByteValidation ?? true,
               behavioralAnalysis: threatStatus.behavioralAnalysis ?? true,
               fileTypeAwareness: threatStatus.fileTypeAwareness ?? true,
@@ -271,7 +350,7 @@ export const Dashboard = memo(function Dashboard({ metrics, syncStatus, peersCou
       </div>
 
       {/* Degraded Peers Warning */}
-      <DegradedPeersWarning degradedPeers={degradedPeers} />
+      <DegradedPeersWarning degradedPeers={degradedPeersCount} />
     </div>
   )
 })
