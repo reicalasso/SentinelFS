@@ -242,7 +242,19 @@ std::vector<uint8_t> SessionManager::decrypt(const std::vector<uint8_t>& ciphert
 
 bool SessionManager::verifySessionCode(const std::string& code) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return primarySessionCode_.empty() || primarySessionCode_ == code;
+    
+    // If both are empty, allow connection (open mode)
+    if (primarySessionCode_.empty() && code.empty()) {
+        return true;
+    }
+    
+    // If either side has a session code, both must match
+    // This prevents session-code-protected peers from connecting to open peers
+    if (primarySessionCode_.empty() || code.empty()) {
+        return false;  // One has code, other doesn't - reject
+    }
+    
+    return primarySessionCode_ == code;
 }
 
 void SessionManager::registerPeer(const std::string& peerId, const std::string& sessionId) {

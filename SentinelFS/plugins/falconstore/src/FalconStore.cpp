@@ -364,38 +364,73 @@ std::optional<FileMetadata> FalconStore::getFile(const std::string& path) {
 bool FalconStore::addPeer(const PeerInfo& peer) {
     std::unique_lock<std::shared_mutex> lock(impl_->dbMutex);
     
-    const char* sql = R"(
-        INSERT INTO peers (peer_id, name, address, port, status_id, last_seen, latency)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(peer_id) DO UPDATE SET
-            name = excluded.name,
-            address = excluded.address,
-            port = excluded.port,
-            status_id = excluded.status_id,
-            last_seen = excluded.last_seen,
-            latency = excluded.latency
-    )";
-    
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        return false;
-    }
-    
     // Map status string to status_id
     int statusId = 1;  // default: active
     if (peer.status == "offline") statusId = 6;
     else if (peer.status == "pending") statusId = 2;
     
-    sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_TRANSIENT);  // name = id for now
-    sqlite3_bind_text(stmt, 3, peer.ip.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 4, peer.port);
-    sqlite3_bind_int(stmt, 5, statusId);
-    sqlite3_bind_int64(stmt, 6, peer.lastSeen);
-    sqlite3_bind_int(stmt, 7, peer.latency);
+    // First check if peer exists by address:port (peer IDs change on restart)
+    const char* checkSql = "SELECT id, peer_id FROM peers WHERE address = ? AND port = ?";
+    sqlite3_stmt* checkStmt;
+    bool existsByAddress = false;
+    int existingId = 0;
     
-    bool success = sqlite3_step(stmt) == SQLITE_DONE;
-    sqlite3_finalize(stmt);
+    if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(checkStmt, 1, peer.ip.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(checkStmt, 2, peer.port);
+        if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+            existsByAddress = true;
+            existingId = sqlite3_column_int(checkStmt, 0);
+        }
+        sqlite3_finalize(checkStmt);
+    }
+    
+    bool success = false;
+    
+    if (existsByAddress) {
+        // Update existing peer by address:port (update peer_id since it changes on restart)
+        const char* updateSql = R"(
+            UPDATE peers SET peer_id = ?, name = ?, status_id = ?, last_seen = ?, latency = ?
+            WHERE id = ?
+        )";
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(impl_->db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmt, 3, statusId);
+            sqlite3_bind_int64(stmt, 4, peer.lastSeen);
+            sqlite3_bind_int(stmt, 5, peer.latency);
+            sqlite3_bind_int(stmt, 6, existingId);
+            success = sqlite3_step(stmt) == SQLITE_DONE;
+            sqlite3_finalize(stmt);
+        }
+    } else {
+        // Insert new peer
+        const char* sql = R"(
+            INSERT INTO peers (peer_id, name, address, port, status_id, last_seen, latency)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(peer_id) DO UPDATE SET
+                name = excluded.name,
+                address = excluded.address,
+                port = excluded.port,
+                status_id = excluded.status_id,
+                last_seen = excluded.last_seen,
+                latency = excluded.latency
+        )";
+        
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 3, peer.ip.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmt, 4, peer.port);
+            sqlite3_bind_int(stmt, 5, statusId);
+            sqlite3_bind_int64(stmt, 6, peer.lastSeen);
+            sqlite3_bind_int(stmt, 7, peer.latency);
+            success = sqlite3_step(stmt) == SQLITE_DONE;
+            sqlite3_finalize(stmt);
+        }
+    }
     
     return success;
 }

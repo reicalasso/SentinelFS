@@ -141,6 +141,9 @@ bool DaemonCore::initialize() {
         network_->startDiscovery(config_.discoveryPort);
         logger.info("UDP discovery started on port " + std::to_string(config_.discoveryPort), "DaemonCore");
         
+        // Clean up stale peers before reconnecting
+        cleanupStalePeers();
+        
         // Auto-reconnect to previously known peers
         reconnectToKnownPeers();
         
@@ -269,10 +272,13 @@ void DaemonCore::reconnectToKnownPeers() {
         return;
     }
     
+    // Get local peer info to filter out ourselves
+    std::string localPeerId = network_->getLocalPeerId();
+    int localPort = network_->getLocalPort();
+    
     // Get all previously known peers with valid addresses
-    const char* sql = "SELECT p.id, p.address, p.port FROM peers p "
-                      "JOIN status_types s ON p.status_id = s.id "
-                      "WHERE p.address != '0.0.0.0' AND p.port > 0";
+    const char* sql = "SELECT p.peer_id, p.address, p.port FROM peers p "
+                      "WHERE p.address != '0.0.0.0' AND p.address != '' AND p.port > 0";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -283,12 +289,22 @@ void DaemonCore::reconnectToKnownPeers() {
     std::vector<std::tuple<std::string, std::string, int>> peersToConnect;
     
     while (sqlite3_step(stmt) == SQLITE_ROW) {
-        const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        const char* peerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         const char* address = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         int port = sqlite3_column_int(stmt, 2);
         
-        if (id && address && port > 0) {
-            peersToConnect.emplace_back(id, address, port);
+        if (peerId && address && port > 0) {
+            // Skip our own peer ID
+            if (peerId == localPeerId) {
+                continue;
+            }
+            // Skip our own port on localhost
+            if (port == localPort && (std::string(address) == "127.0.0.1" || 
+                                       std::string(address) == "localhost" ||
+                                       std::string(address) == "192.168.1.100")) {
+                continue;
+            }
+            peersToConnect.emplace_back(peerId, address, port);
         }
     }
     sqlite3_finalize(stmt);
@@ -325,6 +341,63 @@ void DaemonCore::reconnectToKnownPeers() {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }).detach();
+}
+
+void DaemonCore::cleanupStalePeers() {
+    auto& logger = Logger::instance();
+    
+    if (!storage_) {
+        return;
+    }
+    
+    sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
+    if (!db) {
+        return;
+    }
+    
+    // Remove peers that have invalid addresses or are stale
+    // status_id 6 = offline
+    const char* sql = R"(
+        DELETE FROM peers 
+        WHERE address IN ('Unknown', '0.0.0.0', '') 
+           OR address IS NULL
+           OR port <= 0
+           OR (last_seen < strftime('%s', 'now') - 86400 AND status_id = 6)
+    )";
+    
+    char* errMsg = nullptr;
+    
+    if (sqlite3_exec(db, sql, nullptr, nullptr, &errMsg) == SQLITE_OK) {
+        int deleted = sqlite3_changes(db);
+        if (deleted > 0) {
+            logger.info("Cleaned up " + std::to_string(deleted) + " stale peer(s) from database", "DaemonCore");
+        }
+    } else {
+        if (errMsg) {
+            logger.warn("Failed to cleanup stale peers: " + std::string(errMsg), "DaemonCore");
+            sqlite3_free(errMsg);
+        }
+    }
+    
+    // Also remove duplicate peers (keep only the one with latest last_seen)
+    const char* dedupSql = R"(
+        DELETE FROM peers 
+        WHERE id NOT IN (
+            SELECT MIN(id) FROM peers GROUP BY address, port
+        )
+    )";
+    
+    if (sqlite3_exec(db, dedupSql, nullptr, nullptr, &errMsg) == SQLITE_OK) {
+        int deleted = sqlite3_changes(db);
+        if (deleted > 0) {
+            logger.info("Removed " + std::to_string(deleted) + " duplicate peer(s) from database", "DaemonCore");
+        }
+    } else {
+        if (errMsg) {
+            logger.warn("Failed to remove duplicate peers: " + std::string(errMsg), "DaemonCore");
+            sqlite3_free(errMsg);
+        }
+    }
 }
 
 void DaemonCore::printConfiguration() const {

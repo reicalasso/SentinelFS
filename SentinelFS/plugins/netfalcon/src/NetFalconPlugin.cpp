@@ -186,6 +186,14 @@ void NetFalconPlugin::handleDiscoveredPeer(const DiscoveredPeer& peer) {
 void NetFalconPlugin::handleReceivedData(const std::string& peerId, const std::vector<uint8_t>& data) {
     std::vector<uint8_t> processedData = data;
     
+    // Check for session changed notification (sent unencrypted)
+    std::string dataStr(data.begin(), data.end());
+    if (dataStr.find("FALCON_SESSION_CHANGED|") == 0) {
+        Logger::instance().log(LogLevel::INFO, "Peer " + peerId + " changed session code, disconnecting", "NetFalcon");
+        disconnectPeer(peerId);
+        return;
+    }
+    
     // Decrypt if encryption enabled
     if (sessionManager_.isEncryptionEnabled()) {
         processedData = sessionManager_.decrypt(data, peerId);
@@ -318,6 +326,31 @@ int NetFalconPlugin::getPeerRTT(const std::string& peerId) {
 }
 
 void NetFalconPlugin::setSessionCode(const std::string& code) {
+    auto& logger = Logger::instance();
+    std::string oldCode = sessionManager_.getSessionCode();
+    
+    // Disconnect all peers if session code changed (including from empty to non-empty)
+    if (oldCode != code) {
+        auto connectedPeers = transportRegistry_.getConnectedPeerIds();
+        if (!connectedPeers.empty()) {
+            logger.log(LogLevel::INFO, "Session code changed, disconnecting " + 
+                       std::to_string(connectedPeers.size()) + " peer(s)", "NetFalcon");
+            
+            // Send disconnect notification to peers before disconnecting
+            std::string notification = "FALCON_SESSION_CHANGED|" + sessionManager_.getLocalPeerId();
+            std::vector<uint8_t> notifData(notification.begin(), notification.end());
+            
+            for (const auto& peerId : connectedPeers) {
+                // Try to send notification (best effort)
+                auto* transport = transportRegistry_.selectTransport(peerId);
+                if (transport) {
+                    transport->send(peerId, notifData);
+                }
+                disconnectPeer(peerId);
+            }
+        }
+    }
+    
     sessionManager_.setSessionCode(code, config_.encryptionEnabled);
     discoveryService_.setLocalPeer(sessionManager_.getLocalPeerId(), listeningPort_, code);
 }

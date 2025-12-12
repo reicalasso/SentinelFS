@@ -19,13 +19,18 @@ interface PeerCardProps {
 }
 
 export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps) {
+  // Normalize status: backend sends 'active'/'disconnected', UI expects 'Connected'/'Disconnected'
+  const isConnected = peer.status?.toLowerCase() === 'active' || peer.status?.toLowerCase() === 'connected'
+  const isPending = peer.status?.toLowerCase() === 'pending'
+  const displayStatus = isConnected ? 'Connected' : isPending ? 'Pending' : 'Offline'
+  
   return (
     <div className="card-modern p-0 group">
       {/* Status Bar at Top */}
       <div className={`peer-card-status-bar ${
-        peer.status === 'Connected' 
+        isConnected 
           ? 'peer-card-status-bar-connected' 
-          : peer.status === 'Pending' 
+          : isPending 
             ? 'peer-card-status-bar-pending' 
             : 'peer-card-status-bar-offline'
       }`}></div>
@@ -33,14 +38,14 @@ export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps
       <div className="p-6">
         <div className="flex items-center gap-4 mb-5">
           <div className={`peer-card-icon ${
-            peer.status === 'Connected' 
+            isConnected 
               ? 'peer-card-icon-connected' 
-              : peer.status === 'Pending' 
+              : isPending 
                 ? 'peer-card-icon-pending' 
                 : 'peer-card-icon-offline'
           }`}>
             {peer.type === 'mobile' ? <Smartphone className="w-6 h-6" /> : <Laptop className="w-6 h-6" />}
-            {peer.status === 'Connected' && (
+            {isConnected && (
               <div className="peer-card-online-dot">
                 <div className="peer-card-online-dot-ping"></div>
               </div>
@@ -61,15 +66,15 @@ export function PeerCard({ peer, index, latencyHistory, onBlock }: PeerCardProps
             <div className="peer-card-stat-label">
               <Signal className="w-3 h-3" /> Status
             </div>
-            <div className={`peer-card-stat-value ${
-              peer.status === 'Connected' ? 'peer-card-stat-value-success' : 
-              peer.status === 'Pending' ? 'peer-card-stat-value-warning' : 'peer-card-stat-value-muted'
+            <div className={`peer-card-stat-value truncate ${
+              isConnected ? 'peer-card-stat-value-success' : 
+              isPending ? 'peer-card-stat-value-warning' : 'peer-card-stat-value-muted'
             }`}>
               <div className={`peer-card-stat-dot ${
-                peer.status === 'Connected' ? 'peer-card-stat-dot-success' : 
-                peer.status === 'Pending' ? 'peer-card-stat-dot-warning' : 'peer-card-stat-dot-muted'
+                isConnected ? 'peer-card-stat-dot-success' : 
+                isPending ? 'peer-card-stat-dot-warning' : 'peer-card-stat-dot-muted'
               }`} />
-              {peer.status}
+              {displayStatus}
             </div>
           </div>
           <div className="peer-card-stat">

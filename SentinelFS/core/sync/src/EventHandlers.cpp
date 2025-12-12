@@ -96,6 +96,19 @@ void EventHandlers::setupHandlers() {
     eventBus_.subscribe("PEER_DISCONNECTED", [this](const std::any& data) {
         handlePeerDisconnected(data);
     });
+    
+    // Subscribe to transport-specific disconnect events
+    eventBus_.subscribe("QUIC_PEER_DISCONNECTED", [this](const std::any& data) {
+        handlePeerDisconnected(data);
+    });
+    
+    eventBus_.subscribe("WEBRTC_PEER_DISCONNECTED", [this](const std::any& data) {
+        handlePeerDisconnected(data);
+    });
+    
+    eventBus_.subscribe("RELAY_PEER_DISCONNECTED", [this](const std::any& data) {
+        handlePeerDisconnected(data);
+    });
 
     eventBus_.subscribe("WATCH_ADDED", [this](const std::any& data) {
         try {
