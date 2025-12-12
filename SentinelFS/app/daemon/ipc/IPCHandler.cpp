@@ -81,6 +81,7 @@ void IPCHandler::initializeCommandHandlers() {
     cmdContext_.filesystem = filesystem_;
     cmdContext_.daemonCore = daemonCore_;
     cmdContext_.autoRemesh = autoRemesh_;
+    cmdContext_.versionManager = daemonCore_ ? daemonCore_->getVersionManager() : nullptr;
     
     // Create command handlers
     statusCmds_ = std::make_unique<StatusCommands>(cmdContext_);

@@ -13,6 +13,7 @@ class IStorageAPI;
 class IFileAPI;
 class DaemonCore;
 class AutoRemeshManager;
+class FileVersionManager;
 
 /**
  * @brief Context passed to all command handlers
@@ -25,6 +26,7 @@ struct CommandContext {
     IFileAPI* filesystem{nullptr};
     DaemonCore* daemonCore{nullptr};
     AutoRemeshManager* autoRemesh{nullptr};
+    FileVersionManager* versionManager{nullptr};
     
     // Callbacks
     std::function<void(bool)> syncEnabledCallback;

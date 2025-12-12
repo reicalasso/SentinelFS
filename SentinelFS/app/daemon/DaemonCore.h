@@ -14,6 +14,11 @@
 #include <thread>
 #include <vector>
 
+// Forward declaration
+namespace SentinelFS {
+    class FileVersionManager;
+}
+
 namespace SentinelFS {
 
 /**
@@ -121,6 +126,12 @@ public:
     IStorageAPI* getStoragePlugin() const { return storage_.get(); }
     INetworkAPI* getNetworkPlugin() const { return network_.get(); }
     IFileAPI* getFilesystemPlugin() const { return filesystem_.get(); }
+    
+    /**
+     * @brief Get file version manager
+     */
+    class FileVersionManager* getVersionManager();
+    const class FileVersionManager* getVersionManager() const;
 
 private:
     DaemonConfig config_;
@@ -131,6 +142,9 @@ private:
     std::shared_ptr<INetworkAPI> network_;
     std::shared_ptr<IFileAPI> filesystem_;
     std::shared_ptr<IPlugin> mlPlugin_;
+    
+    // File version manager
+    std::unique_ptr<FileVersionManager> versionManager_;
     
     std::atomic<bool> running_{false};
     std::atomic<bool> syncEnabled_{true};

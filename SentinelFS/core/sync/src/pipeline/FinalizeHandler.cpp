@@ -183,11 +183,21 @@ void SyncPipeline::handleTransferComplete(const std::string& peerId, const std::
         }
         logger.error("Expected: " + expectedHash + "..., Got: " + computedHashStr + "...", "SyncPipeline");
         
+        // Security: Remove corrupted file to prevent using invalid data
+        try {
+            if (std::filesystem::exists(localPath)) {
+                std::filesystem::remove(localPath);
+                logger.warn("Removed corrupted file: " + filename, "SyncPipeline");
+            }
+        } catch (const std::exception& e) {
+            logger.error("Failed to remove corrupted file: " + std::string(e.what()), "SyncPipeline");
+        }
+        
         if (!transferId.empty()) {
             updateTransferState(transferId, TransferState::FAILED);
             
             if (completeCallback_) {
-                completeCallback_(transferId, false, "Integrity check failed");
+                completeCallback_(transferId, false, "Integrity check failed - file removed");
             }
         }
         
@@ -241,21 +251,34 @@ void SyncPipeline::handleTransferAck(const std::string& peerId, const std::vecto
     } else {
         logger.error("❌ Transfer of " + filename + " to " + peerId + " failed verification", "SyncPipeline");
         
-        // Could implement retry here
+        // Retry mechanism for failed transfers
         if (!transferId.empty()) {
-            std::lock_guard<std::mutex> lock(transferMutex_);
+            std::unique_lock<std::mutex> lock(transferMutex_);
             auto it = activeTransfers_.find(transferId);
             if (it != activeTransfers_.end() && it->second.retryCount < MAX_RETRIES) {
                 it->second.retryCount++;
+                it->second.state = TransferState::SENDING_META;
+                it->second.lastError = "";
                 logger.info("Retrying transfer (" + std::to_string(it->second.retryCount) + 
                            "/" + std::to_string(MAX_RETRIES) + ")", "SyncPipeline");
-                // Re-initiate transfer
-                // syncFileToPeer(peerId, it->second.localPath);
+                
+                // Re-initiate transfer by calling syncFileToPeer
+                // Unlock before calling to avoid deadlock
+                std::string retryPeerId = it->second.peerId;
+                std::string retryLocalPath = it->second.localPath;
+                lock.unlock();
+                
+                // Retry the transfer (will re-authenticate if needed)
+                syncFileToPeer(retryPeerId, retryLocalPath);
             } else {
                 updateTransferState(transferId, TransferState::FAILED);
                 if (completeCallback_) {
                     completeCallback_(transferId, false, "Max retries exceeded");
                 }
+                
+                // Cleanup failed transfer
+                pathToTransfer_.erase(relativePath + "|" + peerId);
+                activeTransfers_.erase(transferId);
             }
         }
         
@@ -282,7 +305,7 @@ void SyncPipeline::handleIntegrityFail(const std::string& peerId, const std::vec
     // Find and handle transfer
     std::string transferId;
     {
-        std::lock_guard<std::mutex> lock(transferMutex_);
+        std::unique_lock<std::mutex> lock(transferMutex_);
         auto it = pathToTransfer_.find(relativePath + "|" + peerId);
         if (it != pathToTransfer_.end()) {
             transferId = it->second;
@@ -291,9 +314,18 @@ void SyncPipeline::handleIntegrityFail(const std::string& peerId, const std::vec
             if (ctx.retryCount < MAX_RETRIES) {
                 ctx.retryCount++;
                 ctx.state = TransferState::SENDING_META;
+                ctx.lastError = "";
                 logger.info("Retrying transfer (" + std::to_string(ctx.retryCount) + 
                            "/" + std::to_string(MAX_RETRIES) + ")", "SyncPipeline");
-                // Will retry on next sync cycle
+                
+                // Unlock before retrying to avoid deadlock
+                std::string retryPeerId = ctx.peerId;
+                std::string retryLocalPath = ctx.localPath;
+                lock.unlock();
+                
+                // Retry the transfer immediately (will re-authenticate if needed)
+                syncFileToPeer(retryPeerId, retryLocalPath);
+                return;  // Exit early since we're retrying
             } else {
                 ctx.state = TransferState::FAILED;
                 ctx.lastError = "Integrity check failed after " + std::to_string(MAX_RETRIES) + " retries";
@@ -306,6 +338,47 @@ void SyncPipeline::handleIntegrityFail(const std::string& peerId, const std::vec
     }
     
     MetricsCollector::instance().incrementSyncErrors();
+}
+
+void SyncPipeline::handleTransferAbort(const std::string& peerId, const std::vector<uint8_t>& data) {
+    auto& logger = Logger::instance();
+    auto& metrics = MetricsCollector::instance();
+    
+    if (data.size() < sizeof(MessageHeader)) {
+        logger.error("TRANSFER_ABORT too small from " + peerId, "SyncPipeline");
+        return;
+    }
+    
+    const MessageHeader* header = reinterpret_cast<const MessageHeader*>(data.data());
+    
+    logger.info("Received TRANSFER_ABORT from " + peerId, "SyncPipeline");
+    
+    // Find and cleanup all transfers from this peer
+    std::lock_guard<std::mutex> lock(transferMutex_);
+    auto it = pathToTransfer_.begin();
+    while (it != pathToTransfer_.end()) {
+        if (it->first.find("|" + peerId) != std::string::npos) {
+            std::string transferId = it->second;
+            auto transferIt = activeTransfers_.find(transferId);
+            if (transferIt != activeTransfers_.end()) {
+                std::string filename = std::filesystem::path(transferIt->second.relativePath).filename().string();
+                logger.info("Aborting transfer: " + filename, "SyncPipeline");
+                
+                updateTransferState(transferId, TransferState::ABORTED);
+                
+                if (completeCallback_) {
+                    completeCallback_(transferId, false, "Transfer aborted by peer");
+                }
+                
+                activeTransfers_.erase(transferIt);
+            }
+            it = pathToTransfer_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    metrics.incrementTransfersFailed();
 }
 
 } // namespace Sync

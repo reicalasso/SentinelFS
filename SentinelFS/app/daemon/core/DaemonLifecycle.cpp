@@ -6,6 +6,7 @@
 #include "DaemonCore.h"
 #include "Logger.h"
 #include "Config.h"
+#include "../../core/storage/include/FileVersionManager.h"
 #include <iostream>
 #include <csignal>
 #include <filesystem>
@@ -155,9 +156,10 @@ bool DaemonCore::initialize() {
     }
     
     // Start filesystem monitoring
+    std::string watchDir;
     try {
         // Expand tilde in watch directory path
-        std::string watchDir = expandTilde(config_.watchDirectory);
+        watchDir = expandTilde(config_.watchDirectory);
         
         if (!std::filesystem::exists(watchDir)) {
             std::filesystem::create_directories(watchDir);
@@ -194,6 +196,26 @@ bool DaemonCore::initialize() {
         initStatus_.result = InitializationStatus::Result::WatcherFailure;
         initStatus_.message = std::string("Filesystem watcher failed: ") + e.what();
         return false;
+    }
+    
+    // Initialize file version manager
+    try {
+        if (!watchDir.empty()) {
+            versionManager_ = std::make_unique<FileVersionManager>(watchDir);
+            logger.info("File version manager initialized", "DaemonCore");
+        }
+    } catch (const std::exception& e) {
+        logger.error("Failed to initialize version manager: " + std::string(e.what()), "DaemonCore");
+        // Non-critical, continue without versioning
+    }
+    
+    // Initialize file version manager
+    try {
+        versionManager_ = std::make_unique<FileVersionManager>(watchDir);
+        logger.info("File version manager initialized", "DaemonCore");
+    } catch (const std::exception& e) {
+        logger.error("Failed to initialize version manager: " + std::string(e.what()), "DaemonCore");
+        // Non-critical, continue without versioning
     }
     
     logger.info("Daemon initialization complete", "DaemonCore");
@@ -427,6 +449,14 @@ void DaemonCore::printConfiguration() const {
             std::cerr << "Error: Cannot enable encryption without a session code!" << std::endl;
         }
     }
+}
+
+FileVersionManager* DaemonCore::getVersionManager() {
+    return versionManager_.get();
+}
+
+const FileVersionManager* DaemonCore::getVersionManager() const {
+    return versionManager_.get();
 }
 
 } // namespace SentinelFS

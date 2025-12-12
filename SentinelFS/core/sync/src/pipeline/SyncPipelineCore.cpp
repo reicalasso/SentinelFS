@@ -286,6 +286,9 @@ void SyncPipeline::handleMessage(const std::string& peerId, const std::vector<ui
         case MessageType::INTEGRITY_FAIL:
             handleIntegrityFail(peerId, data);
             break;
+        case MessageType::TRANSFER_ABORT:
+            handleTransferAbort(peerId, data);
+            break;
             
         // Control
         case MessageType::PING:

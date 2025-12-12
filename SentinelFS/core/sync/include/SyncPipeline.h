@@ -201,6 +201,11 @@ public:
      */
     void handleIntegrityFail(const std::string& peerId, const std::vector<uint8_t>& data);
     
+    /**
+     * @brief Handle transfer abort - cleanup transfer
+     */
+    void handleTransferAbort(const std::string& peerId, const std::vector<uint8_t>& data);
+    
     // ========================================================================
     // High-Level API
     // ========================================================================

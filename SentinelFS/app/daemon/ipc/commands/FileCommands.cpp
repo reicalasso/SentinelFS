@@ -4,6 +4,7 @@
 #include "IFileAPI.h"
 #include "MetricsCollector.h"
 #include "Logger.h"
+#include "../../../core/storage/include/FileVersionManager.h"
 #include <sstream>
 #include <fstream>
 #include <filesystem>
@@ -466,48 +467,50 @@ std::string FileCommands::handleSyncQueueJson() {
 }
 
 std::string FileCommands::handleVersionsJson() {
-    if (!ctx_.storage) {
+    if (!ctx_.versionManager) {
         return "{\"type\":\"VERSIONS\",\"payload\":{}}\n";
     }
     
     std::stringstream ss;
     ss << "{\"type\":\"VERSIONS\",\"payload\":{";
     
-    std::string versionDir;
-    if (ctx_.daemonCore) {
-        auto config = ctx_.daemonCore->getConfig();
-        versionDir = config.watchDirectory + "/.sentinel_versions";
-    }
-    
-    namespace fs = std::filesystem;
-    bool first = true;
-    
-    if (!versionDir.empty() && fs::exists(versionDir)) {
-        for (const auto& entry : fs::directory_iterator(versionDir)) {
-            if (entry.is_directory()) {
-                std::string metadataPath = entry.path().string() + "/metadata.json";
-                if (fs::exists(metadataPath)) {
-                    std::ifstream metaFile(metadataPath);
-                    std::stringstream buffer;
-                    buffer << metaFile.rdbuf();
-                    std::string content = buffer.str();
-                    
-                    size_t filePathPos = content.find("\"filePath\":\"");
-                    if (filePathPos != std::string::npos) {
-                        filePathPos += 12;
-                        size_t endPos = content.find("\"", filePathPos);
-                        if (endPos != std::string::npos) {
-                            std::string filePath = content.substr(filePathPos, endPos - filePathPos);
-                            
-                            if (!first) ss << ",";
-                            first = false;
-                            
-                            ss << "\"" << filePath << "\":" << content;
-                        }
-                    }
-                }
+    try {
+        // Get all versioned files using FileVersionManager API
+        auto versionedFiles = ctx_.versionManager->getVersionedFiles();
+        bool first = true;
+        
+        for (const auto& [filePath, versionCount] : versionedFiles) {
+            // Get all versions for this file
+            auto versions = ctx_.versionManager->getVersions(filePath);
+            
+            if (!first) ss << ",";
+            first = false;
+            
+            ss << "\"" << escapeJson(filePath) << "\":[";
+            
+            bool versionFirst = true;
+            for (const auto& version : versions) {
+                if (!versionFirst) ss << ",";
+                versionFirst = false;
+                
+                ss << "{";
+                ss << "\"versionId\":" << version.versionId << ",";
+                ss << "\"filePath\":\"" << escapeJson(version.filePath) << "\",";
+                ss << "\"versionPath\":\"" << escapeJson(version.versionPath) << "\",";
+                ss << "\"hash\":\"" << escapeJson(version.hash) << "\",";
+                ss << "\"peerId\":\"" << escapeJson(version.peerId) << "\",";
+                ss << "\"timestamp\":" << version.timestamp << ",";
+                ss << "\"size\":" << version.size << ",";
+                ss << "\"changeType\":\"" << escapeJson(version.changeType) << "\",";
+                ss << "\"comment\":\"" << escapeJson(version.comment) << "\"";
+                ss << "}";
             }
+            
+            ss << "]";
         }
+    } catch (const std::exception& e) {
+        Logger::instance().error("Error getting versions: " + std::string(e.what()), "FileCommands");
+        return "{\"type\":\"VERSIONS\",\"error\":\"" + escapeJson(e.what()) + "\"}\n";
     }
     
     ss << "}}\n";
@@ -516,71 +519,40 @@ std::string FileCommands::handleVersionsJson() {
 
 std::string FileCommands::handleRestoreVersion(const std::string& args) {
     std::istringstream iss(args);
-    int versionId;
-    std::string pathOrId;
-    iss >> versionId >> pathOrId;
+    uint64_t versionId;
+    std::string filePath;
+    iss >> versionId;
+    std::getline(iss >> std::ws, filePath);
     
-    if (pathOrId.empty()) {
+    if (filePath.empty()) {
         return "Error: Usage: RESTORE_VERSION <versionId> <filePath>\n";
     }
     
-    namespace fs = std::filesystem;
-    std::string versionDir;
-    
-    if (ctx_.daemonCore) {
-        auto config = ctx_.daemonCore->getConfig();
-        versionDir = config.watchDirectory + "/.sentinel_versions";
+    // Sanitize path
+    filePath = sanitizePath(filePath);
+    if (filePath.empty()) {
+        return "Error: Invalid file path\n";
     }
     
-    if (versionDir.empty() || !fs::exists(versionDir)) {
-        return "Error: Version storage not found\n";
+    if (!ctx_.versionManager) {
+        return "Error: Version manager not available\n";
     }
     
-    for (const auto& entry : fs::directory_iterator(versionDir)) {
-        if (entry.is_directory()) {
-            std::string metadataPath = entry.path().string() + "/metadata.json";
-            if (fs::exists(metadataPath)) {
-                std::ifstream metaFile(metadataPath);
-                std::stringstream buffer;
-                buffer << metaFile.rdbuf();
-                std::string content = buffer.str();
-                
-                std::string versionIdStr = "\"versionId\":" + std::to_string(versionId);
-                if (content.find(versionIdStr) != std::string::npos) {
-                    size_t pos = content.find(versionIdStr);
-                    size_t versionPathPos = content.find("\"versionPath\":\"", pos);
-                    if (versionPathPos != std::string::npos) {
-                        versionPathPos += 15;
-                        size_t endPos = content.find("\"", versionPathPos);
-                        std::string versionPath = content.substr(versionPathPos, endPos - versionPathPos);
-                        
-                        size_t filePathPos = content.find("\"filePath\":\"", pos);
-                        if (filePathPos != std::string::npos) {
-                            filePathPos += 12;
-                            size_t filePathEnd = content.find("\"", filePathPos);
-                            std::string filePath = content.substr(filePathPos, filePathEnd - filePathPos);
-                            
-                            try {
-                                if (fs::exists(versionPath)) {
-                                    fs::copy_file(versionPath, filePath, fs::copy_options::overwrite_existing);
-                                    return "Success: Restored version " + std::to_string(versionId) + " to " + filePath + "\n";
-                                }
-                            } catch (const fs::filesystem_error& e) {
-                                return "Error: Failed to restore version: " + std::string(e.what()) + "\n";
-                            }
-                        }
-                    }
-                }
-            }
+    try {
+        // Use FileVersionManager API for restore
+        if (ctx_.versionManager->restoreVersion(filePath, versionId, true)) {
+            return "Success: Restored version " + std::to_string(versionId) + " to " + filePath + "\n";
+        } else {
+            return "Error: Failed to restore version " + std::to_string(versionId) + "\n";
         }
+    } catch (const std::exception& e) {
+        return "Error: Failed to restore version: " + std::string(e.what()) + "\n";
     }
-    
-    return "Error: Version not found\n";
 }
 
 std::string FileCommands::handleDeleteVersion(const std::string& args) {
     std::istringstream iss(args);
-    int versionId;
+    uint64_t versionId;
     std::string filePath;
     iss >> versionId;
     std::getline(iss >> std::ws, filePath);
@@ -589,100 +561,65 @@ std::string FileCommands::handleDeleteVersion(const std::string& args) {
         return "Error: Usage: DELETE_VERSION <versionId> <filePath>\n";
     }
     
-    namespace fs = std::filesystem;
-    std::string versionDir;
-    
-    if (ctx_.daemonCore) {
-        auto config = ctx_.daemonCore->getConfig();
-        versionDir = config.watchDirectory + "/.sentinel_versions";
+    // Sanitize path
+    filePath = sanitizePath(filePath);
+    if (filePath.empty()) {
+        return "Error: Invalid file path\n";
     }
     
-    if (versionDir.empty() || !fs::exists(versionDir)) {
-        return "Error: Version storage not found\n";
+    if (!ctx_.versionManager) {
+        return "Error: Version manager not available\n";
     }
     
-    for (const auto& entry : fs::directory_iterator(versionDir)) {
-        if (entry.is_directory()) {
-            std::string metadataPath = entry.path().string() + "/metadata.json";
-            if (fs::exists(metadataPath)) {
-                std::ifstream metaFile(metadataPath);
-                std::stringstream buffer;
-                buffer << metaFile.rdbuf();
-                std::string content = buffer.str();
-                
-                std::string versionIdStr = "\"versionId\":" + std::to_string(versionId);
-                if (content.find(versionIdStr) != std::string::npos) {
-                    size_t pos = content.find(versionIdStr);
-                    size_t versionPathPos = content.find("\"versionPath\":\"", pos);
-                    if (versionPathPos != std::string::npos) {
-                        versionPathPos += 15;
-                        size_t endPos = content.find("\"", versionPathPos);
-                        std::string versionPath = content.substr(versionPathPos, endPos - versionPathPos);
-                        
-                        try {
-                            if (fs::exists(versionPath)) {
-                                fs::remove(versionPath);
-                            }
-                            return "Success: Deleted version " + std::to_string(versionId) + "\n";
-                        } catch (const fs::filesystem_error& e) {
-                            return "Error: Failed to delete version: " + std::string(e.what()) + "\n";
-                        }
-                    }
-                }
-            }
+    try {
+        // Use FileVersionManager API for delete
+        if (ctx_.versionManager->deleteVersion(filePath, versionId)) {
+            return "Success: Deleted version " + std::to_string(versionId) + " for " + filePath + "\n";
+        } else {
+            return "Error: Version not found or failed to delete\n";
         }
+    } catch (const std::exception& e) {
+        return "Error: Failed to delete version: " + std::string(e.what()) + "\n";
     }
-    
-    return "Error: Version not found\n";
 }
 
 std::string FileCommands::handlePreviewVersion(const std::string& args) {
     std::istringstream iss(args);
-    int versionId;
+    uint64_t versionId;
     std::string filePath;
     iss >> versionId;
     std::getline(iss >> std::ws, filePath);
     
-    namespace fs = std::filesystem;
-    std::string versionDir;
-    
-    if (ctx_.daemonCore) {
-        auto config = ctx_.daemonCore->getConfig();
-        versionDir = config.watchDirectory + "/.sentinel_versions";
+    if (filePath.empty()) {
+        return "Error: Usage: PREVIEW_VERSION <versionId> <filePath>\n";
     }
     
-    if (versionDir.empty() || !fs::exists(versionDir)) {
-        return "Error: Version storage not found\n";
+    // Sanitize path
+    filePath = sanitizePath(filePath);
+    if (filePath.empty()) {
+        return "Error: Invalid file path\n";
     }
     
-    for (const auto& entry : fs::directory_iterator(versionDir)) {
-        if (entry.is_directory()) {
-            std::string metadataPath = entry.path().string() + "/metadata.json";
-            if (fs::exists(metadataPath)) {
-                std::ifstream metaFile(metadataPath);
-                std::stringstream buffer;
-                buffer << metaFile.rdbuf();
-                std::string content = buffer.str();
-                
-                std::string versionIdStr = "\"versionId\":" + std::to_string(versionId);
-                if (content.find(versionIdStr) != std::string::npos) {
-                    size_t pos = content.find(versionIdStr);
-                    size_t versionPathPos = content.find("\"versionPath\":\"", pos);
-                    if (versionPathPos != std::string::npos) {
-                        versionPathPos += 15;
-                        size_t endPos = content.find("\"", versionPathPos);
-                        std::string versionPath = content.substr(versionPathPos, endPos - versionPathPos);
-                        
-                        if (fs::exists(versionPath)) {
-                            return "VERSION_PATH:" + versionPath + "\n";
-                        }
-                    }
-                }
+    if (!ctx_.versionManager) {
+        return "Error: Version manager not available\n";
+    }
+    
+    try {
+        // Use FileVersionManager API to get version
+        auto version = ctx_.versionManager->getVersion(filePath, versionId);
+        if (version.has_value()) {
+            // Return version path for preview
+            if (std::filesystem::exists(version->versionPath)) {
+                return "VERSION_PATH:" + version->versionPath + "\n";
+            } else {
+                return "Error: Version file not found on disk\n";
             }
+        } else {
+            return "Error: Version not found\n";
         }
+    } catch (const std::exception& e) {
+        return "Error: Failed to get version: " + std::string(e.what()) + "\n";
     }
-    
-    return "Error: Version not found\n";
 }
 
 std::string FileCommands::handleThreatsJson() {
