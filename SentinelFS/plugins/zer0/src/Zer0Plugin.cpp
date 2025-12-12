@@ -681,27 +681,45 @@ void Zer0Plugin::handleThreat(const DetectionResult& result) {
         // Save threat to database
         sqlite3* db = static_cast<sqlite3*>(impl_->storage->getDB());
         if (db) {
-            const char* sql = R"(
-                INSERT INTO detected_threats 
-                (file_path, threat_type_id, threat_level_id, threat_score, entropy, file_size, hash, quarantine_path, detected_at, marked_safe)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0)
-            )";
+            // Check if threat already exists for this file (prevent duplicates)
+            const char* checkSql = "SELECT id, marked_safe FROM detected_threats WHERE file_path = ?";
+            sqlite3_stmt* checkStmt;
+            bool exists = false;
             
-            sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, result.filePath.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_bind_int(stmt, 2, threatTypeId);
-                sqlite3_bind_int(stmt, 3, threatLevelId);
-                sqlite3_bind_double(stmt, 4, result.confidence);
-                sqlite3_bind_null(stmt, 5);  // entropy - could be added later
-                sqlite3_bind_int64(stmt, 6, fileSize);
-                sqlite3_bind_text(stmt, 7, result.fileHash.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_bind_null(stmt, 8);  // quarantine_path - will be updated after quarantine
-                
-                if (sqlite3_step(stmt) == SQLITE_DONE) {
-                    logger.log(LogLevel::INFO, "Threat saved to database: " + result.filePath, "Zer0");
+            if (sqlite3_prepare_v2(db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(checkStmt, 1, result.filePath.c_str(), -1, SQLITE_TRANSIENT);
+                if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+                    exists = true;
                 }
-                sqlite3_finalize(stmt);
+                sqlite3_finalize(checkStmt);
+            }
+            
+            // Skip insertion if threat already exists for this file
+            if (exists) {
+                logger.log(LogLevel::DEBUG, "Threat already tracked for: " + result.filePath, "Zer0");
+            } else {
+                const char* sql = R"(
+                    INSERT INTO detected_threats 
+                    (file_path, threat_type_id, threat_level_id, threat_score, entropy, file_size, hash, quarantine_path, detected_at, marked_safe)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0)
+                )";
+                
+                sqlite3_stmt* stmt;
+                if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+                    sqlite3_bind_text(stmt, 1, result.filePath.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_int(stmt, 2, threatTypeId);
+                    sqlite3_bind_int(stmt, 3, threatLevelId);
+                    sqlite3_bind_double(stmt, 4, result.confidence);
+                    sqlite3_bind_null(stmt, 5);  // entropy - could be added later
+                    sqlite3_bind_int64(stmt, 6, fileSize);
+                    sqlite3_bind_text(stmt, 7, result.fileHash.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_null(stmt, 8);  // quarantine_path - will be updated after quarantine
+                    
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        logger.log(LogLevel::INFO, "Threat saved to database: " + result.filePath, "Zer0");
+                    }
+                    sqlite3_finalize(stmt);
+                }
             }
         }
     }

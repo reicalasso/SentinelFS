@@ -1407,6 +1407,26 @@ bool FalconStore::addThreat(const ThreatInfo& threat) {
     std::unique_lock<std::shared_mutex> lock(impl_->dbMutex);
     auto start = std::chrono::steady_clock::now();
     
+    // Check if threat already exists for this file (prevent duplicates)
+    const char* checkSql = "SELECT id FROM detected_threats WHERE file_path = ?";
+    sqlite3_stmt* checkStmt;
+    bool exists = false;
+    
+    if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(checkStmt, 1, threat.filePath.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+            exists = true;
+        }
+        sqlite3_finalize(checkStmt);
+    }
+    
+    // Skip insertion if threat already exists for this file
+    if (exists) {
+        auto end = std::chrono::steady_clock::now();
+        impl_->updateQueryStats(std::chrono::duration<double, std::milli>(end - start).count());
+        return true; // Already tracked
+    }
+    
     const char* sql = R"(
         INSERT INTO detected_threats (file_path, threat_type_id, threat_level_id, threat_score, description)
         VALUES (?, 
