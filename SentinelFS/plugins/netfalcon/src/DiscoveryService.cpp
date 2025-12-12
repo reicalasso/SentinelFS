@@ -398,14 +398,18 @@ void DiscoveryService::updatePeerLastSeen(const std::string& peerId) {
 }
 
 // mDNS placeholders
+// Note: mDNS discovery requires additional libraries (Avahi on Linux, Bonjour on macOS/Windows)
+// This is a placeholder for future implementation when mDNS support is needed
 
 bool DiscoveryService::startMdns() {
-    // TODO: Implement mDNS discovery
+    // TODO: Implement mDNS discovery using Avahi (Linux) or Bonjour (macOS/Windows)
+    // This would enable automatic peer discovery on local networks
     return false;
 }
 
 void DiscoveryService::stopMdns() {
     // TODO: Implement mDNS cleanup
+    // Clean up mDNS service registration and discovery resources
 }
 
 } // namespace NetFalcon

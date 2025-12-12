@@ -843,8 +843,9 @@ std::unique_ptr<Falcon::QueryBuilder> FalconStore::query() {
 }
 
 std::unique_ptr<Falcon::Transaction> FalconStore::beginTransaction() {
-    // TODO: Implement transaction wrapper
-    return nullptr;
+    // Start transaction (SQLite handles isolation, we just need to ensure BEGIN is atomic)
+    // Note: The transaction will manage its own commit/rollback
+    return std::make_unique<Falcon::SQLiteTransaction>(impl_->db);
 }
 
 bool FalconStore::execute(const std::string& sql) {

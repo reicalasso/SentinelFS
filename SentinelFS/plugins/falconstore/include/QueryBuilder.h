@@ -6,6 +6,7 @@
 #pragma once
 
 #include "FalconStore.h"
+#include "../../core/utils/include/Logger.h"
 #include <sstream>
 #include <sqlite3.h>
 
@@ -412,6 +413,86 @@ private:
             }
         }, value);
     }
+};
+
+/**
+ * @brief SQLite Transaction implementation
+ */
+class SQLiteTransaction : public Transaction {
+public:
+    explicit SQLiteTransaction(sqlite3* db) : db_(db), active_(false) {
+        char* errMsg = nullptr;
+        if (sqlite3_exec(db_, "BEGIN TRANSACTION", nullptr, nullptr, &errMsg) == SQLITE_OK) {
+            active_ = true;
+        } else {
+            if (errMsg) {
+                Logger::instance().log(LogLevel::ERROR, "Failed to begin transaction: " + std::string(errMsg), "FalconStore");
+                sqlite3_free(errMsg);
+            }
+        }
+    }
+    
+    ~SQLiteTransaction() override {
+        if (active_) {
+            rollback();
+        }
+    }
+    
+    // Non-copyable
+    SQLiteTransaction(const SQLiteTransaction&) = delete;
+    SQLiteTransaction& operator=(const SQLiteTransaction&) = delete;
+    
+    void commit() override {
+        if (!active_) return;
+        
+        char* errMsg = nullptr;
+        if (sqlite3_exec(db_, "COMMIT", nullptr, nullptr, &errMsg) == SQLITE_OK) {
+            active_ = false;
+        } else {
+            if (errMsg) {
+                Logger::instance().log(LogLevel::ERROR, "Failed to commit transaction: " + std::string(errMsg), "FalconStore");
+                sqlite3_free(errMsg);
+            }
+            // If commit fails, transaction is still active
+        }
+    }
+    
+    void rollback() override {
+        if (!active_) return;
+        
+        char* errMsg = nullptr;
+        sqlite3_exec(db_, "ROLLBACK", nullptr, nullptr, &errMsg);
+        if (errMsg) {
+            Logger::instance().log(LogLevel::ERROR, "Failed to rollback transaction: " + std::string(errMsg), "FalconStore");
+            sqlite3_free(errMsg);
+        }
+        active_ = false;
+    }
+    
+    bool isActive() const override {
+        return active_;
+    }
+    
+    bool execute(const std::string& sql) override {
+        if (!active_) return false;
+        
+        char* errMsg = nullptr;
+        bool success = sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &errMsg) == SQLITE_OK;
+        if (errMsg) {
+            Logger::instance().log(LogLevel::ERROR, "SQL error in transaction: " + std::string(errMsg), "FalconStore");
+            sqlite3_free(errMsg);
+        }
+        return success;
+    }
+    
+    std::unique_ptr<QueryBuilder> query() override {
+        if (!active_) return nullptr;
+        return std::make_unique<SQLiteQueryBuilder>(db_);
+    }
+
+private:
+    sqlite3* db_;
+    bool active_;
 };
 
 } // namespace Falcon

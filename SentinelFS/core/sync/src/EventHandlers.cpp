@@ -617,14 +617,26 @@ void EventHandlers::setupOfflineQueue() {
                 
             case sfs::sync::OperationType::Delete:
                 logger.info("Processing queued delete: " + filename, "OfflineQueue");
-                // Broadcast delete to peers
-                // TODO: Implement delete broadcast
-                return true;
+                // Remove from database and broadcast delete to peers
+                if (storage_->removeFile(op.filePath)) {
+                    fileSyncHandler_->broadcastDelete(op.filePath);
+                    return true;
+                }
+                break;
                 
             case sfs::sync::OperationType::Rename:
-                logger.info("Processing queued rename: " + filename, "OfflineQueue");
-                // TODO: Implement rename broadcast
-                return true;
+                logger.info("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
+                // Rename is handled as: delete old path, then create/update new path
+                // First, remove old path from database and broadcast delete
+                if (storage_->removeFile(op.filePath)) {
+                    fileSyncHandler_->broadcastDelete(op.filePath);
+                }
+                // Then, update new path in database and broadcast update
+                if (fileSyncHandler_->updateFileInDatabase(op.targetPath)) {
+                    fileSyncHandler_->broadcastUpdate(op.targetPath);
+                    return true;
+                }
+                break;
         }
         
         return false;
