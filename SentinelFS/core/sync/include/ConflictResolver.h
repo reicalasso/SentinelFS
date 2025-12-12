@@ -206,6 +206,17 @@ public:
         const std::string& originalPath,
         const std::string& suffix
     );
+    
+    /**
+     * @brief Write file atomically (temp file + rename)
+     * @param path Target file path
+     * @param data File content
+     * @return true if successful
+     */
+    static bool writeFileAtomic(
+        const std::string& path,
+        const std::vector<uint8_t>& data
+    );
 };
 
 } // namespace SentinelFS

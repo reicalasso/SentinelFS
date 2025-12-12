@@ -10,6 +10,7 @@
 #include <sqlite3.h>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 namespace SentinelFS {
 
@@ -596,6 +597,12 @@ void EventHandlers::setupOfflineQueue() {
     offlineQueue_->setProcessor([this](const sfs::sync::QueuedOperation& op) {
         auto& logger = Logger::instance();
         
+        // Validate storage is available
+        if (!storage_) {
+            logger.error("Storage not available for offline queue processing", "OfflineQueue");
+            return false;
+        }
+        
         // Check if we have peers to sync with
         auto peers = storage_->getAllPeers();
         if (peers.empty()) {
@@ -603,40 +610,65 @@ void EventHandlers::setupOfflineQueue() {
             return false; // Retry later
         }
         
+        // Filter to only authenticated/connected peers
+        std::vector<PeerInfo> activePeers;
+        if (network_) {
+            auto connectedIds = network_->getConnectedPeerIds();
+            for (const auto& peer : peers) {
+                if (std::find(connectedIds.begin(), connectedIds.end(), peer.id) != connectedIds.end()) {
+                    activePeers.push_back(peer);
+                }
+            }
+        }
+        
+        if (activePeers.empty() && network_) {
+            logger.debug("No active peers available, keeping operation in queue", "OfflineQueue");
+            return false; // Retry later
+        }
+        
         std::string filename = std::filesystem::path(op.filePath).filename().string();
         
-        switch (op.type) {
-            case sfs::sync::OperationType::Create:
-            case sfs::sync::OperationType::Update:
-                logger.info("Processing queued update: " + filename, "OfflineQueue");
-                if (fileSyncHandler_->updateFileInDatabase(op.filePath)) {
-                    fileSyncHandler_->broadcastUpdate(op.filePath);
-                    return true;
-                }
-                break;
-                
-            case sfs::sync::OperationType::Delete:
-                logger.info("Processing queued delete: " + filename, "OfflineQueue");
-                // Remove from database and broadcast delete to peers
-                if (storage_->removeFile(op.filePath)) {
-                    fileSyncHandler_->broadcastDelete(op.filePath);
-                    return true;
-                }
-                break;
-                
-            case sfs::sync::OperationType::Rename:
-                logger.info("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
-                // Rename is handled as: delete old path, then create/update new path
-                // First, remove old path from database and broadcast delete
-                if (storage_->removeFile(op.filePath)) {
-                    fileSyncHandler_->broadcastDelete(op.filePath);
-                }
-                // Then, update new path in database and broadcast update
-                if (fileSyncHandler_->updateFileInDatabase(op.targetPath)) {
-                    fileSyncHandler_->broadcastUpdate(op.targetPath);
-                    return true;
-                }
-                break;
+        try {
+            switch (op.type) {
+                case sfs::sync::OperationType::Create:
+                case sfs::sync::OperationType::Update:
+                    logger.info("Processing queued update: " + filename, "OfflineQueue");
+                    if (fileSyncHandler_ && fileSyncHandler_->updateFileInDatabase(op.filePath)) {
+                        fileSyncHandler_->broadcastUpdate(op.filePath);
+                        return true;
+                    }
+                    break;
+                    
+                case sfs::sync::OperationType::Delete:
+                    logger.info("Processing queued delete: " + filename, "OfflineQueue");
+                    // Remove from database and broadcast delete to peers
+                    if (storage_->removeFile(op.filePath)) {
+                        if (fileSyncHandler_) {
+                            fileSyncHandler_->broadcastDelete(op.filePath);
+                        }
+                        return true;
+                    }
+                    break;
+                    
+                case sfs::sync::OperationType::Rename:
+                    logger.info("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
+                    // Rename is handled as: delete old path, then create/update new path
+                    // First, remove old path from database and broadcast delete
+                    if (storage_->removeFile(op.filePath)) {
+                        if (fileSyncHandler_) {
+                            fileSyncHandler_->broadcastDelete(op.filePath);
+                        }
+                    }
+                    // Then, update new path in database and broadcast update
+                    if (fileSyncHandler_ && fileSyncHandler_->updateFileInDatabase(op.targetPath)) {
+                        fileSyncHandler_->broadcastUpdate(op.targetPath);
+                        return true;
+                    }
+                    break;
+            }
+        } catch (const std::exception& e) {
+            logger.error("Exception processing queued operation: " + std::string(e.what()), "OfflineQueue");
+            return false;
         }
         
         return false;

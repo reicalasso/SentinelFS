@@ -338,6 +338,17 @@ void SyncPipeline::broadcastFileUpdate(const std::string& localPath) {
         return;
     }
     
+    if (!network_) {
+        logger.error("Network not available for broadcast", "SyncPipeline");
+        return;
+    }
+    
+    // Check if file still exists before broadcasting
+    if (!std::filesystem::exists(localPath)) {
+        logger.warn("File no longer exists, skipping broadcast: " + localPath, "SyncPipeline");
+        return;
+    }
+    
     auto peers = storage_->getAllPeers();
     if (peers.empty()) {
         logger.debug("No peers to broadcast to", "SyncPipeline");
@@ -347,8 +358,22 @@ void SyncPipeline::broadcastFileUpdate(const std::string& localPath) {
     std::string filename = std::filesystem::path(localPath).filename().string();
     logger.info("Broadcasting " + filename + " to " + std::to_string(peers.size()) + " peer(s)", "SyncPipeline");
     
+    size_t successCount = 0;
     for (const auto& peer : peers) {
-        syncFileToPeer(peer.id, localPath);
+        // Only broadcast to authenticated peers
+        if (isPeerAuthenticated(peer.id)) {
+            std::string transferId = syncFileToPeer(peer.id, localPath);
+            if (!transferId.empty()) {
+                successCount++;
+            }
+        } else {
+            logger.debug("Skipping unauthenticated peer: " + peer.id, "SyncPipeline");
+        }
+    }
+    
+    if (successCount < peers.size()) {
+        logger.warn("Broadcast incomplete: " + std::to_string(successCount) + "/" + 
+                   std::to_string(peers.size()) + " peers", "SyncPipeline");
     }
 }
 

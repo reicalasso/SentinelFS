@@ -13,88 +13,112 @@ namespace SentinelFS {
 std::string TransferCommands::handleMetrics() {
     auto& metrics = MetricsCollector::instance();
     std::string summary = metrics.getMetricsSummary();
-    summary += "\n--- Bandwidth Limiter ---\n";
-    summary += ctx_.network->getBandwidthStats();
-    summary += "\n";
+    
+    if (ctx_.network) {
+        summary += "\n--- Bandwidth Limiter ---\n";
+        summary += ctx_.network->getBandwidthStats();
+        summary += "\n";
+    } else {
+        summary += "\n--- Bandwidth Limiter ---\n";
+        summary += "Network subsystem not available\n";
+    }
     return summary;
 }
 
 std::string TransferCommands::handleUploadLimit(const std::string& args) {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
     std::string trimmed = args;
     auto first = trimmed.find_first_not_of(" \t\r\n");
     if (first == std::string::npos) {
-        return "Usage: UPLOAD-LIMIT <KB/s>\n";
+        return "Error: Usage: UPLOAD-LIMIT <KB/s>\n";
     }
     trimmed = trimmed.substr(first);
 
     try {
         long long kb = std::stoll(trimmed);
         if (kb < 0) {
-            return "Upload limit must be >= 0 KB/s.\n";
+            return "Error: Upload limit must be >= 0 KB/s\n";
+        }
+        
+        // Cap at reasonable maximum (10 GB/s)
+        if (kb > 10 * 1024 * 1024) {
+            return "Error: Upload limit too high (max 10 GB/s)\n";
         }
 
         std::size_t bytesPerSecond = static_cast<std::size_t>(kb) * 1024;
         ctx_.network->setGlobalUploadLimit(bytesPerSecond);
 
         if (bytesPerSecond == 0) {
-            return "Global upload limit set to unlimited.\n";
+            return "Success: Global upload limit set to unlimited\n";
         }
 
         std::ostringstream ss;
-        ss << "Global upload limit set to " << kb << " KB/s.\n";
+        ss << "Success: Global upload limit set to " << kb << " KB/s\n";
         return ss.str();
     } catch (const std::invalid_argument&) {
-        return "Invalid upload limit. Usage: UPLOAD-LIMIT <KB/s>\n";
+        return "Error: Invalid upload limit. Usage: UPLOAD-LIMIT <KB/s>\n";
     } catch (const std::out_of_range&) {
-        return "Upload limit value out of range.\n";
+        return "Error: Upload limit value out of range\n";
     }
 }
 
 std::string TransferCommands::handleDownloadLimit(const std::string& args) {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
     std::string trimmed = args;
     auto first = trimmed.find_first_not_of(" \t\r\n");
     if (first == std::string::npos) {
-        return "Usage: DOWNLOAD-LIMIT <KB/s>\n";
+        return "Error: Usage: DOWNLOAD-LIMIT <KB/s>\n";
     }
     trimmed = trimmed.substr(first);
 
     try {
         long long kb = std::stoll(trimmed);
         if (kb < 0) {
-            return "Download limit must be >= 0 KB/s.\n";
+            return "Error: Download limit must be >= 0 KB/s\n";
+        }
+        
+        // Cap at reasonable maximum (10 GB/s)
+        if (kb > 10 * 1024 * 1024) {
+            return "Error: Download limit too high (max 10 GB/s)\n";
         }
 
         std::size_t bytesPerSecond = static_cast<std::size_t>(kb) * 1024;
         ctx_.network->setGlobalDownloadLimit(bytesPerSecond);
 
         if (bytesPerSecond == 0) {
-            return "Global download limit set to unlimited.\n";
+            return "Success: Global download limit set to unlimited\n";
         }
 
         std::ostringstream ss;
-        ss << "Global download limit set to " << kb << " KB/s.\n";
+        ss << "Success: Global download limit set to " << kb << " KB/s\n";
         return ss.str();
     } catch (const std::invalid_argument&) {
-        return "Invalid download limit. Usage: DOWNLOAD-LIMIT <KB/s>\n";
+        return "Error: Invalid download limit. Usage: DOWNLOAD-LIMIT <KB/s>\n";
     } catch (const std::out_of_range&) {
-        return "Download limit value out of range.\n";
+        return "Error: Download limit value out of range\n";
     }
 }
 
 std::string TransferCommands::handlePause() {
     if (ctx_.syncEnabledCallback) {
         ctx_.syncEnabledCallback(false);
-        return "Synchronization PAUSED.\n";
+        return "Success: Synchronization PAUSED\n";
     }
-    return "Pause callback not set.\n";
+    return "Error: Pause callback not set\n";
 }
 
 std::string TransferCommands::handleResume() {
     if (ctx_.syncEnabledCallback) {
         ctx_.syncEnabledCallback(true);
-        return "Synchronization RESUMED.\n";
+        return "Success: Synchronization RESUMED\n";
     }
-    return "Resume callback not set.\n";
+    return "Error: Resume callback not set\n";
 }
 
 std::string TransferCommands::handleDiscover() {
@@ -144,6 +168,11 @@ std::string TransferCommands::handleTransfersJson() {
     // Get active transfers from MetricsCollector
     auto& metrics = MetricsCollector::instance();
     auto activeTransfers = metrics.getActiveTransfers();
+    
+    if (!ctx_.storage) {
+        ss << "], \"error\": \"Storage not initialized\"}\n";
+        return ss.str();
+    }
     
     for (const auto& transfer : activeTransfers) {
         if (!first) ss << ",";
@@ -312,26 +341,41 @@ std::string TransferCommands::handleRelayStatus() {
 }
 
 std::string TransferCommands::handleSetEncryption(const std::string& args) {
-    bool enable = (args == "true" || args == "1" || args == "on");
-    if (ctx_.network) {
-        ctx_.network->setEncryptionEnabled(enable);
-        return enable ? "Encryption enabled.\n" : "Encryption disabled.\n";
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
     }
-    return "Error: Network not initialized\n";
+    
+    bool enable = (args == "true" || args == "1" || args == "on");
+    ctx_.network->setEncryptionEnabled(enable);
+    return enable ? "Success: Encryption enabled\n" : "Success: Encryption disabled\n";
 }
 
 std::string TransferCommands::handleSetSessionCode(const std::string& args) {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
+    // Validate session code format
     if (args.length() != 6) {
-        return "Error: Session code must be 6 characters\n";
+        return "Error: Session code must be exactly 6 characters\n";
     }
-    if (ctx_.network) {
-        ctx_.network->setSessionCode(args);
-        return "Session code set: " + args + "\n";
+    
+    // Check for valid alphanumeric characters
+    for (char c : args) {
+        if (!std::isalnum(c)) {
+            return "Error: Session code must contain only alphanumeric characters\n";
+        }
     }
-    return "Error: Network not initialized\n";
+    
+    ctx_.network->setSessionCode(args);
+    return "Success: Session code set to " + args + "\n";
 }
 
 std::string TransferCommands::handleGenerateCode() {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
     static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     std::string code;
     std::random_device rd;
@@ -340,11 +384,9 @@ std::string TransferCommands::handleGenerateCode() {
     for (int i = 0; i < 6; i++) {
         code += chars[dis(gen)];
     }
-    if (ctx_.network) {
-        ctx_.network->setSessionCode(code);
-        return "CODE:" + code + "\n";
-    }
-    return "Error: Network plugin not initialized.\n";
+    
+    ctx_.network->setSessionCode(code);
+    return "Success: Generated session code: " + code + "\n";
 }
 
 } // namespace SentinelFS

@@ -88,46 +88,63 @@ std::string ConfigCommands::handleSetConfig(const std::string& args) {
     
     try {
         if (key == "uploadLimit") {
-            size_t kb = std::stoull(value);
-            if (ctx_.network) {
-                ctx_.network->setGlobalUploadLimit(kb * 1024);
-                return "Success: Upload limit set to " + value + " KB/s\n";
+            if (!ctx_.network) {
+                return "Error: Network subsystem not initialized\n";
             }
+            size_t kb = std::stoull(value);
+            if (kb > 10 * 1024 * 1024) {
+                return "Error: Upload limit too high (max 10 GB/s)\n";
+            }
+            ctx_.network->setGlobalUploadLimit(kb * 1024);
+            return "Success: Upload limit set to " + value + " KB/s\n";
         } else if (key == "downloadLimit") {
+            if (!ctx_.network) {
+                return "Error: Network subsystem not initialized\n";
+            }
             size_t kb = std::stoull(value);
-            if (ctx_.network) {
-                ctx_.network->setGlobalDownloadLimit(kb * 1024);
-                return "Success: Download limit set to " + value + " KB/s\n";
+            if (kb > 10 * 1024 * 1024) {
+                return "Error: Download limit too high (max 10 GB/s)\n";
             }
+            ctx_.network->setGlobalDownloadLimit(kb * 1024);
+            return "Success: Download limit set to " + value + " KB/s\n";
         } else if (key == "sessionCode") {
-            if (ctx_.network) {
-                ctx_.network->setSessionCode(value);
-                return "Success: Session code updated\n";
+            if (!ctx_.network) {
+                return "Error: Network subsystem not initialized\n";
             }
-        } else if (key == "encryption") {
-            bool enable = (value == "true" || value == "1" || value == "enabled");
-            if (ctx_.network) {
-                ctx_.network->setEncryptionEnabled(enable);
-                return "Success: Encryption " + std::string(enable ? "enabled" : "disabled") + "\n";
+            if (value.length() != 6) {
+                return "Error: Session code must be exactly 6 characters\n";
             }
-        } else if (key == "syncEnabled") {
-            bool enable = (value == "true" || value == "1" || value == "enabled");
-            if (ctx_.daemonCore) {
-                if (enable) {
-                    ctx_.daemonCore->resumeSync();
-                } else {
-                    ctx_.daemonCore->pauseSync();
+            for (char c : value) {
+                if (!std::isalnum(c)) {
+                    return "Error: Session code must contain only alphanumeric characters\n";
                 }
-                return "Success: Sync " + std::string(enable ? "enabled" : "disabled") + "\n";
             }
+            ctx_.network->setSessionCode(value);
+            return "Success: Session code updated\n";
+        } else if (key == "encryption") {
+            if (!ctx_.network) {
+                return "Error: Network subsystem not initialized\n";
+            }
+            bool enable = (value == "true" || value == "1" || value == "enabled");
+            ctx_.network->setEncryptionEnabled(enable);
+            return "Success: Encryption " + std::string(enable ? "enabled" : "disabled") + "\n";
+        } else if (key == "syncEnabled") {
+            if (!ctx_.daemonCore) {
+                return "Error: Daemon core not initialized\n";
+            }
+            bool enable = (value == "true" || value == "1" || value == "enabled");
+            if (enable) {
+                ctx_.daemonCore->resumeSync();
+            } else {
+                ctx_.daemonCore->pauseSync();
+            }
+            return "Success: Sync " + std::string(enable ? "enabled" : "disabled") + "\n";
         } else {
             return "Error: Unknown config key: " + key + "\n";
         }
     } catch (const std::exception& e) {
         return "Error: Invalid value for " + key + ": " + e.what() + "\n";
     }
-    
-    return "Error: Failed to set config\n";
 }
 
 std::string ConfigCommands::handleExportConfig() {

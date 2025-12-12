@@ -11,6 +11,7 @@
 #include <sstream>
 #include <regex>
 #include <fnmatch.h>
+#include <chrono>
 
 namespace SentinelFS {
 
@@ -116,6 +117,64 @@ bool FileSyncHandler::shouldIgnore(const std::string& absolutePath) {
     return false;
 }
 
+std::string FileSyncHandler::getCachedHash(const std::string& path) {
+    std::lock_guard<std::mutex> lock(hashCacheMutex_);
+    
+    // Check cache
+    auto it = hashCache_.find(path);
+    if (it != hashCache_.end()) {
+        // Check if cache entry is still valid
+        auto now = std::chrono::steady_clock::now();
+        auto age = std::chrono::duration_cast<std::chrono::minutes>(now - it->second.cachedAt);
+        
+        if (age < CACHE_TTL) {
+            // Check if file mtime matches (file hasn't changed)
+            try {
+                auto currentMtime = std::filesystem::last_write_time(path);
+                auto currentMtimeTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                    currentMtime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                
+                if (currentMtimeTime == it->second.mtime) {
+                    return it->second.hash;  // Cache hit
+                }
+            } catch (const std::exception&) {
+                // If we can't check mtime, invalidate cache entry
+                hashCache_.erase(it);
+            }
+        }
+        
+        // Cache expired or file changed, remove entry
+        hashCache_.erase(it);
+    }
+    
+    // Cache miss - compute hash
+    std::string hash = calculateFileHash(path);
+    
+    if (!hash.empty()) {
+        // Store in cache
+        if (hashCache_.size() >= MAX_CACHE_SIZE) {
+            // Remove oldest entry (simple FIFO - remove first)
+            hashCache_.erase(hashCache_.begin());
+        }
+        
+        try {
+            auto mtime = std::filesystem::last_write_time(path);
+            auto mtimeTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                mtime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+            
+            HashCacheEntry entry;
+            entry.hash = hash;
+            entry.mtime = mtimeTime;
+            entry.cachedAt = std::chrono::steady_clock::now();
+            hashCache_[path] = entry;
+        } catch (const std::exception&) {
+            // If we can't get mtime, don't cache
+        }
+    }
+    
+    return hash;
+}
+
 std::string FileSyncHandler::calculateFileHash(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) return "";
@@ -185,7 +244,13 @@ void FileSyncHandler::scanDirectory(const std::string& path) {
             }
             
             if (it->is_regular_file()) {
-                std::string hash = calculateFileHash(currentPath);
+                // Use cached hash for better performance during directory scans
+                std::string hash = getCachedHash(currentPath);
+                if (hash.empty()) {
+                    logger.warn("Failed to compute hash for: " + currentPath, "FileSyncHandler");
+                    continue;
+                }
+                
                 long long size = std::filesystem::file_size(it->path());
                 // Use system time (Unix timestamp in seconds) instead of filesystem clock
                 // filesystem::file_time_type uses a different epoch on some systems
@@ -211,7 +276,13 @@ FileSyncHandler::FileMetadataResult FileSyncHandler::computeFileMetadata(const s
             return result;
         }
         
-        result.hash = calculateFileHash(fullPath);
+        // Use cached hash if available (performance optimization)
+        result.hash = getCachedHash(fullPath);
+        if (result.hash.empty()) {
+            // Hash computation failed
+            return result;
+        }
+        
         result.size = std::filesystem::file_size(fullPath);
         result.timestamp = std::time(nullptr);
         result.valid = true;
@@ -240,8 +311,12 @@ bool FileSyncHandler::updateFileInDatabase(const std::string& fullPath) {
             return false;
         }
 
-        // Calculate hash and metadata
-        std::string hash = calculateFileHash(fullPath);
+        // Calculate hash and metadata (use cached hash for performance)
+        std::string hash = getCachedHash(fullPath);
+        if (hash.empty()) {
+            logger.error("Failed to compute hash for: " + filename, "FileSyncHandler");
+            return false;
+        }
         long long size = std::filesystem::file_size(fullPath);
         long long timestamp = std::time(nullptr);
 

@@ -24,7 +24,14 @@ int BatchQueries::batchUpsertPeers(IStorageAPI* storage, const std::vector<PeerI
     sqlite3* db = static_cast<sqlite3*>(storage->getDB());
     if (!db) return 0;
     
-    sqlite3_exec(db, "BEGIN TRANSACTION", nullptr, nullptr, nullptr);
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db, "BEGIN TRANSACTION", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        if (errMsg) {
+            logger.error("Failed to begin transaction: " + std::string(errMsg), "BatchQueries");
+            sqlite3_free(errMsg);
+        }
+        return 0;
+    }
     
     for (const auto& peer : peers) {
         if (storage->addPeer(peer)) {
@@ -32,7 +39,14 @@ int BatchQueries::batchUpsertPeers(IStorageAPI* storage, const std::vector<PeerI
         }
     }
     
-    sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        if (errMsg) {
+            logger.error("Failed to commit transaction: " + std::string(errMsg), "BatchQueries");
+            sqlite3_free(errMsg);
+        }
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return 0;
+    }
     
     if (logger.isDebugEnabled()) {
         logger.debug("Batch upsert completed: " + std::to_string(successCount) + 
@@ -127,10 +141,18 @@ void BatchQueries::batchUpdateLatencies(
     if (!db) return;
     
     // Batch update with transaction
-    sqlite3_exec(db, "BEGIN TRANSACTION", nullptr, nullptr, nullptr);
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db, "BEGIN TRANSACTION", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        if (errMsg) {
+            logger.error("Failed to begin transaction: " + std::string(errMsg), "BatchQueries");
+            sqlite3_free(errMsg);
+        }
+        return;
+    }
     
     const char* sql = "UPDATE peers SET latency = ?, last_seen = ? WHERE id = ?";
     sqlite3_stmt* stmt;
+    bool success = true;
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         for (const auto& [peerId, latency] : latencies) {
@@ -140,14 +162,29 @@ void BatchQueries::batchUpdateLatencies(
             sqlite3_bind_int64(stmt, 2, now);
             sqlite3_bind_text(stmt, 3, peerId.c_str(), -1, SQLITE_TRANSIENT);
             
-            sqlite3_step(stmt);
+            if (sqlite3_step(stmt) != SQLITE_DONE) {
+                success = false;
+                logger.warn("Failed to update latency for peer: " + peerId, "BatchQueries");
+            }
             sqlite3_reset(stmt);
         }
         
         sqlite3_finalize(stmt);
+    } else {
+        success = false;
     }
     
-    sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
+    if (success) {
+        if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            if (errMsg) {
+                logger.error("Failed to commit transaction: " + std::string(errMsg), "BatchQueries");
+                sqlite3_free(errMsg);
+            }
+            sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        }
+    } else {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+    }
     
     if (logger.isDebugEnabled()) {
         logger.debug("Batch updated " + std::to_string(latencies.size()) + " peer latencies", "BatchQueries");

@@ -328,7 +328,12 @@ std::string FileCommands::handleConflictsJson() {
     std::stringstream ss;
     ss << "{\"conflicts\":[";
     
-    if (ctx_.storage) {
+    if (!ctx_.storage) {
+        ss << "],\"error\":\"Storage not initialized\"}\n";
+        return ss.str();
+    }
+    
+    try {
         auto conflicts = ctx_.storage->getUnresolvedConflicts();
         bool first = true;
         for (const auto& c : conflicts) {
@@ -336,15 +341,19 @@ std::string FileCommands::handleConflictsJson() {
             first = false;
             ss << "{";
             ss << "\"id\":" << c.id << ",";
-            ss << "\"path\":\"" << c.path << "\",";
+            ss << "\"path\":\"" << escapeJson(c.path) << "\",";
             ss << "\"localSize\":" << c.localSize << ",";
             ss << "\"remoteSize\":" << c.remoteSize << ",";
             ss << "\"localTimestamp\":" << c.localTimestamp << ",";
             ss << "\"remoteTimestamp\":" << c.remoteTimestamp << ",";
-            ss << "\"remotePeerId\":\"" << c.remotePeerId << "\",";
-            ss << "\"strategy\":" << c.strategy;
+            ss << "\"remotePeerId\":\"" << escapeJson(c.remotePeerId) << "\",";
+            ss << "\"strategy\":" << static_cast<int>(c.strategy) << ",";
+            ss << "\"resolved\":" << (c.resolved ? "true" : "false");
             ss << "}";
         }
+    } catch (const std::exception& e) {
+        ss << "],\"error\":\"" << escapeJson(e.what()) << "\"}\n";
+        return ss.str();
     }
     
     ss << "]}\n";
@@ -390,9 +399,16 @@ std::string FileCommands::handleResolveConflict(const std::string& args) {
         return "Error: Usage: RESOLVE_CONFLICT <id> <local|remote|both>\n";
     }
     
+    if (conflictId <= 0) {
+        return "Error: Invalid conflict ID (must be > 0)\n";
+    }
+    
     if (!ctx_.storage) {
         return "Error: Storage not initialized\n";
     }
+    
+    // Normalize resolution string
+    std::transform(resolution.begin(), resolution.end(), resolution.begin(), ::tolower);
     
     int strategy = 0;
     std::string msg;
@@ -411,11 +427,15 @@ std::string FileCommands::handleResolveConflict(const std::string& args) {
     }
     
     // Use API for proper statistics tracking
-    if (ctx_.storage->markConflictResolved(conflictId, strategy)) {
-        return "Success: Conflict resolved - " + msg + "\n";
+    try {
+        if (ctx_.storage->markConflictResolved(conflictId, strategy)) {
+            return "Success: Conflict " + std::to_string(conflictId) + " resolved - " + msg + "\n";
+        } else {
+            return "Error: Failed to resolve conflict " + std::to_string(conflictId) + " (ID may not exist)\n";
+        }
+    } catch (const std::exception& e) {
+        return "Error: Exception resolving conflict: " + std::string(e.what()) + "\n";
     }
-    
-    return "Error: Failed to resolve conflict\n";
 }
 
 std::string FileCommands::handleSyncQueueJson() {

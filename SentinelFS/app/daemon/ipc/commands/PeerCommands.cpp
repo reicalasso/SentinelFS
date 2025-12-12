@@ -10,6 +10,10 @@ namespace SentinelFS {
 std::string PeerCommands::handleList() {
     std::stringstream ss;
     
+    if (!ctx_.storage) {
+        return "Error: Storage not initialized\n";
+    }
+    
     auto sortedPeers = ctx_.storage->getPeersByLatency();
     ss << "=== Discovered Peers ===\n";
     
@@ -29,48 +33,72 @@ std::string PeerCommands::handleList() {
 }
 
 std::string PeerCommands::handleConnect(const std::string& args) {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
     // Parse IP:PORT
     size_t colonPos = args.find(':');
-    if (colonPos == std::string::npos) {
-        return "Invalid format. Use: CONNECT <ip>:<port>\n";
+    if (colonPos == std::string::npos || colonPos == 0 || colonPos == args.length() - 1) {
+        return "Error: Invalid format. Use: CONNECT <ip>:<port>\n";
     }
     
     std::string ip = args.substr(0, colonPos);
+    std::string portStr = args.substr(colonPos + 1);
+    
+    // Validate IP (basic check)
+    if (ip.empty() || ip.length() > 45) {  // IPv6 max length
+        return "Error: Invalid IP address\n";
+    }
+    
     int port;
     try {
-        port = std::stoi(args.substr(colonPos + 1));
+        port = std::stoi(portStr);
+        if (port < 1 || port > 65535) {
+            return "Error: Port number must be between 1 and 65535\n";
+        }
     } catch (const std::invalid_argument&) {
-        return "Invalid port number.\n";
+        return "Error: Invalid port number\n";
     } catch (const std::out_of_range&) {
-        return "Port number out of range.\n";
+        return "Error: Port number out of range\n";
     }
     
     if (ctx_.network->connectToPeer(ip, port)) {
-        return "Connecting to " + ip + ":" + std::to_string(port) + "...\n";
+        return "Success: Connecting to " + ip + ":" + std::to_string(port) + "...\n";
     } else {
-        return "Failed to initiate connection.\n";
+        return "Error: Failed to initiate connection to " + ip + ":" + std::to_string(port) + "\n";
     }
 }
 
 std::string PeerCommands::handleAddPeer(const std::string& args) {
+    if (!ctx_.network) {
+        return "Error: Network subsystem not initialized\n";
+    }
+    
     // Parse IP:PORT
     size_t colonPos = args.find(':');
-    if (colonPos == std::string::npos) {
+    if (colonPos == std::string::npos || colonPos == 0 || colonPos == args.length() - 1) {
         return "Error: Invalid format. Use: ADD_PEER <ip>:<port>\n";
     }
     
     std::string ip = args.substr(0, colonPos);
-    int port;
-    try {
-        port = std::stoi(args.substr(colonPos + 1));
-    } catch (const std::invalid_argument&) {
-        return "Error: Invalid port number.\n";
-    } catch (const std::out_of_range&) {
-        return "Error: Port number out of range.\n";
+    std::string portStr = args.substr(colonPos + 1);
+    
+    // Validate IP (basic check)
+    if (ip.empty() || ip.length() > 45) {  // IPv6 max length
+        return "Error: Invalid IP address\n";
     }
     
-    if (!ctx_.network) {
-        return "Error: Network subsystem not initialized.\n";
+    int port;
+    try {
+        port = std::stoi(portStr);
+        if (port < 1 || port > 65535) {
+            return "Error: Port number must be between 1 and 65535\n";
+        }
+    } catch (const std::invalid_argument&) {
+        return "Error: Invalid port number\n";
+    } catch (const std::out_of_range&) {
+        return "Error: Port number out of range\n";
     }
     
     if (ctx_.network->connectToPeer(ip, port)) {
@@ -123,6 +151,10 @@ std::string PeerCommands::handleClearPeers() {
 }
 
 std::string PeerCommands::handlePeersJson() {
+    if (!ctx_.storage) {
+        return "{\"peers\": [], \"error\": \"Storage not initialized\"}\n";
+    }
+    
     std::stringstream ss;
     auto sortedPeers = ctx_.storage->getPeersByLatency();
     

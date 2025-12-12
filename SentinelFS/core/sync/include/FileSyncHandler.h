@@ -4,6 +4,9 @@
 #include <vector>
 #include <cstdint>
 #include <atomic>
+#include <map>
+#include <mutex>
+#include <chrono>
 
 namespace SentinelFS {
 
@@ -120,6 +123,22 @@ public:
 private:
     std::string calculateFileHash(const std::string& path);
     bool shouldIgnore(const std::string& path);
+    
+    // Hash cache entry
+    struct HashCacheEntry {
+        std::string hash;
+        std::chrono::system_clock::time_point mtime;
+        std::chrono::steady_clock::time_point cachedAt;
+    };
+    
+    // Hash cache for recently computed hashes (avoids recomputing for same file)
+    mutable std::map<std::string, HashCacheEntry> hashCache_;
+    mutable std::mutex hashCacheMutex_;
+    static constexpr size_t MAX_CACHE_SIZE = 1000;  // Limit cache size
+    static constexpr std::chrono::minutes CACHE_TTL{5};  // Cache TTL
+    
+    // Get cached hash or compute new one
+    std::string getCachedHash(const std::string& path);
 
     INetworkAPI* network_;
     IStorageAPI* storage_;
