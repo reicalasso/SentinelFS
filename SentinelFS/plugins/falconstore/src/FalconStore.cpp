@@ -209,7 +209,7 @@ bool FalconStore::addFile(const std::string& path, const std::string& hash, long
         const char* checkSql = "SELECT 1 FROM files WHERE path = ? LIMIT 1";
         sqlite3_stmt* checkStmt;
         if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(checkStmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(checkStmt, 1, path.c_str(), -1, SQLITE_STATIC);
             isUpdate = (sqlite3_step(checkStmt) == SQLITE_ROW);
             sqlite3_finalize(checkStmt);
         }
@@ -230,8 +230,8 @@ bool FalconStore::addFile(const std::string& path, const std::string& hash, long
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, hash.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, hash.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int64(stmt, 3, size);
     sqlite3_bind_int64(stmt, 4, timestamp);
     
@@ -273,7 +273,7 @@ bool FalconStore::removeFile(const std::string& path) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -328,7 +328,7 @@ std::optional<FileMetadata> FalconStore::getFile(const std::string& path) {
         return std::nullopt;
     }
     
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
     
     std::optional<FileMetadata> result;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -383,7 +383,7 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
     int existingId = 0;
     
     if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(checkStmt, 1, peer.ip.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(checkStmt, 1, peer.ip.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_int(checkStmt, 2, peer.port);
         if (sqlite3_step(checkStmt) == SQLITE_ROW) {
             existsByAddress = true;
@@ -402,8 +402,8 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
         )";
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(impl_->db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_STATIC);
             sqlite3_bind_int(stmt, 3, statusId);
             sqlite3_bind_int64(stmt, 4, peer.lastSeen);
             sqlite3_bind_int(stmt, 5, peer.latency);
@@ -427,9 +427,9 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
         
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 3, peer.ip.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 3, peer.ip.c_str(), -1, SQLITE_STATIC);
             sqlite3_bind_int(stmt, 4, peer.port);
             sqlite3_bind_int(stmt, 5, statusId);
             sqlite3_bind_int64(stmt, 6, peer.lastSeen);
@@ -452,7 +452,7 @@ bool FalconStore::removePeer(const std::string& peerId) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -469,7 +469,7 @@ std::optional<PeerInfo> FalconStore::getPeer(const std::string& peerId) {
         return std::nullopt;
     }
     
-    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
     
     std::optional<PeerInfo> result;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -533,7 +533,7 @@ bool FalconStore::updatePeerLatency(const std::string& peerId, int latency) {
     }
     
     sqlite3_bind_int(stmt, 1, latency);
-    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_STATIC);
     
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
@@ -585,7 +585,7 @@ bool FalconStore::addConflict(const ConflictInfo& conflict) {
     int fileId = 0;
     
     if (sqlite3_prepare_v2(impl_->db, getFileSql, -1, &getStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(getStmt, 1, conflict.path.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(getStmt, 1, conflict.path.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(getStmt) == SQLITE_ROW) {
             fileId = sqlite3_column_int(getStmt, 0);
         }
@@ -606,13 +606,13 @@ bool FalconStore::addConflict(const ConflictInfo& conflict) {
     }
     
     sqlite3_bind_int(stmt, 1, fileId);
-    sqlite3_bind_text(stmt, 2, conflict.localHash.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, conflict.remoteHash.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, conflict.localHash.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, conflict.remoteHash.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int64(stmt, 4, conflict.localSize);
     sqlite3_bind_int64(stmt, 5, conflict.remoteSize);
     sqlite3_bind_int64(stmt, 6, conflict.localTimestamp);
     sqlite3_bind_int64(stmt, 7, conflict.remoteTimestamp);
-    sqlite3_bind_text(stmt, 8, conflict.remotePeerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, conflict.remotePeerId.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 9, conflict.strategy);
     
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
@@ -708,7 +708,7 @@ std::vector<ConflictInfo> FalconStore::getConflictsForFile(const std::string& pa
     
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             ConflictInfo conflict;
             const char* filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
@@ -768,7 +768,7 @@ bool FalconStore::enqueueSyncOperation(const std::string& filePath, const std::s
     int fileId = 0;
     
     if (sqlite3_prepare_v2(impl_->db, getFileSql, -1, &getStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(getStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(getStmt, 1, filePath.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(getStmt) == SQLITE_ROW) {
             fileId = sqlite3_column_int(getStmt, 0);
         }
@@ -818,7 +818,7 @@ bool FalconStore::logFileAccess(const std::string& filePath, const std::string& 
     int fileId = 0;
     
     if (sqlite3_prepare_v2(impl_->db, getFileSql, -1, &getStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(getStmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(getStmt, 1, filePath.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(getStmt) == SQLITE_ROW) {
             fileId = sqlite3_column_int(getStmt, 0);
         }
@@ -849,8 +849,8 @@ bool FalconStore::logFileAccess(const std::string& filePath, const std::string& 
     }
     sqlite3_bind_int(stmt, 2, opTypeId);
     sqlite3_bind_int64(stmt, 3, timestamp);
-    sqlite3_bind_text(stmt, 4, filePath.c_str(), -1, SQLITE_TRANSIENT);  // Store path in details
-    sqlite3_bind_text(stmt, 5, deviceId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, filePath.c_str(), -1, SQLITE_STATIC);  // Store path in details
+    sqlite3_bind_text(stmt, 5, deviceId.c_str(), -1, SQLITE_STATIC);
     
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
@@ -915,9 +915,9 @@ bool FalconStore::execute(const std::string& sql, const std::vector<Falcon::Quer
             } else if constexpr (std::is_same_v<T, double>) {
                 sqlite3_bind_double(stmt, idx, arg);
             } else if constexpr (std::is_same_v<T, std::string>) {
-                sqlite3_bind_text(stmt, idx, arg.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(stmt, idx, arg.c_str(), -1, SQLITE_STATIC);
             } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
-                sqlite3_bind_blob(stmt, idx, arg.data(), arg.size(), SQLITE_TRANSIENT);
+                sqlite3_bind_blob(stmt, idx, arg.data(), arg.size(), SQLITE_STATIC);
             }
         }, param);
         idx++;
@@ -1051,7 +1051,7 @@ bool FalconStore::addWatchedFolder(const std::string& path) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1077,7 +1077,7 @@ bool FalconStore::removeWatchedFolder(const std::string& path) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1133,7 +1133,7 @@ bool FalconStore::isWatchedFolder(const std::string& path) {
     bool exists = false;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
         exists = (sqlite3_step(stmt) == SQLITE_ROW);
         sqlite3_finalize(stmt);
     }
@@ -1161,7 +1161,7 @@ bool FalconStore::updateWatchedFolderStatus(const std::string& path, int statusI
     }
     
     sqlite3_bind_int(stmt, 1, statusId);
-    sqlite3_bind_text(stmt, 2, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, path.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1193,7 +1193,7 @@ std::vector<FileMetadata> FalconStore::getFilesInFolder(const std::string& folde
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             FileMetadata file;
             const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
@@ -1225,15 +1225,17 @@ int FalconStore::removeFilesInFolder(const std::string& folderPath) {
     auto start = std::chrono::steady_clock::now();
     
     std::string pattern = folderPath;
-    if (!pattern.empty() && pattern.back() != '/') pattern += '/';
-    pattern += "%";
+    if (!pattern.empty() && pattern.back() != '/') {
+        pattern += '/';
+    }
+    pattern += '%';
     
     // Count first
     int count = 0;
     const char* countSql = "SELECT COUNT(*) FROM files WHERE path LIKE ?";
     sqlite3_stmt* countStmt;
     if (sqlite3_prepare_v2(impl_->db, countSql, -1, &countStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(countStmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(countStmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(countStmt) == SQLITE_ROW) {
             count = sqlite3_column_int(countStmt, 0);
         }
@@ -1245,7 +1247,7 @@ int FalconStore::removeFilesInFolder(const std::string& folderPath) {
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
@@ -1330,7 +1332,7 @@ bool FalconStore::markFileSynced(const std::string& path, bool synced) {
     }
     
     sqlite3_bind_int(stmt, 1, synced ? 1 : 0);
-    sqlite3_bind_text(stmt, 2, path.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, path.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1399,7 +1401,7 @@ bool FalconStore::addIgnorePattern(const std::string& pattern) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1425,7 +1427,7 @@ bool FalconStore::removeIgnorePattern(const std::string& pattern) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1481,7 +1483,7 @@ bool FalconStore::addThreat(const ThreatInfo& threat) {
     bool exists = false;
     
     if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(checkStmt, 1, threat.filePath.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(checkStmt, 1, threat.filePath.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(checkStmt) == SQLITE_ROW) {
             exists = true;
         }
@@ -1508,11 +1510,11 @@ bool FalconStore::addThreat(const ThreatInfo& threat) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, threat.filePath.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, threat.threatType.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, threat.threatLevel.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, threat.filePath.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, threat.threatType.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, threat.threatLevel.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_double(stmt, 4, threat.threatScore);
-    sqlite3_bind_text(stmt, 5, threat.description.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, threat.description.c_str(), -1, SQLITE_STATIC);
     
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
@@ -1619,7 +1621,7 @@ int FalconStore::removeThreatsInFolder(const std::string& folderPath) {
         return 0;
     }
     
-    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_STATIC);
     sqlite3_step(stmt);
     int deleted = sqlite3_changes(impl_->db);
     sqlite3_finalize(stmt);
@@ -1720,7 +1722,7 @@ bool FalconStore::updateSyncQueueStatus(int itemId, const std::string& status) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int(stmt, 2, itemId);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
@@ -1751,8 +1753,7 @@ int FalconStore::clearCompletedSyncOperations() {
         sqlite3_finalize(countStmt);
     }
     
-    const char* sql = "DELETE FROM sync_queue WHERE status_id = (SELECT id FROM status_types WHERE name = 'completed')";
-    sqlite3_exec(impl_->db, sql, nullptr, nullptr, nullptr);
+    sqlite3_exec(impl_->db, "DELETE FROM sync_queue WHERE status_id = (SELECT id FROM status_types WHERE name = 'completed')", nullptr, nullptr, nullptr);
     
     auto end = std::chrono::steady_clock::now();
     impl_->updateQueryStats(std::chrono::duration<double, std::milli>(end - start).count());
@@ -1857,8 +1858,8 @@ bool FalconStore::updatePeerStatus(const std::string& peerId, const std::string&
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1888,7 +1889,7 @@ bool FalconStore::blockPeer(const std::string& peerId) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1897,7 +1898,7 @@ bool FalconStore::blockPeer(const std::string& peerId) {
         const char* delSql = "DELETE FROM peers WHERE peer_id = ?";
         sqlite3_stmt* delStmt;
         if (sqlite3_prepare_v2(impl_->db, delSql, -1, &delStmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(delStmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(delStmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
             sqlite3_step(delStmt);
             sqlite3_finalize(delStmt);
         }
@@ -1926,7 +1927,7 @@ bool FalconStore::unblockPeer(const std::string& peerId) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -1950,7 +1951,7 @@ bool FalconStore::isPeerBlocked(const std::string& peerId) {
     bool blocked = false;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
         blocked = (sqlite3_step(stmt) == SQLITE_ROW);
         sqlite3_finalize(stmt);
     }
@@ -1984,8 +1985,8 @@ bool FalconStore::setConfig(const std::string& key, const std::string& value) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -2009,7 +2010,7 @@ std::optional<std::string> FalconStore::getConfig(const std::string& key) {
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             const char* value = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
             if (value) result = value;
@@ -2039,7 +2040,7 @@ bool FalconStore::removeConfig(const std::string& key) {
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     
@@ -2083,9 +2084,9 @@ bool FalconStore::logTransfer(const std::string& filePath, const std::string& pe
         return false;
     }
     
-    sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, direction.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, peerId.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, direction.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_int64(stmt, 4, bytes);
     sqlite3_bind_int(stmt, 5, success ? 1 : 0);
     

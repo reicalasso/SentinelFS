@@ -149,11 +149,11 @@ namespace SentinelFS {
         requiredTokens.resize(maxSize, 0);
 
         for (size_t i = 0; i < maxSize; ++i) {
-            if (currentTokens[i] > requiredTokens[i]) {
-                return true;
-            }
             if (currentTokens[i] < requiredTokens[i]) {
                 return false;
+            }
+            if (currentTokens[i] > requiredTokens[i]) {
+                return true;
             }
         }
         return true;

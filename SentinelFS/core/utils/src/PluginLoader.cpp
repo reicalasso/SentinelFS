@@ -1,4 +1,5 @@
 #include "PluginLoader.h"
+#include "Logger.h"
 #include <dlfcn.h>
 #include <iostream>
 
@@ -18,7 +19,8 @@ namespace SentinelFS {
             handle = dlopen(path.c_str(), RTLD_LAZY);
             if (!handle) {
                 const char* error = dlerror();
-                std::cerr << "Cannot open library: " << (error ? error : "unknown error") << '\n';
+                std::string errorMsg = "Cannot open library: " + std::string(error ? error : "unknown error");
+                Logger::instance().error(errorMsg, "PluginLoader");
                 return nullptr;
             }
 
@@ -29,7 +31,8 @@ namespace SentinelFS {
             create = (CreatePluginFunc) dlsym(handle, "create_plugin");
             const char* dlsym_error = dlerror();
             if (dlsym_error) {
-                std::cerr << "Cannot load symbol 'create_plugin': " << dlsym_error << '\n';
+                std::string errorMsg = "Cannot load symbol 'create_plugin': " + std::string(dlsym_error);
+                Logger::instance().error(errorMsg, "PluginLoader");
                 dlclose(handle);
                 return nullptr;
             }
@@ -38,7 +41,8 @@ namespace SentinelFS {
             destroy = (DestroyPluginFunc) dlsym(handle, "destroy_plugin");
             dlsym_error = dlerror();
             if (dlsym_error) {
-                std::cerr << "Cannot load symbol 'destroy_plugin': " << dlsym_error << '\n';
+                std::string errorMsg = "Cannot load symbol 'destroy_plugin': " + std::string(dlsym_error);
+                Logger::instance().error(errorMsg, "PluginLoader");
                 dlclose(handle);
                 return nullptr;
             }
@@ -46,7 +50,11 @@ namespace SentinelFS {
             // Create plugin instance
             raw_plugin = create();
             if (!raw_plugin) {
-                std::cerr << "Failed to create plugin instance\n";
+                std::string errorMsg = "Failed to create plugin instance";
+                Logger::instance().error(errorMsg, "PluginLoader");
+                if (destroy) {
+                    destroy(raw_plugin);
+                }
                 dlclose(handle);
                 return nullptr;
             }
@@ -66,7 +74,8 @@ namespace SentinelFS {
 
             // Initialize plugin
             if (!plugin->initialize(eventBus)) {
-                std::cerr << "Failed to initialize plugin\n";
+                std::string errorMsg = "Failed to initialize plugin";
+                Logger::instance().error(errorMsg, "PluginLoader");
                 // plugin destructor will be called here, which calls destroy
                 // But we still need to close the handle
                 dlclose(handle);
@@ -80,7 +89,8 @@ namespace SentinelFS {
 
             return plugin;
         } catch (const std::exception& e) {
-            std::cerr << "Exception loading plugin: " << e.what() << '\n';
+            std::string errorMsg = "Exception loading plugin: " + std::string(e.what());
+            Logger::instance().error(errorMsg, "PluginLoader");
             
             // Cleanup on exception
             if (raw_plugin && destroy) {
@@ -95,7 +105,8 @@ namespace SentinelFS {
             }
             return nullptr;
         } catch (...) {
-            std::cerr << "Unknown exception loading plugin\n";
+            std::string errorMsg = "Unknown exception loading plugin";
+            Logger::instance().error(errorMsg, "PluginLoader");
             
             // Cleanup on exception
             if (raw_plugin && destroy) {
@@ -120,9 +131,11 @@ namespace SentinelFS {
                 try {
                     pluginIt->second->shutdown();
                 } catch (const std::exception& e) {
-                    std::cerr << "Exception shutting down plugin " << name << ": " << e.what() << '\n';
+                    std::string errorMsg = "Exception shutting down plugin " + name + ": " + std::string(e.what());
+                    Logger::instance().error(errorMsg, "PluginLoader");
                 } catch (...) {
-                    std::cerr << "Unknown exception shutting down plugin " << name << '\n';
+                    std::string errorMsg = "Unknown exception shutting down plugin " + name;
+                    Logger::instance().error(errorMsg, "PluginLoader");
                 }
                 
                 // Remove plugin (triggers deleter which calls destroy_plugin)
@@ -136,9 +149,11 @@ namespace SentinelFS {
                 handles_.erase(handleIt);
             }
         } catch (const std::exception& e) {
-            std::cerr << "Exception unloading plugin " << name << ": " << e.what() << '\n';
+            std::string errorMsg = "Exception unloading plugin " + name + ": " + std::string(e.what());
+            Logger::instance().error(errorMsg, "PluginLoader");
         } catch (...) {
-            std::cerr << "Unknown exception unloading plugin " << name << '\n';
+            std::string errorMsg = "Unknown exception unloading plugin " + name;
+            Logger::instance().error(errorMsg, "PluginLoader");
         }
     }
 

@@ -59,6 +59,7 @@ namespace SentinelFS {
         logger.log(LogLevel::DEBUG, "Calculating signature for: " + filePath, "DeltaEngine");
 
         std::vector<BlockSignature> signatures;
+        std::mutex sigMutex;
         std::ifstream file(filePath, std::ios::binary);
 
         if (!file) {
@@ -83,7 +84,6 @@ namespace SentinelFS {
         // Use global thread pool to avoid repeated construction overhead
         ThreadPool& pool = ThreadPool::global();
         std::vector<std::future<void>> futures;
-        std::mutex sigMutex;
 
         std::vector<std::pair<uint32_t, std::vector<uint8_t>>> batch;
         batch.reserve(BATCH_SIZE);
