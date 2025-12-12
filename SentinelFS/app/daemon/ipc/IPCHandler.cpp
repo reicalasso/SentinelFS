@@ -338,20 +338,40 @@ void IPCHandler::handleClient(int clientSocket) {
         return;
     }
     
+    // Security: Maximum buffer size to prevent DoS attacks
+    static constexpr size_t MAX_LINE_BUFFER_SIZE = 1024 * 1024;  // 1MB max
+    static constexpr size_t MAX_COMMAND_LENGTH = 64 * 1024;     // 64KB max per command
+    
     char buffer[1024];
     std::string lineBuffer;
+    lineBuffer.reserve(4096);  // Pre-allocate to reduce reallocations
     
     while (running_) {
         ssize_t n = recv(clientSocket, buffer, sizeof(buffer) - 1, MSG_DONTWAIT);
         
         if (n > 0) {
             buffer[n] = '\0';
+            
+            // Security: Prevent DoS by limiting total buffer size
+            if (lineBuffer.size() + n > MAX_LINE_BUFFER_SIZE) {
+                const char* msg = "ERROR: Command buffer too large. Connection closed.\n";
+                send(clientSocket, msg, strlen(msg), 0);
+                break;
+            }
+            
             lineBuffer += buffer;
             
             size_t pos;
             while ((pos = lineBuffer.find('\n')) != std::string::npos) {
                 std::string command = lineBuffer.substr(0, pos);
                 lineBuffer.erase(0, pos + 1);
+                
+                // Security: Limit individual command length
+                if (command.length() > MAX_COMMAND_LENGTH) {
+                    const char* msg = "ERROR: Command too long. Maximum 64KB allowed.\n";
+                    send(clientSocket, msg, strlen(msg), 0);
+                    continue;
+                }
                 
                 if (!command.empty()) {
                     if (!checkRateLimit(clientUid)) {

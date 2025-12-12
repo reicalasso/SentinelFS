@@ -14,6 +14,10 @@
 namespace SentinelFS {
 
 std::string FileCommands::sanitizePath(const std::string& path) {
+    if (path.empty()) {
+        return "";
+    }
+    
     std::string cleanPath = path;
     
     // Remove file:// prefix
@@ -27,7 +31,35 @@ std::string FileCommands::sanitizePath(const std::string& path) {
         cleanPath.replace(pos, 3, "/");
     }
     
-    return cleanPath;
+    // Security: Normalize path to prevent directory traversal attacks
+    try {
+        std::filesystem::path normalizedPath(cleanPath);
+        
+        // Security: Check for path traversal attempts (../, ..\, etc.)
+        // Convert to absolute and check if it contains parent directory references
+        std::string pathStr = normalizedPath.string();
+        if (pathStr.find("..") != std::string::npos) {
+            // Check if normalized path still contains .. (after normalization)
+            std::filesystem::path absPath = std::filesystem::absolute(normalizedPath);
+            std::filesystem::path canonicalPath = std::filesystem::canonical(absPath);
+            
+            // If canonical path is different from what we'd expect, it's suspicious
+            std::string canonicalStr = canonicalPath.string();
+            if (canonicalStr.find("..") != std::string::npos) {
+                Logger::instance().warn("Suspicious path detected (contains ..): " + path, "FileCommands");
+                return "";  // Reject suspicious paths
+            }
+        }
+        
+        // Return normalized path as string
+        return normalizedPath.string();
+    } catch (const std::filesystem::filesystem_error& e) {
+        Logger::instance().error("Path normalization failed: " + std::string(e.what()), "FileCommands");
+        return "";  // Reject invalid paths
+    } catch (const std::exception& e) {
+        Logger::instance().error("Path sanitization error: " + std::string(e.what()), "FileCommands");
+        return "";  // Reject paths that cause exceptions
+    }
 }
 
 std::string FileCommands::handleFilesJson() {
