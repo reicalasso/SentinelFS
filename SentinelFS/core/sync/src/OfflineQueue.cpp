@@ -1,5 +1,6 @@
 #include "OfflineQueue.h"
 #include "Logger.h"
+#include <random>
 
 namespace sfs::sync {
 
@@ -169,8 +170,13 @@ int OfflineQueue::calculateBackoffDelay(int retryCount) {
     }
     
     // Add jitter (±20%) to prevent thundering herd
+    // Use thread-local random generator instead of std::rand() for thread safety
+    thread_local std::mt19937 rng(std::random_device{}());
     int jitter = (delay * 20) / 100;
-    delay += (std::rand() % (2 * jitter + 1)) - jitter;
+    if (jitter > 0) {
+        std::uniform_int_distribution<int> dist(0, 2 * jitter);
+        delay += dist(rng) - jitter;
+    }
     
     return delay;
 }

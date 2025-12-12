@@ -304,10 +304,19 @@ std::string TLSContext::computeSPKIHash(X509* cert) {
     // Compute SHA256 hash
     std::vector<uint8_t> hash(EVP_MD_size(EVP_sha256()));
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
-    EVP_DigestUpdate(ctx, spki.data(), spki.size());
+    if (!ctx) return "";
+    
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1 ||
+        EVP_DigestUpdate(ctx, spki.data(), spki.size()) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return "";
+    }
+    
     unsigned int hashLen;
-    EVP_DigestFinal_ex(ctx, hash.data(), &hashLen);
+    if (EVP_DigestFinal_ex(ctx, hash.data(), &hashLen) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return "";
+    }
     EVP_MD_CTX_free(ctx);
     
     return base64Encode(hash);

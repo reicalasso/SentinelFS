@@ -112,7 +112,12 @@ bool FalconStore::initialize(EventBus* eventBus) {
     int rc = sqlite3_open_v2(impl_->dbPath.c_str(), &impl_->db, flags, nullptr);
     
     if (rc != SQLITE_OK) {
-        logger.log(LogLevel::ERROR, "Failed to open database: " + std::string(sqlite3_errmsg(impl_->db)), "FalconStore");
+        const char* err_msg = impl_->db ? sqlite3_errmsg(impl_->db) : "Failed to allocate database";
+        logger.log(LogLevel::ERROR, "Failed to open database: " + std::string(err_msg), "FalconStore");
+        if (impl_->db) {
+            sqlite3_close(impl_->db);
+            impl_->db = nullptr;
+        }
         return false;
     }
     
@@ -328,15 +333,17 @@ std::optional<FileMetadata> FalconStore::getFile(const std::string& path) {
     std::optional<FileMetadata> result;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         FileMetadata file;
-        file.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        const char* filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        
+        file.path = filePath ? filePath : "";
         file.hash = hash ? hash : "";
         file.timestamp = sqlite3_column_int64(stmt, 2);
         file.size = sqlite3_column_int64(stmt, 3);
         result = file;
         
         // Store in cache
-        if (impl_->cache) {
+        if (impl_->cache && !file.path.empty()) {
             std::string cacheData = file.path + "|" + file.hash + "|" + 
                                     std::to_string(file.timestamp) + "|" + 
                                     std::to_string(file.size);
@@ -467,8 +474,11 @@ std::optional<PeerInfo> FalconStore::getPeer(const std::string& peerId) {
     std::optional<PeerInfo> result;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         PeerInfo peer;
-        peer.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        peer.ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        
+        peer.id = id ? id : "";
+        peer.ip = ip ? ip : "";
         peer.port = sqlite3_column_int(stmt, 2);
         int statusId = sqlite3_column_int(stmt, 3);
         peer.status = (statusId == 6) ? "offline" : "active";
@@ -491,14 +501,20 @@ std::vector<PeerInfo> FalconStore::getAllPeers() {
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             PeerInfo peer;
-            peer.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            peer.ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            
+            peer.id = id ? id : "";
+            peer.ip = ip ? ip : "";
             peer.port = sqlite3_column_int(stmt, 2);
             int statusId = sqlite3_column_int(stmt, 3);
             peer.status = (statusId == 6) ? "offline" : "active";
             peer.lastSeen = sqlite3_column_int64(stmt, 4);
             peer.latency = sqlite3_column_int(stmt, 5);
-            peers.push_back(peer);
+            
+            if (!peer.id.empty()) {
+                peers.push_back(peer);
+            }
         }
         sqlite3_finalize(stmt);
     }
@@ -535,14 +551,20 @@ std::vector<PeerInfo> FalconStore::getPeersByLatency() {
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             PeerInfo peer;
-            peer.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            peer.ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            
+            peer.id = id ? id : "";
+            peer.ip = ip ? ip : "";
             peer.port = sqlite3_column_int(stmt, 2);
             int statusId = sqlite3_column_int(stmt, 3);
             peer.status = (statusId == 6) ? "offline" : "active";
             peer.lastSeen = sqlite3_column_int64(stmt, 4);
             peer.latency = sqlite3_column_int(stmt, 5);
-            peers.push_back(peer);
+            
+            if (!peer.id.empty()) {
+                peers.push_back(peer);
+            }
         }
         sqlite3_finalize(stmt);
     }
@@ -645,11 +667,16 @@ std::vector<ConflictInfo> FalconStore::getUnresolvedConflicts() {
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             ConflictInfo conflict;
+            const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            const char* remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            const char* remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            
             conflict.id = sqlite3_column_int(stmt, 0);
-            conflict.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            conflict.localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            conflict.remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            conflict.remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            conflict.path = path ? path : "";
+            conflict.localHash = localHash ? localHash : "";
+            conflict.remoteHash = remoteHash ? remoteHash : "";
+            conflict.remotePeerId = remotePeerId ? remotePeerId : "";
             conflict.localTimestamp = sqlite3_column_int64(stmt, 5);
             conflict.remoteTimestamp = sqlite3_column_int64(stmt, 6);
             conflict.localSize = sqlite3_column_int64(stmt, 7);
@@ -684,11 +711,16 @@ std::vector<ConflictInfo> FalconStore::getConflictsForFile(const std::string& pa
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_TRANSIENT);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             ConflictInfo conflict;
+            const char* filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            const char* remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+            const char* remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            
             conflict.id = sqlite3_column_int(stmt, 0);
-            conflict.path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            conflict.localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            conflict.remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            conflict.remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            conflict.path = filePath ? filePath : "";
+            conflict.localHash = localHash ? localHash : "";
+            conflict.remoteHash = remoteHash ? remoteHash : "";
+            conflict.remotePeerId = remotePeerId ? remotePeerId : "";
             conflict.localTimestamp = sqlite3_column_int64(stmt, 5);
             conflict.remoteTimestamp = sqlite3_column_int64(stmt, 6);
             conflict.localSize = sqlite3_column_int64(stmt, 7);

@@ -21,7 +21,9 @@ int BatchQueries::batchUpsertPeers(IStorageAPI* storage, const std::vector<PeerI
     int successCount = 0;
     
     // Use transaction for batch insert
-    sqlite3* db = static_cast<sqlite3*>(storage->getDB());
+    void* dbPtr = storage->getDB();
+    if (!dbPtr) return 0;
+    sqlite3* db = static_cast<sqlite3*>(dbPtr);
     if (!db) return 0;
     
     char* errMsg = nullptr;
@@ -65,7 +67,9 @@ std::map<std::string, PeerInfo> BatchQueries::batchGetPeers(
     if (peerIds.empty()) return result;
     
     // Build IN clause for single query
-    sqlite3* db = static_cast<sqlite3*>(storage->getDB());
+    void* dbPtr = storage->getDB();
+    if (!dbPtr) return result;
+    sqlite3* db = static_cast<sqlite3*>(dbPtr);
     if (!db) return result;
     
     std::string placeholders;
@@ -90,14 +94,20 @@ std::map<std::string, PeerInfo> BatchQueries::batchGetPeers(
     // Fetch results
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         PeerInfo peer;
-        peer.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        peer.ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const char* status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        
+        peer.id = id ? id : "";
+        peer.ip = ip ? ip : "";
         peer.port = sqlite3_column_int(stmt, 2);
-        peer.status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        peer.status = status ? status : "";
         peer.lastSeen = sqlite3_column_int64(stmt, 4);
         peer.latency = sqlite3_column_int(stmt, 5);
         
-        result[peer.id] = peer;
+        if (!peer.id.empty()) {
+            result[peer.id] = peer;
+        }
     }
     
     sqlite3_finalize(stmt);
@@ -109,7 +119,9 @@ bool BatchQueries::executeInTransaction(
     IStorageAPI* storage,
     std::function<bool()> operations)
 {
-    sqlite3* db = static_cast<sqlite3*>(storage->getDB());
+    void* dbPtr = storage->getDB();
+    if (!dbPtr) return false;
+    sqlite3* db = static_cast<sqlite3*>(dbPtr);
     if (!db) return false;
     
     // Start transaction
@@ -137,7 +149,9 @@ void BatchQueries::batchUpdateLatencies(
     if (latencies.empty()) return;
     
     auto& logger = Logger::instance();
-    sqlite3* db = static_cast<sqlite3*>(storage->getDB());
+    void* dbPtr = storage->getDB();
+    if (!dbPtr) return;
+    sqlite3* db = static_cast<sqlite3*>(dbPtr);
     if (!db) return;
     
     // Batch update with transaction

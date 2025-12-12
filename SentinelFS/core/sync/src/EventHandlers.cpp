@@ -127,21 +127,24 @@ void EventHandlers::setupHandlers() {
 
     // Scan other watched folders from DB
     if (storage_) {
-        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-        const char* sql = "SELECT path FROM watched_folders WHERE status_id = 1";
-        sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            while (sqlite3_step(stmt) == SQLITE_ROW) {
-                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                if (path) {
-                    std::string pathStr = path;
-                    // Avoid rescanning default dir if it's in DB
-                    if (pathStr != watchDirectory_) {
-                        fileSyncHandler_->scanDirectory(pathStr);
+        void* dbPtr = storage_->getDB();
+        if (dbPtr) {
+            sqlite3* db = static_cast<sqlite3*>(dbPtr);
+            const char* sql = "SELECT path FROM watched_folders WHERE status_id = 1";
+            sqlite3_stmt* stmt = nullptr;
+            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                    if (path) {
+                        std::string pathStr = path;
+                        // Avoid rescanning default dir if it's in DB
+                        if (pathStr != watchDirectory_) {
+                            fileSyncHandler_->scanDirectory(pathStr);
+                        }
                     }
                 }
+                sqlite3_finalize(stmt);
             }
-            sqlite3_finalize(stmt);
         }
     }
 }
@@ -525,18 +528,21 @@ void EventHandlers::processPendingChanges() {
     // Also get pending changes from database (synced=0)
     // This handles files that were pending when app was closed
     if (storage_) {
-        sqlite3* db = static_cast<sqlite3*>(storage_->getDB());
-        const char* sql = "SELECT path FROM files WHERE synced = 0";
-        sqlite3_stmt* stmt;
-        
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            while (sqlite3_step(stmt) == SQLITE_ROW) {
-                const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                if (path) {
-                    changesToProcess.push_back(path);
+        void* dbPtr = storage_->getDB();
+        if (dbPtr) {
+            sqlite3* db = static_cast<sqlite3*>(dbPtr);
+            const char* sql = "SELECT path FROM files WHERE synced = 0";
+            sqlite3_stmt* stmt = nullptr;
+            
+            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(stmt) == SQLITE_ROW) {
+                    const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                    if (path) {
+                        changesToProcess.push_back(path);
+                    }
                 }
+                sqlite3_finalize(stmt);
             }
-            sqlite3_finalize(stmt);
         }
     }
     

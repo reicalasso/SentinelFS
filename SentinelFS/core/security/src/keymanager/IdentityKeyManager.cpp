@@ -164,12 +164,25 @@ std::vector<uint8_t> KeyManager::sign(const std::vector<uint8_t>& data) {
     
     // Sign
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    EVP_DigestSignInit(mdctx, nullptr, nullptr, nullptr, pkey);
+    if (!mdctx) {
+        EVP_PKEY_free(pkey);
+        return {};
+    }
+    
+    if (EVP_DigestSignInit(mdctx, nullptr, nullptr, nullptr, pkey) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(pkey);
+        return {};
+    }
     
     size_t sigLen = 64;
     std::vector<uint8_t> signature(sigLen);
     
-    EVP_DigestSign(mdctx, signature.data(), &sigLen, data.data(), data.size());
+    if (EVP_DigestSign(mdctx, signature.data(), &sigLen, data.data(), data.size()) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(pkey);
+        return {};
+    }
     
     EVP_MD_CTX_free(mdctx);
     EVP_PKEY_free(pkey);
@@ -190,7 +203,16 @@ bool KeyManager::verify(const std::vector<uint8_t>& data,
     }
     
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, pkey);
+    if (!mdctx) {
+        EVP_PKEY_free(pkey);
+        return false;
+    }
+    
+    if (EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, pkey) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        EVP_PKEY_free(pkey);
+        return false;
+    }
     
     int result = EVP_DigestVerify(mdctx, signature.data(), signature.size(),
                                    data.data(), data.size());

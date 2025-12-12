@@ -143,7 +143,9 @@ namespace SentinelFS {
             return false;
         }
 
-        plugin_->disconnectPeer(oldest->first);
+        if (plugin_) {
+            plugin_->disconnectPeer(oldest->first);
+        }
         connections_.erase(oldest);
         return true;
     }

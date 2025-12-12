@@ -99,7 +99,9 @@ class SQLiteResultSet : public ResultSet {
 public:
     SQLiteResultSet(sqlite3_stmt* stmt, sqlite3* db) 
         : stmt_(stmt), db_(db), row_(stmt), rowCount_(0), hasMore_(false) {
-        row_.buildColumnMap();
+        if (stmt_) {
+            row_.buildColumnMap();
+        }
     }
     
     ~SQLiteResultSet() override {
@@ -149,7 +151,11 @@ private:
  */
 class SQLiteQueryBuilder : public QueryBuilder {
 public:
-    explicit SQLiteQueryBuilder(sqlite3* db) : db_(db) {}
+    explicit SQLiteQueryBuilder(sqlite3* db) : db_(db) {
+        if (!db_) {
+            throw std::invalid_argument("Database connection cannot be null");
+        }
+    }
     
     // SELECT
     QueryBuilder& select(const std::vector<std::string>& columns = {"*"}) override {
@@ -274,8 +280,99 @@ public:
     }
     
     std::future<std::unique_ptr<ResultSet>> executeAsync() override {
-        return std::async(std::launch::async, [this]() {
-            return execute();
+        // Build SQL and collect parameters before async execution to avoid
+        // lifetime issues with 'this' pointer
+        std::string sql = toSql();
+        std::vector<Condition> conditionsCopy = conditions_;
+        std::unordered_map<std::string, std::vector<QueryValue>> inConditionsCopy = inConditions_;
+        std::vector<std::tuple<std::string, QueryValue, QueryValue>> betweenConditionsCopy = betweenConditions_;
+        sqlite3* dbPtr = db_;
+        
+        return std::async(std::launch::async, [sql, conditionsCopy, inConditionsCopy, betweenConditionsCopy, dbPtr]() -> std::unique_ptr<ResultSet> {
+            sqlite3_stmt* stmt = nullptr;
+            
+            if (sqlite3_prepare_v2(dbPtr, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+                return nullptr;
+            }
+            
+            // Bind parameters
+            int paramIdx = 1;
+            for (const auto& cond : conditionsCopy) {
+                std::visit([stmt, &paramIdx](auto&& arg) {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, std::nullptr_t>) {
+                        sqlite3_bind_null(stmt, paramIdx);
+                    } else if constexpr (std::is_same_v<T, bool>) {
+                        sqlite3_bind_int(stmt, paramIdx, arg ? 1 : 0);
+                    } else if constexpr (std::is_same_v<T, int>) {
+                        sqlite3_bind_int(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, int64_t>) {
+                        sqlite3_bind_int64(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, double>) {
+                        sqlite3_bind_double(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, std::string>) {
+                        sqlite3_bind_text(stmt, paramIdx, arg.c_str(), -1, SQLITE_TRANSIENT);
+                    } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+                        sqlite3_bind_blob(stmt, paramIdx, arg.data(), arg.size(), SQLITE_TRANSIENT);
+                    }
+                    paramIdx++;
+                }, cond.value);
+            }
+            
+            for (const auto& [col, values] : inConditionsCopy) {
+                for (const auto& val : values) {
+                    std::visit([stmt, &paramIdx](auto&& arg) {
+                        using T = std::decay_t<decltype(arg)>;
+                        if constexpr (std::is_same_v<T, std::nullptr_t>) {
+                            sqlite3_bind_null(stmt, paramIdx);
+                        } else if constexpr (std::is_same_v<T, bool>) {
+                            sqlite3_bind_int(stmt, paramIdx, arg ? 1 : 0);
+                        } else if constexpr (std::is_same_v<T, int>) {
+                            sqlite3_bind_int(stmt, paramIdx, arg);
+                        } else if constexpr (std::is_same_v<T, int64_t>) {
+                            sqlite3_bind_int64(stmt, paramIdx, arg);
+                        } else if constexpr (std::is_same_v<T, double>) {
+                            sqlite3_bind_double(stmt, paramIdx, arg);
+                        } else if constexpr (std::is_same_v<T, std::string>) {
+                            sqlite3_bind_text(stmt, paramIdx, arg.c_str(), -1, SQLITE_TRANSIENT);
+                        } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+                            sqlite3_bind_blob(stmt, paramIdx, arg.data(), arg.size(), SQLITE_TRANSIENT);
+                        }
+                        paramIdx++;
+                    }, val);
+                }
+            }
+            
+            for (const auto& [col, low, high] : betweenConditionsCopy) {
+                std::visit([stmt, &paramIdx](auto&& arg) {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, int>) {
+                        sqlite3_bind_int(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, int64_t>) {
+                        sqlite3_bind_int64(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, double>) {
+                        sqlite3_bind_double(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, std::string>) {
+                        sqlite3_bind_text(stmt, paramIdx, arg.c_str(), -1, SQLITE_TRANSIENT);
+                    }
+                    paramIdx++;
+                }, low);
+                std::visit([stmt, &paramIdx](auto&& arg) {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, int>) {
+                        sqlite3_bind_int(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, int64_t>) {
+                        sqlite3_bind_int64(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, double>) {
+                        sqlite3_bind_double(stmt, paramIdx, arg);
+                    } else if constexpr (std::is_same_v<T, std::string>) {
+                        sqlite3_bind_text(stmt, paramIdx, arg.c_str(), -1, SQLITE_TRANSIENT);
+                    }
+                    paramIdx++;
+                }, high);
+            }
+            
+            return std::make_unique<SQLiteResultSet>(stmt, dbPtr);
         });
     }
     
