@@ -9,11 +9,15 @@
 #include <sys/statvfs.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <fnmatch.h>
 #include <openssl/evp.h>
 #include <cstring>
 #include <random>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
+#include <chrono>
 
 namespace SentinelFS {
 namespace IronRoot {
@@ -22,6 +26,79 @@ namespace IronRoot {
 std::map<std::string, int> FileOps::lockedFiles_;
 std::mutex FileOps::lockMutex_;
 
+// ThreadPool Implementation
+ThreadPool::ThreadPool(size_t numThreads) : stop_(false) {
+    if (numThreads == 0) {
+        numThreads = std::thread::hardware_concurrency();
+        if (numThreads == 0) numThreads = 4; // Fallback
+    }
+    
+    for (size_t i = 0; i < numThreads; ++i) {
+        threads_.emplace_back([this] {
+            for (;;) {
+                std::function<void()> task;
+                
+                {
+                    std::unique_lock<std::mutex> lock(queueMutex_);
+                    condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                    
+                    if (stop_ && tasks_.empty()) return;
+                    
+                    task = std::move(tasks_.front());
+                    tasks_.pop();
+                }
+                
+                task();
+            }
+        });
+    }
+}
+
+ThreadPool::~ThreadPool() {
+    shutdown();
+}
+
+template<typename F, typename... Args>
+auto ThreadPool::submit(F&& f, Args&&... args) -> std::future<decltype(f(args...))> {
+    using return_type = decltype(f(args...));
+    
+    auto task = std::make_shared<std::packaged_task<return_type()>>(
+        std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+    );
+    
+    std::future<return_type> result = task->get_future();
+    
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        
+        if (stop_) {
+            throw std::runtime_error("submit on stopped ThreadPool");
+        }
+        
+        tasks_.emplace([task]() { (*task)(); });
+    }
+    
+    condition_.notify_one();
+    return result;
+}
+
+void ThreadPool::shutdown() {
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        stop_ = true;
+    }
+    condition_.notify_all();
+    
+    for (std::thread& thread : threads_) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+    
+    threads_.clear();
+}
+
+// FileOps Implementation
 std::vector<uint8_t> FileOps::readFile(const std::string& path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file) {
@@ -460,6 +537,296 @@ bool FileOps::syncDirectory(const std::string& path) {
     int ret = fsync(fd);
     close(fd);
     return ret == 0;
+}
+
+// Parallel Scanning Operations
+
+std::pair<std::vector<FileInfo>, ScanStats> FileOps::scanDirectoryParallel(
+    const std::string& rootPath, 
+    const ScanConfig& config) {
+    
+    auto startTime = std::chrono::high_resolution_clock::now();
+    ScanStats stats;
+    std::vector<FileInfo> allFiles;
+    
+    // Determine thread count
+    size_t threadCount = config.maxThreads;
+    if (threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+        if (threadCount == 0) threadCount = 4;
+    }
+    
+    stats.threadsUsed = threadCount;
+    
+    // Create thread pool
+    auto threadPool = std::make_shared<ThreadPool>(threadCount);
+    
+    try {
+        // Start parallel scan
+        auto paths = scanDirectorySingle(rootPath, config, threadPool);
+        
+        // Process files in parallel batches
+        std::vector<std::future<FileInfo>> futures;
+        
+        for (const auto& path : paths) {
+            if (shouldIgnorePath(path, config.ignorePatterns)) {
+                continue;
+            }
+            
+            // Submit file processing task
+            auto future = threadPool->submit(&FileOps::processFile, path, config);
+            futures.push_back(std::move(future));
+            
+            // Process in batches to avoid memory issues
+            if (futures.size() >= config.batchSize) {
+                for (auto& f : futures) {
+                    auto fileInfo = f.get();
+                    if (fileInfo.size > 0 || fileInfo.isSymlink) {
+                        allFiles.push_back(fileInfo);
+                        stats.totalSize += fileInfo.size;
+                        
+                        if (fileInfo.isSymlink) {
+                            stats.totalSymlinks++;
+                        } else {
+                            stats.totalFiles++;
+                        }
+                        
+                        if (fileInfo.isHardLink) {
+                            stats.hardLinks++;
+                        }
+                    }
+                }
+                futures.clear();
+            }
+        }
+        
+        // Process remaining files
+        for (auto& f : futures) {
+            auto fileInfo = f.get();
+            if (fileInfo.size > 0 || fileInfo.isSymlink) {
+                allFiles.push_back(fileInfo);
+                stats.totalSize += fileInfo.size;
+                
+                if (fileInfo.isSymlink) {
+                    stats.totalSymlinks++;
+                } else {
+                    stats.totalFiles++;
+                }
+                
+                if (fileInfo.isHardLink) {
+                    stats.hardLinks++;
+                }
+            }
+        }
+        
+        // Count directories (approximate)
+        stats.totalDirectories = std::count_if(allFiles.begin(), allFiles.end(),
+            [](const FileInfo& info) { return info.mode & S_IFDIR; });
+        
+        // Calculate scan time
+        auto endTime = std::chrono::high_resolution_clock::now();
+        stats.scanTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            endTime - startTime);
+        
+        threadPool->shutdown();
+        
+    } catch (const std::exception& e) {
+        threadPool->shutdown();
+        throw;
+    }
+    
+    return {allFiles, stats};
+}
+
+std::vector<FileInfo> FileOps::batchProcessFiles(
+    const std::vector<FileInfo>& files,
+    const ScanConfig& config) {
+    
+    std::vector<FileInfo> processedFiles;
+    auto threadPool = std::make_shared<ThreadPool>(config.maxThreads);
+    
+    try {
+        std::vector<std::future<FileInfo>> futures;
+        
+        for (const auto& file : files) {
+            // Skip if already has hash and not needed
+            if (!file.hash.empty() && !config.includeXattrs) {
+                processedFiles.push_back(file);
+                continue;
+            }
+            
+            auto future = threadPool->submit(&FileOps::processFile, file.path, config);
+            futures.push_back(std::move(future));
+            
+            if (futures.size() >= config.batchSize) {
+                for (auto& f : futures) {
+                    processedFiles.push_back(f.get());
+                }
+                futures.clear();
+            }
+        }
+        
+        for (auto& f : futures) {
+            processedFiles.push_back(f.get());
+        }
+        
+        threadPool->shutdown();
+        
+    } catch (const std::exception& e) {
+        threadPool->shutdown();
+        throw;
+    }
+    
+    return processedFiles;
+}
+
+std::map<uint64_t, std::vector<std::string>> FileOps::detectHardLinks(
+    const std::vector<FileInfo>& files) {
+    
+    std::map<uint64_t, std::vector<std::string>> hardLinks;
+    
+    for (const auto& file : files) {
+        if (file.isHardLink && file.inode > 0) {
+            hardLinks[file.inode].push_back(file.path);
+        }
+    }
+    
+    // Remove single entries (not actually hard links)
+    for (auto it = hardLinks.begin(); it != hardLinks.end();) {
+        if (it->second.size() < 2) {
+            it = hardLinks.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    return hardLinks;
+}
+
+bool FileOps::shouldIgnorePath(
+    const std::string& path,
+    const std::vector<std::string>& patterns) {
+    
+    for (const auto& pattern : patterns) {
+        if (fnmatch(pattern.c_str(), path.c_str(), FNM_PATHNAME) == 0) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// Internal helper methods
+
+std::vector<std::string> FileOps::scanDirectorySingle(
+    const std::string& path,
+    const ScanConfig& config,
+    std::shared_ptr<ThreadPool> threadPool) {
+    
+    std::vector<std::string> allPaths;
+    std::vector<std::future<std::vector<std::string>>> futures;
+    
+    // Get directory entries
+    DIR* dir = opendir(path.c_str());
+    if (!dir) {
+        return allPaths;
+    }
+    
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string name = entry->d_name;
+        
+        // Skip . and ..
+        if (name == "." || name == "..") {
+            continue;
+        }
+        
+        std::string fullPath = path + "/" + name;
+        
+        // Check if should ignore
+        if (shouldIgnorePath(fullPath, config.ignorePatterns)) {
+            continue;
+        }
+        
+        allPaths.push_back(fullPath);
+        
+        // If directory, scan recursively
+        if (entry->d_type == DT_DIR || 
+            (entry->d_type == DT_UNKNOWN && isDirectory(fullPath))) {
+            
+            // Submit recursive scan to thread pool
+            auto future = threadPool->submit(&FileOps::scanDirectorySingle, 
+                                           fullPath, config, threadPool);
+            futures.push_back(std::move(future));
+        }
+    }
+    
+    closedir(dir);
+    
+    // Collect results from recursive scans
+    for (auto& f : futures) {
+        auto subPaths = f.get();
+        allPaths.insert(allPaths.end(), subPaths.begin(), subPaths.end());
+    }
+    
+    return allPaths;
+}
+
+FileInfo FileOps::processFile(
+    const std::string& path,
+    const ScanConfig& config) {
+    
+    FileInfo info;
+    info.path = path;
+    
+    struct stat st;
+    if (lstat(path.c_str(), &st) < 0) {
+        return info;
+    }
+    
+    info.size = st.st_size;
+    info.mtime = st.st_mtime;
+    info.mode = st.st_mode;
+    info.uid = st.st_uid;
+    info.gid = st.st_gid;
+    info.inode = st.st_ino;
+    
+    // Check for symlinks
+    if (S_ISLNK(st.st_mode)) {
+        info.isSymlink = true;
+        info.symlinkTarget = readSymlink(path);
+        return info;
+    }
+    
+    // Check for hard links
+    if (st.st_nlink > 1) {
+        info.isHardLink = true;
+    }
+    
+    // Calculate hash for regular files
+    if (S_ISREG(st.st_mode)) {
+        // Use memory mapping for large files
+        if (st.st_size > config.largeFileThreshold) {
+            info.hash = calculateHash(path);
+        } else {
+            auto data = readFile(path);
+            if (!data.empty()) {
+                info.hash = calculateHash(data);
+            }
+        }
+    }
+    
+    // Get extended attributes if requested
+    if (config.includeXattrs) {
+        info.xattrs = getXattrs(path);
+    }
+    
+    return info;
+}
+
+bool FileOps::isDirectory(const std::string& path) {
+    struct stat st;
+    return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 } // namespace IronRoot

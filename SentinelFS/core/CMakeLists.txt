@@ -38,6 +38,7 @@ set(CORE_SOURCES
 
     # Sync sources
     sync/src/ConflictResolver.cpp
+    sync/src/ConflictHandler.cpp
     sync/src/EventHandlers.cpp
     sync/src/FileSyncHandler.cpp
     sync/src/DeltaSerialization.cpp
@@ -48,14 +49,14 @@ set(CORE_SOURCES
     sync/src/delta/DeltaDataHandler.cpp
     sync/src/delta/FileTransferHandler.cpp
     
-    # Pipeline sources (7-stage sync)
+    # Sync pipeline sources
     sync/src/pipeline/SyncPipelineCore.cpp
     sync/src/pipeline/HandshakeHandler.cpp
     sync/src/pipeline/MetaTransferHandler.cpp
     sync/src/pipeline/DeltaSyncHandler.cpp
     sync/src/pipeline/BlockStreamHandler.cpp
     sync/src/pipeline/FinalizeHandler.cpp
-
+    
     # Storage sources
     storage/src/FileVersionManager.cpp
 
@@ -71,10 +72,11 @@ set(CORE_SOURCES
     utils/src/Compression.cpp
     utils/src/PathUtils.cpp
     utils/src/DBHelper.cpp
+    utils/src/BatchQueries.cpp
     src/ErrorCodes.cpp
     src/DatabaseManager.cpp
+    src/MergeResolver.cpp
     src/DatabaseMigrations.cpp
-    utils/src/BatchQueries.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

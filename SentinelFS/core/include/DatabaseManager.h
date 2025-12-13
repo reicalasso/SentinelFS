@@ -209,6 +209,12 @@ public:
     std::shared_ptr<PreparedStatement> getInsertOperationStmt();
     std::shared_ptr<PreparedStatement> getSelectPendingOpsStmt();
     
+    /**
+     * @brief Get raw database connection (use with caution)
+     * @return SQLite database handle
+     */
+    sqlite3* getDatabase();
+    
 private:
     sqlite3* db_;
     std::string dbPath_;

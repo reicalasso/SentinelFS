@@ -29,6 +29,7 @@ private:
     static DatabaseManager::Migration migration_v3();
     static DatabaseManager::Migration migration_v4();
     static DatabaseManager::Migration migration_v5();
+    static DatabaseManager::Migration migration_v6();
 };
 
 } // namespace SentinelFS

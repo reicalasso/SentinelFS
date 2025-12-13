@@ -494,4 +494,9 @@ std::shared_ptr<PreparedStatement> DatabaseManager::getSelectPendingOpsStmt() {
     return selectPendingOpsStmt_;
 }
 
+sqlite3* DatabaseManager::getDatabase() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return db_;
+}
+
 } // namespace SentinelFS
