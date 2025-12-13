@@ -8,9 +8,13 @@ interface HeroSectionProps {
   peakDownload: number
   peersCount: number
   formatBytes: (bytes: number) => string
+  filesSynced: number
+  totalFileSize: number
+  pendingFiles: number
+  activeTransfers: number
 }
 
-export function HeroSection({ currentUpload, currentDownload, peakUpload, peakDownload, peersCount, formatBytes }: HeroSectionProps) {
+export function HeroSection({ currentUpload, currentDownload, peakUpload, peakDownload, peersCount, formatBytes, filesSynced, totalFileSize, pendingFiles, activeTransfers }: HeroSectionProps) {
   return (
     <div className="hero-section">
       {/* Animated Background Effects */}
@@ -40,30 +44,31 @@ export function HeroSection({ currentUpload, currentDownload, peakUpload, peakDo
         {/* Quick Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mt-4 sm:mt-6">
           <QuickStat 
-            label="Upload Speed" 
-            value={formatBytes(currentUpload) + '/s'} 
-            sub={`Peak: ${formatBytes(peakUpload)}/s`}
+            label="Files Synced" 
+            value={filesSynced || 0} 
+            sub={`Total size: ${formatBytes(totalFileSize)}`}
             icon={<TrendingUp className="w-4 h-4" />}
             color="teal"
           />
           <QuickStat 
-            label="Download Speed" 
-            value={formatBytes(currentDownload) + '/s'} 
-            sub={`Peak: ${formatBytes(peakDownload)}/s`}
-            icon={<TrendingUp className="w-4 h-4" />}
-            color="emerald"
+            label="Pending Files" 
+            value={pendingFiles || 0} 
+            sub="Awaiting sync"
+            icon={<Clock className="w-4 h-4" />}
+            color="amber"
+          />
+          <QuickStat 
+            label="Active Transfers" 
+            value={activeTransfers || 0} 
+            sub="In progress"
+            icon={<Network className="w-4 h-4" />}
+            color="coral"
           />
           <QuickStat 
             label="Connected Peers" 
             value={peersCount || 0} 
             icon={<Network className="w-4 h-4" />}
-            color="coral"
-          />
-          <QuickStat 
-            label="Uptime" 
-            value="99.9%" 
-            icon={<Clock className="w-4 h-4" />}
-            color="amber"
+            color="blue"
           />
         </div>
       </div>

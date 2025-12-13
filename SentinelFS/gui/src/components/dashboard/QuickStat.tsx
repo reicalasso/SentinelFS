@@ -1,4 +1,4 @@
-export type QuickStatColor = 'teal' | 'emerald' | 'coral' | 'amber'
+export type QuickStatColor = 'teal' | 'emerald' | 'coral' | 'amber' | 'blue'
 
 interface QuickStatProps {
   label: string
@@ -14,6 +14,7 @@ export function QuickStat({ label, value, sub, icon, color }: QuickStatProps) {
     emerald: 'quick-stat-emerald',
     coral: 'quick-stat-coral',
     amber: 'quick-stat-amber',
+    blue: 'quick-stat-blue',
   }
   
   return (

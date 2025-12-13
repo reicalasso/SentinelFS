@@ -1,10 +1,12 @@
 import { Wifi, Zap, Network, HardDrive, Brain, Shield, Database } from 'lucide-react'
 import { useState, useEffect, memo, useMemo, useCallback } from 'react'
+import { useFileActivity } from '../hooks/useFileActivity'
 import { 
   StatCard, 
   HealthCard, 
   HeroSection, 
   NetworkTrafficChart, 
+  FileActivityChart,
   ActivityFeed,
   type ActivityData,
   ThreatAnalysisPanel,
@@ -30,6 +32,13 @@ interface MetricsData {
   bytesUploaded?: number
   bytesDownloaded?: number
   timestamp?: number
+  // File-specific metrics
+  filesUploaded?: number
+  filesDownloaded?: number
+  filesSynced?: number
+  totalFileSize?: number
+  pendingFiles?: number
+  activeTransfers?: number
 }
 
 interface HealthData {
@@ -198,16 +207,14 @@ export const Dashboard = memo(function Dashboard(props: DashboardProps) {
   // Use custom hook for network traffic
   const { trafficHistory, currentRates, peaks } = useNetworkTraffic(metrics)
   
-  // Memoized computed values
-  const totalUploaded = useMemo(
-    () => metrics?.totalUploaded ?? metrics?.bytesUploaded ?? 0,
-    [metrics]
-  )
+  // Use custom hook for file activity metrics
+  const fileActivity = useFileActivity(activity)
   
-  const totalDownloaded = useMemo(
-    () => metrics?.totalDownloaded ?? metrics?.bytesDownloaded ?? 0,
-    [metrics]
-  )
+  // Memoized computed values
+  const filesSynced = fileActivity.filesSynced
+  const totalFileSize = fileActivity.totalFileSize
+  const pendingFiles = fileActivity.pendingFiles
+  const activeTransfers = fileActivity.activeTransfers
   
   const health = useMemo(() => syncStatus?.health, [syncStatus])
   
@@ -246,6 +253,10 @@ export const Dashboard = memo(function Dashboard(props: DashboardProps) {
         peakDownload={peaks.download}
         peersCount={peersCount}
         formatBytes={formatBytes}
+        filesSynced={filesSynced}
+        totalFileSize={totalFileSize}
+        pendingFiles={pendingFiles}
+        activeTransfers={activeTransfers}
       />
 
       {/* Top Stats Row */}
@@ -271,22 +282,23 @@ export const Dashboard = memo(function Dashboard(props: DashboardProps) {
           icon={<Network className="w-5 h-5 text-primary" />}
         />
         <StatCard 
-          title="Total Traffic" 
-          value={formatBytes(totalDownloaded)} 
-          sub={`↑ ${formatBytes(totalUploaded)}`}
-          icon={<HardDrive className="w-5 h-5 icon-info" />}
+          title="Files Synced" 
+          value={filesSynced.toString()} 
+          sub={`Total size: ${formatBytes(totalFileSize)}`}
+          icon={<HardDrive className="w-5 h-5 icon-success" />}
+          status="success"
         />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Chart Section */}
-        <NetworkTrafficChart 
-          trafficHistory={trafficHistory}
-          totalDownloaded={totalDownloaded}
-          totalUploaded={totalUploaded}
-          peakDownload={peaks.download}
-          peakUpload={peaks.upload}
+        <FileActivityChart 
+          activityHistory={fileActivity.activityHistory}
+          filesSynced={filesSynced}
+          filesUploaded={fileActivity.filesUploaded}
+          filesDownloaded={fileActivity.filesDownloaded}
+          activeTransfers={activeTransfers}
           formatBytes={formatBytes}
         />
 
