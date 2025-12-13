@@ -131,7 +131,8 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
         }
         
         std::vector<uint8_t> deltaData(rawData.begin() + secondPipe + 1, rawData.end());
-        auto deltas = DeltaSerialization::deserializeDelta(deltaData);
+        size_t blockSize;
+        auto deltas = DeltaSerialization::deserializeDelta(deltaData, blockSize);
         
         logger.debug("Applying " + std::to_string(deltas.size()) + " delta instructions", "DeltaSyncProtocol");
         
@@ -154,7 +155,7 @@ void DeltaSyncProtocolHandler::handleDeltaData(const std::string& peerId,
         }
         
         // Apply delta
-        auto newData = DeltaEngine::applyDelta(localPath, deltas);
+        auto newData = DeltaEngine::applyDelta(localPath, deltas, blockSize);
         
         // Mark as patched BEFORE writing to prevent sync loop
         if (markAsPatchedCallback_) {

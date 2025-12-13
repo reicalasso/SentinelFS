@@ -11,6 +11,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(OpenSSL REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LZ4 REQUIRED liblz4)
 
 # Explicitly list all source files (better than GLOB for CMake)
 set(CORE_SOURCES
@@ -86,6 +88,7 @@ target_include_directories(sentinel_core
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sync/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/storage/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/utils/include>
+        $<BUILD_INTERFACE:${LZ4_INCLUDE_DIRS}>
         $<INSTALL_INTERFACE:include>
 )
 
@@ -98,6 +101,7 @@ target_link_libraries(sentinel_core
         OpenSSL::Crypto 
         SQLite::SQLite3
         ZLIB::ZLIB
+        ${LZ4_LIBRARIES}
     PRIVATE
         ${CMAKE_DL_LIBS}
 )

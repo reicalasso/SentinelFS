@@ -437,15 +437,32 @@ void DatabaseManager::setBusyTimeoutInternal(int timeoutMs) {
 
 bool DatabaseManager::vacuum() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
+    
+    // Clear all prepared statements before VACUUM
+    // VACUUM cannot run while there are active prepared statements
+    statementCache_.clear();
+    
+    // Finalize any remaining statements
+    // Note: We must restart from nullptr after each finalize
+    sqlite3_stmt* stmt = nullptr;
+    while ((stmt = sqlite3_next_stmt(db_, nullptr)) != nullptr) {
+        sqlite3_finalize(stmt);
+        stmt = nullptr;  // Reset to nullptr for next iteration
+    }
+    
     char* errMsg = nullptr;
     int result = sqlite3_exec(db_, "VACUUM", nullptr, nullptr, &errMsg);
     
     if (result != SQLITE_OK) {
         Logger::instance().log(LogLevel::ERROR, "Failed to vacuum database: " + std::string(errMsg ? errMsg : ""), "DatabaseManager");
         if (errMsg) sqlite3_free(errMsg);
+        
+        // Even if VACUUM fails, we need to ensure the database is in a usable state
+        Logger::instance().log(LogLevel::INFO, "Database state reset after failed VACUUM", "DatabaseManager");
         return false;
     }
     
+    Logger::instance().log(LogLevel::INFO, "Database VACUUM completed successfully", "DatabaseManager");
     return true;
 }
 

@@ -28,19 +28,6 @@ enum class TransportStrategy {
 };
 
 /**
- * @brief Transport selection context
- */
-struct TransportSelectionContext {
-    std::string peerId;
-    NetworkEnvironment localEnv;
-    NetworkEnvironment remoteEnv;
-    std::size_t dataSize{0};           // Hint for data size to send
-    bool requiresReliability{true};     // Must guarantee delivery
-    bool lowLatencyPreferred{false};    // Prioritize speed over reliability
-    bool isInitialConnection{false};    // First connection attempt
-};
-
-/**
  * @brief Failover configuration
  */
 struct FailoverConfig {

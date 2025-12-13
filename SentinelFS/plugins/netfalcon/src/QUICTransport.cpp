@@ -695,9 +695,35 @@ int QUICTransport::sendPacket(QUICConnectionInfo& conn) {
     return 0;
 }
 
-int QUICTransport::writeStreams(QUICConnectionInfo& conn) {
-    (void)conn;
-    return 0;
+void QUICTransport::closeStream(const std::string& peerId, int64_t streamId) {
+    std::lock_guard<std::mutex> lock(connMutex_);
+    auto it = connections_.find(peerId);
+    if (it == connections_.end()) {
+        return;
+    }
+    
+    // Close the stream
+    ngtcp2_conn_shutdown_stream(it->second.conn, 0, streamId, NGTCP2_NO_ERROR);
+    
+    // Remove from active streams
+    it->second.streamBuffers.erase(streamId);
+    
+    Logger::instance().log(LogLevel::DEBUG, "Closed stream " + std::to_string(streamId) + " for peer " + peerId, "QUICTransport");
+}
+
+std::vector<int64_t> QUICTransport::getActiveStreams(const std::string& peerId) {
+    std::lock_guard<std::mutex> lock(connMutex_);
+    auto it = connections_.find(peerId);
+    if (it == connections_.end()) {
+        return {};
+    }
+    
+    std::vector<int64_t> streams;
+    for (const auto& [streamId, buffer] : it->second.streamBuffers) {
+        streams.push_back(streamId);
+    }
+    
+    return streams;
 }
 #endif
 

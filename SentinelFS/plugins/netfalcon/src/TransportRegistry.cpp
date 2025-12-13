@@ -313,7 +313,7 @@ ITransport* TransportRegistry::selectByEnvironment(const TransportSelectionConte
         double bestScore = std::numeric_limits<double>::max();
         
         for (const auto& [type, quality] : qualityIt->second) {
-            double score = quality.computeScore();
+            double score = quality.computeScore(context);
             if (score < bestScore) {
                 auto transportIt = transports_.find(type);
                 if (transportIt != transports_.end()) {
@@ -460,15 +460,37 @@ ITransport* TransportRegistry::selectByStrategy(const std::string& peerId) {
 }
 
 ITransport* TransportRegistry::selectAdaptive(const std::string& peerId) {
-    // Adaptive selection: combine RTT, packet loss, and jitter
+    // Adaptive selection: use comprehensive scoring with bandwidth and congestion
     ITransport* best = nullptr;
     double bestScore = std::numeric_limits<double>::max();
+    
+    // Create selection context (could be enhanced with actual context)
+    TransportSelectionContext context;
+    context.peerId = peerId;
+    context.dataSize = 1024 * 1024; // Default to 1MB as hint
+    context.requiresReliability = true;
+    context.lowLatencyPreferred = false;
+    context.isInitialConnection = false;
     
     auto qualityIt = qualityCache_.find(peerId);
     if (qualityIt != qualityCache_.end()) {
         for (const auto& [type, quality] : qualityIt->second) {
-            // Score = RTT + (jitter * 2) + (packetLoss * 10)
-            double score = quality.rttMs + (quality.jitterMs * 2.0) + (quality.packetLossPercent * 10.0);
+            // Use new comprehensive scoring algorithm
+            double score = quality.computeScore(context);
+            
+            // Apply transport-specific adjustments
+            if (type == TransportType::QUIC) {
+                // QUIC gets bonus for multiplexing capability
+                score *= 0.9;
+            } else if (type == TransportType::TCP) {
+                // TCP gets bonus for reliability on congested networks
+                if (quality.isCongested) {
+                    score *= 0.85;
+                }
+            } else if (type == TransportType::RELAY) {
+                // Relay gets penalty unless direct connections are failing
+                score *= 1.3;
+            }
             
             if (score < bestScore) {
                 auto transportIt = transports_.find(type);
@@ -482,7 +504,7 @@ ITransport* TransportRegistry::selectAdaptive(const std::string& peerId) {
     
     if (best) return best;
     
-    // Fallback to first available
+    // Fallback to priority order
     return selectByStrategy(peerId);
 }
 

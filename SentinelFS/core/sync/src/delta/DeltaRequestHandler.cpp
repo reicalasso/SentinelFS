@@ -70,13 +70,14 @@ void DeltaSyncProtocolHandler::handleDeltaRequest(const std::string& peerId,
         
         // Calculate delta
         logger.debug("Calculating delta for: " + filename, "DeltaSyncProtocol");
+        size_t blockSize = DeltaEngine::getAdaptiveBlockSize(localPath, std::filesystem::file_size(localPath));
         auto deltas = DeltaEngine::calculateDelta(localPath, sigs);
         
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - startTime).count();
         metrics.recordDeltaComputeTime(elapsed);
         
-        auto serializedDelta = DeltaSerialization::serializeDelta(deltas);
+        auto serializedDelta = DeltaSerialization::serializeDelta(deltas, blockSize);
 
         // Chunk-based transfer for large deltas
         const std::size_t CHUNK_SIZE = 64 * 1024; // 64KB per chunk

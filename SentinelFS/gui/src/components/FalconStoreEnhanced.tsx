@@ -59,7 +59,11 @@ const formatBytes = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-export const FalconStoreEnhanced: React.FC = () => {
+interface FalconStoreEnhancedProps {
+  onLog?: (message: string) => void
+}
+
+export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog }) => {
   const [status, setStatus] = useState<FalconStoreStatus | null>(null)
   const [stats, setStats] = useState<FalconStoreStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -167,19 +171,25 @@ export const FalconStoreEnhanced: React.FC = () => {
     setQueryLoading(true)
     setQueryHistory(prev => [...prev.slice(-9), query])
     
+    onLog?.(`[FalconStore] Executing query: ${query.substring(0, 100)}${query.length > 100 ? '...' : ''}`)
+    
     try {
       await window.api?.sendCommand(`FALCONSTORE_EXECUTE_QUERY ${JSON.stringify({ query })}`)
-    } catch {
+      onLog?.(`[FalconStore] Query executed successfully`)
+    } catch (error) {
+      onLog?.(`[FalconStore] Query failed: ${error}`)
       setQueryLoading(false)
     }
   }
 
   const handleLoadTables = async () => {
+    onLog?.('[FalconStore] Loading database tables...')
     await window.api?.sendCommand('FALCONSTORE_GET_TABLES')
   }
 
   const handleLoadTableData = async (tableName: string) => {
     setSelectedTable(tableName)
+    onLog?.(`[FalconStore] Loading data for table: ${tableName}`)
     await window.api?.sendCommand(`FALCONSTORE_GET_TABLE_DATA ${JSON.stringify({ table: tableName })}`)
   }
 

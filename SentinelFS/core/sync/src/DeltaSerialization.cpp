@@ -61,10 +61,13 @@ std::vector<BlockSignature> DeltaSerialization::deserializeSignature(const std::
     return sigs;
 }
 
-std::vector<uint8_t> DeltaSerialization::serializeDelta(const std::vector<DeltaInstruction>& deltas) {
+std::vector<uint8_t> DeltaSerialization::serializeDelta(const std::vector<DeltaInstruction>& deltas, size_t blockSize) {
     std::vector<uint8_t> buffer;
     uint32_t count = htonl(deltas.size());
+    uint32_t blockSizeNet = htonl(static_cast<uint32_t>(blockSize));
+    
     buffer.insert(buffer.end(), (uint8_t*)&count, (uint8_t*)&count + sizeof(count));
+    buffer.insert(buffer.end(), (uint8_t*)&blockSizeNet, (uint8_t*)&blockSizeNet + sizeof(blockSizeNet));
 
     for (const auto& delta : deltas) {
         uint8_t isLiteral = delta.isLiteral ? 1 : 0;
@@ -79,40 +82,77 @@ std::vector<uint8_t> DeltaSerialization::serializeDelta(const std::vector<DeltaI
             buffer.insert(buffer.end(), (uint8_t*)&index, (uint8_t*)&index + sizeof(index));
         }
     }
-    return buffer;
+    
+    // Compress the serialized delta and prepend original size
+    auto compressed = DeltaEngine::compressData(buffer);
+    std::vector<uint8_t> result;
+    
+    // Prepend original size for decompression
+    uint32_t originalSize = htonl(buffer.size());
+    result.insert(result.end(), (uint8_t*)&originalSize, (uint8_t*)&originalSize + sizeof(originalSize));
+    result.insert(result.end(), compressed.begin(), compressed.end());
+    
+    return result;
 }
 
-std::vector<DeltaInstruction> DeltaSerialization::deserializeDelta(const std::vector<uint8_t>& data) {
+std::vector<DeltaInstruction> DeltaSerialization::deserializeDelta(const std::vector<uint8_t>& data, size_t& outBlockSize) {
     std::vector<DeltaInstruction> deltas;
     size_t offset = 0;
     
     if (data.size() < 4) return deltas;
     
+    // Extract original size from the first 4 bytes
+    uint32_t originalSize;
+    memcpy(&originalSize, data.data() + offset, 4);
+    originalSize = ntohl(originalSize);
+    offset += 4;
+    
+    // Decompress the remaining data
+    std::vector<uint8_t> compressedData(data.begin() + offset, data.end());
+    auto decompressed = DeltaEngine::decompressData(compressedData, originalSize);
+    
+    if (decompressed.empty()) {
+        // Decompression failed, return empty deltas
+        return deltas;
+    }
+    
+    // Now parse the decompressed data
+    offset = 0;
+    if (decompressed.size() < 8) return deltas;
+    
     uint32_t count;
-    memcpy(&count, data.data() + offset, 4);
+    memcpy(&count, decompressed.data() + offset, 4);
     count = ntohl(count);
     offset += 4;
+    
+    uint32_t blockSize;
+    memcpy(&blockSize, decompressed.data() + offset, 4);
+    blockSize = ntohl(blockSize);
+    offset += 4;
+    
+    outBlockSize = blockSize;
 
     for (uint32_t i = 0; i < count; ++i) {
-        if (offset + 1 > data.size()) break;
+        if (offset + 1 > decompressed.size()) break;
         
         DeltaInstruction delta;
-        delta.isLiteral = (data[offset++] == 1);
+        delta.isLiteral = (decompressed[offset++] == 1);
         
         if (delta.isLiteral) {
-            if (offset + 4 > data.size()) break;
+            if (offset + 4 > decompressed.size()) break;
             uint32_t len;
-            memcpy(&len, data.data() + offset, 4);
+            memcpy(&len, decompressed.data() + offset, 4);
             len = ntohl(len);
             offset += 4;
             
-            if (offset + len > data.size()) break;
-            delta.literalData.assign(data.begin() + offset, data.begin() + offset + len);
+            if (offset + len > decompressed.size()) break;
+            delta.literalData.resize(len);
+            memcpy(delta.literalData.data(), decompressed.data() + offset, len);
             offset += len;
         } else {
-            if (offset + 4 > data.size()) break;
+            if (offset + 4 > decompressed.size()) break;
             uint32_t index;
-            memcpy(&index, data.data() + offset, 4);
+            memcpy(&index, decompressed.data() + offset, 4);
             delta.blockIndex = ntohl(index);
             offset += 4;
         }

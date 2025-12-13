@@ -52,6 +52,9 @@ struct QUICConnectionInfo {
     
 #ifdef HAVE_NGTCP2
     ngtcp2_conn* conn{nullptr};
+    std::map<int64_t, std::vector<uint8_t>> streamBuffers; // Stream ID -> data buffer
+    std::queue<int64_t> availableStreams; // Reusable stream IDs
+    int64_t nextStreamId{0}; // Next stream ID to use
 #ifdef HAVE_GNUTLS
     gnutls_session_t session{nullptr};
     gnutls_certificate_credentials_t cred{nullptr};
@@ -124,6 +127,12 @@ private:
     static int streamOpenCallback(ngtcp2_conn* conn, int64_t stream_id, void* user_data);
     static int streamCloseCallback(ngtcp2_conn* conn, uint32_t flags, int64_t stream_id,
                                    uint64_t app_error_code, void* user_data, void* stream_user_data);
+    
+    // Stream multiplexing methods
+    int64_t openStream(const std::string& peerId);
+    bool sendOnStream(const std::string& peerId, int64_t streamId, const std::vector<uint8_t>& data);
+    void closeStream(const std::string& peerId, int64_t streamId);
+    std::vector<int64_t> getActiveStreams(const std::string& peerId);
     static void randCallback(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx* rand_ctx);
     static int getNewConnectionIdCallback(ngtcp2_conn* conn, ngtcp2_cid* cid, uint8_t* token,
                                           size_t cidlen, void* user_data);

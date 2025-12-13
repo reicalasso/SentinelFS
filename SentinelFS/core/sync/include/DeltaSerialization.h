@@ -27,12 +27,12 @@ public:
     /**
      * @brief Serialize delta instructions
      */
-    static std::vector<uint8_t> serializeDelta(const std::vector<DeltaInstruction>& deltas);
+    static std::vector<uint8_t> serializeDelta(const std::vector<DeltaInstruction>& deltas, size_t blockSize);
 
     /**
      * @brief Deserialize delta instructions
      */
-    static std::vector<DeltaInstruction> deserializeDelta(const std::vector<uint8_t>& data);
+    static std::vector<DeltaInstruction> deserializeDelta(const std::vector<uint8_t>& data, size_t& outBlockSize);
 };
 
 } // namespace SentinelFS

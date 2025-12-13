@@ -7,15 +7,29 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
+#include <deque>
 
 namespace SentinelFS {
 
 /**
- * @brief Token Bucket algorithm for bandwidth throttling
+ * @brief Congestion control statistics
+ */
+struct CongestionStats {
+    double currentRTT;          // Current round-trip time in ms
+    double minRTT;              // Minimum observed RTT in ms
+    double queueDelay;          // Current queue delay in ms
+    double targetDelay;         // Target queue delay in ms (LEDBAT uses 100ms)
+    size_t currentRate;         // Current sending rate in bytes/sec
+    size_t packetsLost;         // Number of lost packets
+    double lossRate;            // Packet loss rate (0-1)
+};
+
+/**
+ * @brief Token Bucket algorithm with congestion-aware rate control
  * 
- * Implements smooth rate limiting with burst capacity.
- * Tokens are added at a constant rate (bytes per second).
- * Each transfer consumes tokens. If no tokens available, transfer waits.
+ * Implements LEDBAT-like congestion control that yields to other traffic
+ * by monitoring queue delay and adjusting sending rate accordingly.
  */
 class BandwidthLimiter {
 public:
@@ -23,8 +37,9 @@ public:
      * @brief Construct a bandwidth limiter
      * @param maxBytesPerSecond Maximum transfer rate (0 = unlimited)
      * @param burstCapacity Maximum burst size in bytes (default: 2x rate)
+     * @param targetDelay Target queue delay in ms (default: 100ms for LEDBAT)
      */
-    BandwidthLimiter(size_t maxBytesPerSecond = 0, size_t burstCapacity = 0);
+    BandwidthLimiter(size_t maxBytesPerSecond = 0, size_t burstCapacity = 0, double targetDelay = 100.0);
     
     /**
      * @brief Request permission to transfer bytes
@@ -74,10 +89,37 @@ public:
      * @return Pair of (total_bytes_transferred, total_wait_time_ms)
      */
     std::pair<uint64_t, uint64_t> getStats() const;
+    
+    /**
+     * @brief Update RTT measurement for congestion control
+     * @param rttMs Round-trip time in milliseconds
+     */
+    void updateRTT(double rttMs);
+    
+    /**
+     * @brief Report packet loss for congestion control
+     * @param packetsLost Number of packets lost
+     * @param totalPackets Total packets sent
+     */
+    void reportPacketLoss(size_t packetsLost, size_t totalPackets);
+    
+    /**
+     * @brief Get congestion statistics
+     */
+    CongestionStats getCongestionStats() const;
+    
+    /**
+     * @brief Enable/disable congestion control
+     */
+    void setCongestionControlEnabled(bool enabled) { congestionControlEnabled_ = enabled; }
+    bool isCongestionControlEnabled() const { return congestionControlEnabled_; }
 
 private:
     void refillTokens();
+    void adjustRate();
+    void updateMinRTT(double rtt);
     
+    // Token bucket parameters
     size_t maxBytesPerSecond_;  // Rate limit (0 = unlimited)
     size_t burstCapacity_;      // Maximum tokens in bucket
     double tokens_;             // Current token count
@@ -88,6 +130,28 @@ private:
     // Statistics
     std::atomic<uint64_t> totalBytesTransferred_{0};
     std::atomic<uint64_t> totalWaitTimeMs_{0};
+    
+    // Congestion control
+    bool congestionControlEnabled_{true};
+    double targetDelay_;        // Target queue delay in ms (LEDBAT default: 100ms)
+    double currentRTT_{0.0};    // Current RTT in ms
+    double minRTT_{1000.0};     // Minimum RTT observed (start high)
+    double queueDelay_{0.0};    // Current queue delay
+    size_t currentRate_;        // Current sending rate
+    size_t packetsLost_{0};     // Total packets lost
+    size_t packetsSent_{0};     // Total packets sent
+    
+    // RTT history for filtering
+    std::deque<double> rttHistory_;
+    static constexpr size_t RTT_HISTORY_SIZE = 20;
+    
+    // Rate adjustment parameters
+    static constexpr double GAIN = 1.0;        // LEDBAT gain parameter
+    static constexpr double MIN_RATE = 1024;   // Minimum rate: 1KB/s
+    static constexpr double MAX_RATE_INCREASE = 1.5; // Max 50% increase per adjustment
+    static constexpr double DECREASE_FACTOR = 0.5;  // Halve rate on congestion
+    
+    std::chrono::steady_clock::time_point lastRateAdjustment_;
 };
 
 /**

@@ -23,19 +23,26 @@ namespace SentinelFS {
         static const size_t BLOCK_SIZE = 4096;
         
         /**
-         * @brief Get optimal block size based on file size
+         * @brief Get optimal block size based on file characteristics
+         * @param filePath Path to the file
          * @param fileSize Total file size in bytes
+         * @param networkLatencyMs Current network latency in milliseconds
          * @return Optimal block size for delta computation
          */
-        static size_t getOptimalBlockSize(size_t fileSize) {
-            if (fileSize < 1024 * 1024) {           // < 1MB
-                return 32 * 1024;                    // 32KB
-            } else if (fileSize < 100 * 1024 * 1024) { // < 100MB
-                return 128 * 1024;                   // 128KB
-            } else {
-                return 256 * 1024;                   // 256KB for large files
-            }
-        }
+        static size_t getAdaptiveBlockSize(const std::string& filePath, size_t fileSize, int networkLatencyMs = 50);
+        
+        /**
+         * @brief Analyze file characteristics for optimal chunking
+         * @param filePath Path to the file
+         * @return File characteristics including entropy and type
+         */
+        struct FileCharacteristics {
+            double entropy;          // Shannon entropy (0-8)
+            bool isTextFile;        // True for text files
+            bool isCompressed;      // True if already compressed
+            size_t repeatingPatternAvg; // Average size of repeating patterns
+        };
+        static FileCharacteristics analyzeFileCharacteristics(const std::string& filePath);
 
         /**
          * @brief Calculate Adler-32 rolling checksum.
@@ -113,8 +120,24 @@ namespace SentinelFS {
          * @brief Applies a delta to an old file to reconstruct the new file.
          * @param oldFilePath Path to the old version of the file.
          * @param deltas Vector of DeltaInstructions.
+         * @param blockSize Block size used for delta instructions.
          * @return Reconstructed file data.
          */
-        static std::vector<uint8_t> applyDelta(const std::string& oldFilePath, const std::vector<DeltaInstruction>& deltas);
+        static std::vector<uint8_t> applyDelta(const std::string& oldFilePath, const std::vector<DeltaInstruction>& deltas, size_t blockSize = BLOCK_SIZE);
+
+        /**
+         * @brief Compress data using LZ4.
+         * @param data Input data to compress.
+         * @return Compressed data.
+         */
+        static std::vector<uint8_t> compressData(const std::vector<uint8_t>& data);
+
+        /**
+         * @brief Decompress LZ4 compressed data.
+         * @param compressedData Compressed input data.
+         * @param originalSize Expected size of decompressed data.
+         * @return Decompressed data.
+         */
+        static std::vector<uint8_t> decompressData(const std::vector<uint8_t>& compressedData, size_t originalSize);
     };
 }

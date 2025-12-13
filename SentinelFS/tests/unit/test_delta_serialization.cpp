@@ -60,8 +60,9 @@ void test_delta_serialization() {
     d2.blockIndex = 42;
     originalDeltas.push_back(d2);
 
-    std::vector<uint8_t> serialized = DeltaSerialization::serializeDelta(originalDeltas);
-    std::vector<DeltaInstruction> deserialized = DeltaSerialization::deserializeDelta(serialized);
+    std::vector<uint8_t> serialized = DeltaSerialization::serializeDelta(originalDeltas, 4096);
+    size_t blockSize;
+    std::vector<DeltaInstruction> deserialized = DeltaSerialization::deserializeDelta(serialized, blockSize);
 
     assert(deserialized.size() == originalDeltas.size());
 
@@ -85,8 +86,9 @@ void test_empty_serialization() {
     assert(deserSigs.empty());
 
     std::vector<DeltaInstruction> emptyDeltas;
-    auto serDeltas = DeltaSerialization::serializeDelta(emptyDeltas);
-    auto deserDeltas = DeltaSerialization::deserializeDelta(serDeltas);
+    size_t blockSize;
+    auto serDeltas = DeltaSerialization::serializeDelta(emptyDeltas, 4096);
+    auto deserDeltas = DeltaSerialization::deserializeDelta(serDeltas, blockSize);
     assert(deserDeltas.empty());
 
     std::cout << "test_empty_serialization passed." << std::endl;

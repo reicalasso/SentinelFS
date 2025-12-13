@@ -9,7 +9,7 @@ import { ToastList } from './components/ToastList'
 import { ConflictCenter } from './components/ConflictCenter'
 import { QuarantineCenter } from './components/QuarantineCenter'
 import { OnboardingWizard } from './components/OnboardingWizard'
-import { FalconStore } from './components/FalconStore'
+import { FalconStoreEnhanced } from './components/FalconStoreEnhanced'
 import { Logger } from './components/Logger'
 import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
@@ -370,7 +370,7 @@ export default function App() {
             {activeTab === 'files' && <Files files={files} />}
             {activeTab === 'peers' && <Peers peers={peers} />}
             {activeTab === 'transfers' && <Transfers metrics={metrics as any} transfers={transfers} history={transferHistory} activity={activity as any} />}
-            {activeTab === 'falconstore' && <FalconStore />}
+            {activeTab === 'falconstore' && <FalconStoreEnhanced onLog={handleLog} />}
             {activeTab === 'settings' && <Settings config={config} />}
             {activeTab === 'logs' && <Logger logs={logs} onClear={clearLogs} />}
           </div>

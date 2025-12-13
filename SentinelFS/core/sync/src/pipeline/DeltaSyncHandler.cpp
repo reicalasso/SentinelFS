@@ -178,6 +178,7 @@ void SyncPipeline::computeAndSendDelta(const std::string& peerId, const std::str
     auto startTime = std::chrono::steady_clock::now();
     
     // Calculate delta
+    size_t blockSize = DeltaEngine::getAdaptiveBlockSize(localPath, std::filesystem::file_size(localPath));
     auto deltas = DeltaEngine::calculateDelta(localPath, peerSigs);
     
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -190,7 +191,7 @@ void SyncPipeline::computeAndSendDelta(const std::string& peerId, const std::str
     
     for (const auto& delta : deltas) {
         if (!delta.isLiteral) {
-            copyBytes += BLOCK_SIZE;  // COPY instruction
+            copyBytes += blockSize;  // COPY instruction
         } else {
             literalBytes += delta.literalData.size();  // LITERAL instruction
         }
@@ -205,8 +206,8 @@ void SyncPipeline::computeAndSendDelta(const std::string& peerId, const std::str
     
     metrics.recordDeltaComputeTime(elapsed);
     
-    // Serialize delta
-    auto serializedDelta = DeltaSerialization::serializeDelta(deltas);
+    // Serialize delta with block size
+    auto serializedDelta = DeltaSerialization::serializeDelta(deltas, blockSize);
     
     // Update transfer context
     {
@@ -347,7 +348,8 @@ void SyncPipeline::handleDeltaResponse(const std::string& peerId, const std::vec
     logger.info("📥 Received complete delta (" + std::to_string(fullDelta.size()) + " bytes) for " + filename, "SyncPipeline");
     
     // Deserialize and apply delta
-    auto deltas = DeltaSerialization::deserializeDelta(fullDelta);
+    size_t blockSize;
+    auto deltas = DeltaSerialization::deserializeDelta(fullDelta, blockSize);
     
     logger.debug("Applying " + std::to_string(deltas.size()) + " delta instructions", "SyncPipeline");
     
@@ -364,7 +366,7 @@ void SyncPipeline::handleDeltaResponse(const std::string& peerId, const std::vec
     }
     
     // Apply delta
-    auto newData = DeltaEngine::applyDelta(localPath, deltas);
+    auto newData = DeltaEngine::applyDelta(localPath, deltas, blockSize);
     
     // Mark as patched BEFORE writing to prevent sync loop
     if (markAsPatchedCallback_) {

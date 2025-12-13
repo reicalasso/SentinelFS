@@ -1,2 +1,5 @@
 .vscode/
 node_modules/
+SentinelFS/sentinel.db-shm
+SentinelFS/sentinel.db-wal
+SentinelFS/sentinel.db-journal
