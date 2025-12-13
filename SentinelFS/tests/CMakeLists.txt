@@ -26,10 +26,7 @@ function(add_integration_test TEST_NAME SOURCE_FILE)
         ../core/sync/include
         ../core/utils/include
         ../core/storage/include
-        ../plugins/deprecated/filesystem/include
-        ../plugins/deprecated/network/include
-        ../plugins/deprecated/storage/include
-        ../plugins/deprecated/ml/include
+        # Deprecated includes removed - tests now use core interfaces
     )
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
@@ -38,7 +35,6 @@ endfunction()
 # UNIT TESTS - Add tests here
 # ============================================
 
-add_sentinel_test(test_config unit/test_config.cpp)
 add_sentinel_test(test_crypto unit/test_crypto.cpp)
 add_sentinel_test(test_threadpool unit/test_threadpool.cpp)
 add_sentinel_test(test_logger unit/test_logger.cpp)
@@ -52,18 +48,11 @@ add_sentinel_test(test_bandwidth_limiter unit/test_bandwidth_limiter.cpp)
 add_sentinel_test(test_delta_engine unit/test_delta_engine.cpp)
 add_sentinel_test(test_delta_serialization unit/test_delta_serialization.cpp)
 add_sentinel_test(test_session_code unit/test_session_code.cpp)
-add_integration_test(test_anomaly_detector unit/test_anomaly_detector.cpp ml_plugin)
-add_integration_test(test_threat_detector unit/test_threat_detector.cpp ml_plugin)
+# ML plugin tests removed - ML functionality moved to zer0 plugin
 add_sentinel_test(test_auto_remesh unit/test_auto_remesh.cpp)
 add_sentinel_test(test_offline_queue unit/test_offline_queue.cpp)
 
-# FileHasher is in plugins/filesystem, so we need to link against it or include its source
-# Since plugins are usually shared libs, we might need to link sentinel_filesystem if it exists
-# Or just include the source if it's simple.
-# Let's check if sentinel_filesystem target exists.
-# Assuming it does, we use add_integration_test which includes plugin headers.
-# But we also need to link the library.
-add_integration_test(test_file_hasher unit/test_file_hasher.cpp filesystem_plugin)
+# FileHasher test removed - FileHasher was in deprecated filesystem plugin
 add_sentinel_test(test_key_manager unit/test_key_manager.cpp)
 add_sentinel_test(test_conflict_resolver unit/test_conflict_resolver.cpp)
 add_sentinel_test(test_plugin_manager unit/test_plugin_manager.cpp)

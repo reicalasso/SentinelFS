@@ -1,3 +1,5 @@
+import { ErrorCode, ErrorInfo, ErrorUtils } from './errorCodes';
+
 export type DaemonErrorCode = string
 
 export interface FriendlyError {
@@ -6,9 +8,21 @@ export interface FriendlyError {
   hint?: string
 }
 
-// Map low-level daemon errors to human-friendly messages
-export function mapDaemonError(raw?: string): FriendlyError {
-  if (!raw) {
+// Map type-safe error codes to human-friendly messages
+export function mapDaemonError(errorInfo?: ErrorInfo | string): FriendlyError {
+  let code: ErrorCode;
+  let details: string = '';
+  
+  if (typeof errorInfo === 'string') {
+    // Legacy fallback for string-based errors
+    const parsed = ErrorUtils.parseErrorJson(errorInfo);
+    code = parsed.code;
+    details = parsed.details;
+  } else if (errorInfo) {
+    // New type-safe error handling
+    code = errorInfo.code;
+    details = errorInfo.details;
+  } else {
     return {
       title: 'Unknown error',
       message: 'An unexpected error occurred.',
@@ -16,43 +30,49 @@ export function mapDaemonError(raw?: string): FriendlyError {
     }
   }
 
-  const text = raw.toLowerCase()
+  const baseMessage = ErrorUtils.getErrorMessage(code);
+  
+  switch (code) {
+    case ErrorCode.CONNECTION_FAILED:
+      return {
+        title: 'Daemon connection failed',
+        message: baseMessage,
+        hint: 'Make sure the daemon is running, then restart the app and check your firewall/antivirus rules.'
+      }
 
-  if (text.includes('connection refused') || text.includes('cannot connect')) {
-    return {
-      title: 'Daemon connection failed',
-      message: 'The GUI could not connect to the SentinelFS daemon.',
-      hint: 'Make sure the daemon is running, then restart the app and check your firewall/antivirus rules.'
-    }
-  }
+    case ErrorCode.SESSION_CODE_MISMATCH:
+      return {
+        title: 'Session code mismatch',
+        message: baseMessage,
+        hint: 'Ensure all peers are configured with the exact same session code.'
+      }
 
-  if (text.includes('session') && text.includes('code')) {
-    return {
-      title: 'Session code mismatch',
-      message: 'The session code on this device does not match the remote peer.',
-      hint: 'Ensure all peers are configured with the exact same session code.'
-    }
-  }
+    case ErrorCode.DISCOVERY_FAILED:
+      return {
+        title: 'Peer discovery failed',
+        message: baseMessage,
+        hint: 'Verify that devices are on the same LAN and that UDP broadcast is not blocked by a firewall.'
+      }
 
-  if (text.includes('discovery') || text.includes('broadcast')) {
-    return {
-      title: 'Peer discovery failed',
-      message: 'No peers were discovered on the network.',
-      hint: 'Verify that devices are on the same LAN and that UDP broadcast is not blocked by a firewall.'
-    }
-  }
+    case ErrorCode.PERMISSION_DENIED:
+      return {
+        title: 'Permission error',
+        message: baseMessage,
+        hint: 'Make sure the current user has access to the folders and network resources you are using.'
+      }
 
-  if (text.includes('permission') || text.includes('access denied')) {
-    return {
-      title: 'Permission error',
-      message: 'The requested operation does not have the required filesystem or network permissions.',
-      hint: 'Make sure the current user has access to the folders and network resources you are using.'
-    }
-  }
+    case ErrorCode.DAEMON_NOT_RUNNING:
+      return {
+        title: 'Daemon not running',
+        message: baseMessage,
+        hint: 'Start the SentinelFS daemon service and restart the GUI application.'
+      }
 
-  return {
-    title: 'Operation failed',
-    message: raw,
-    hint: 'Check the Debug Console tab for more details.'
+    default:
+      return {
+        title: 'Operation failed',
+        message: baseMessage,
+        hint: details || 'Check the Debug Console tab for more details.'
+      }
   }
 }

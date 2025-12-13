@@ -31,6 +31,7 @@ set(CORE_SOURCES
     security/src/keymanager/SessionKeyManager.cpp
     security/src/tls/TLSContextCore.cpp
     security/src/tls/PinManager.cpp
+    security/src/tls/PinRotation.cpp
     security/src/tls/Verification.cpp
 
     # Sync sources
@@ -69,6 +70,7 @@ set(CORE_SOURCES
     utils/src/PathUtils.cpp
     utils/src/DBHelper.cpp
     utils/src/BatchQueries.cpp
+    src/ErrorCodes.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

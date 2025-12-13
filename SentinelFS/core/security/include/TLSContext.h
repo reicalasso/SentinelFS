@@ -219,6 +219,40 @@ public:
      * @brief Get last error message
      */
     std::string getLastError() const { return lastError_; }
+    
+    /**
+     * @brief Rotate certificate pin with backup
+     * @param hostname Target hostname
+     * @param oldSpkiHash Current pin hash
+     * @param newSpkiHash New pin hash
+     * @param validityDays Backup validity period
+     * @return true on success
+     */
+    bool rotatePin(const std::string& hostname, const std::string& oldSpkiHash,
+                   const std::string& newSpkiHash, int validityDays = 30);
+    
+    /**
+     * @brief Verify certificate with backup pins
+     * @param hostname Target hostname
+     * @param spkiHash Certificate SPKI hash
+     * @param fingerprint Certificate fingerprint
+     * @return true if any pin matches
+     */
+    bool verifyWithBackup(const std::string& hostname, const std::string& spkiHash,
+                         const std::string& fingerprint);
+    
+    /**
+     * @brief Get pins expiring soon
+     * @param daysThreshold Days until expiration
+     * @return List of expiring pins
+     */
+    std::vector<CertificatePin> getExpiringPins(int daysThreshold = 7);
+    
+    /**
+     * @brief Remove expired pins
+     * @return true if any pins were removed
+     */
+    bool cleanupExpiredPins();
 
 private:
     bool verifyHostname(X509* cert, const std::string& hostname);

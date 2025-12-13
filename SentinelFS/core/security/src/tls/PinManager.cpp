@@ -116,9 +116,24 @@ bool TLSContext::checkPin(const std::string& hostname,
     auto& logger = Logger::instance();
     time_t now = time(nullptr);
     
+    // First check if we have existing pins for this hostname
+    bool hasExistingPin = false;
+    for (const auto& pin : pins_) {
+        if (pin.expiresAt > 0 && pin.expiresAt < now) {
+            continue; // Skip expired pins
+        }
+        
+        if (matchPattern(pin.hostname, hostname) && pin.hostname != "*") {
+            hasExistingPin = true;
+            break;
+        }
+    }
+    
+    // Check pin validation
     for (const auto& pin : pins_) {
         // Skip expired pins
         if (pin.expiresAt > 0 && pin.expiresAt < now) {
+            logger.log(LogLevel::WARN, "Skipping expired pin for " + pin.hostname, "TLSContext");
             continue;
         }
         
@@ -137,14 +152,22 @@ bool TLSContext::checkPin(const std::string& hostname,
             logger.log(LogLevel::DEBUG, "Fingerprint pin matched for " + hostname, "TLSContext");
             return true;
         }
+        
+        // If we have a pin for this hostname but it doesn't match, reject
+        if (hasExistingPin) {
+            logger.log(LogLevel::ERROR, "Pin validation failed for " + hostname + " - possible MITM attempt", "TLSContext");
+            return false;
+        }
     }
     
-    // Handle TOFU policy
-    if (pinningPolicy_ == PinningPolicy::TRUST_ON_FIRST_USE) {
+    // Handle TOFU policy - only if no existing pins
+    if (!hasExistingPin && pinningPolicy_ == PinningPolicy::TRUST_ON_FIRST_USE) {
         handleTOFU(hostname, spkiHash);
         return true;  // Trust on first use
     }
     
+    // If we had pins but none matched, we already rejected above
+    // If no pins and not TOFU, check policy
     return (pinningPolicy_ == PinningPolicy::NONE);
 }
 

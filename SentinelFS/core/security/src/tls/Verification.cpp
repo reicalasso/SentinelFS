@@ -112,24 +112,6 @@ bool TLSContext::verifyHostname(X509* cert, const std::string& hostname) {
     return false;
 }
 
-bool TLSContext::matchPattern(const std::string& pattern, const std::string& hostname) {
-    // Exact match
-    if (pattern == hostname) return true;
-    
-    // Wildcard match (only leftmost label)
-    if (pattern.length() > 2 && pattern[0] == '*' && pattern[1] == '.') {
-        std::string suffix = pattern.substr(1);  // .example.com
-        
-        size_t dotPos = hostname.find('.');
-        if (dotPos != std::string::npos) {
-            std::string hostSuffix = hostname.substr(dotPos);
-            return hostSuffix == suffix;
-        }
-    }
-    
-    return false;
-}
-
 TLSContext::VerificationResult TLSContext::performHandshake(SSL* ssl) {
     auto& logger = Logger::instance();
     VerificationResult result;

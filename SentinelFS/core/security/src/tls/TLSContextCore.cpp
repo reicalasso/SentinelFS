@@ -18,6 +18,22 @@ namespace SentinelFS {
 thread_local TLSContext* TLSContext::currentContext_ = nullptr;
 thread_local std::string TLSContext::currentHostname_;
 
+// Pattern matching for wildcard certificates
+bool TLSContext::matchPattern(const std::string& pattern, const std::string& value) {
+    if (pattern == "*") return true;
+    if (pattern == value) return true;
+    
+    // Handle wildcard patterns like *.example.com
+    if (pattern.size() > 2 && pattern[0] == '*' && pattern[1] == '.') {
+        std::string suffix = pattern.substr(2);
+        if (value.size() > suffix.size()) {
+            return value.substr(value.size() - suffix.size()) == suffix;
+        }
+    }
+    
+    return false;
+}
+
 namespace {
     // Secure cipher suites (TLS 1.3 + strong TLS 1.2 ciphers)
     const char* DEFAULT_CIPHERS = 
