@@ -335,9 +335,12 @@ export function useAppState() {
   }, [])
 
   const handleLog = useCallback((log: string) => {
+    // Always strip ANSI codes for clean UI display
     const cleanLog = log.replace(/\u001b\[[0-9;]*m/g, '')
     const hasTimestamp = /^\[\d{4}-\d{2}-\d{2}/.test(cleanLog)
-    const formattedLog = hasTimestamp ? log : `[${new Date().toLocaleTimeString()}] ${log}`
+    // Use cleanLog here instead of original log
+    const formattedLog = hasTimestamp ? cleanLog : `[${new Date().toLocaleTimeString()}] ${cleanLog}`
+    
     if (lastLogRef.current === formattedLog) return
     lastLogRef.current = formattedLog
     dispatch({ type: 'ADD_LOG', payload: formattedLog })

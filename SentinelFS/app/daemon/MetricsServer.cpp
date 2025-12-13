@@ -1,4 +1,5 @@
 #include "MetricsServer.h"
+#include "Logger.h"
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -37,13 +38,13 @@ bool MetricsServer::start() {
 
     serverSocket_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket_ < 0) {
-        std::cerr << "MetricsServer: failed to create socket: " << std::strerror(errno) << std::endl;
+        Logger::instance().error("MetricsServer: failed to create socket: " + std::string(std::strerror(errno)), "MetricsServer");
         return false;
     }
 
     int opt = 1;
     if (setsockopt(serverSocket_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        std::cerr << "MetricsServer: failed to set socket options: " << std::strerror(errno) << std::endl;
+        Logger::instance().error("MetricsServer: failed to set socket options: " + std::string(std::strerror(errno)), "MetricsServer");
         ::close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -55,14 +56,14 @@ bool MetricsServer::start() {
     addr.sin_port = htons(static_cast<uint16_t>(port_));
 
     if (bind(serverSocket_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-        std::cerr << "MetricsServer: failed to bind socket: " << std::strerror(errno) << std::endl;
+        Logger::instance().error("MetricsServer: failed to bind socket: " + std::string(std::strerror(errno)), "MetricsServer");
         ::close(serverSocket_);
         serverSocket_ = -1;
         return false;
     }
 
     if (listen(serverSocket_, 16) < 0) {
-        std::cerr << "MetricsServer: failed to listen: " << std::strerror(errno) << std::endl;
+        Logger::instance().error("MetricsServer: failed to listen: " + std::string(std::strerror(errno)), "MetricsServer");
         ::close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -70,7 +71,7 @@ bool MetricsServer::start() {
 
     running_ = true;
     serverThread_ = std::thread(&MetricsServer::serverLoop, this);
-    std::cout << "MetricsServer listening on port " << port_ << std::endl;
+    Logger::instance().info("MetricsServer listening on port " + std::to_string(port_), "MetricsServer");
     return true;
 }
 
@@ -94,7 +95,7 @@ void MetricsServer::serverLoop() {
         int client = accept(serverSocket_, nullptr, nullptr);
         if (client < 0) {
             if (running_) {
-                std::cerr << "MetricsServer: accept failed: " << std::strerror(errno) << std::endl;
+                Logger::instance().error("MetricsServer: accept failed: " + std::string(std::strerror(errno)), "MetricsServer");
             }
             continue;
         }

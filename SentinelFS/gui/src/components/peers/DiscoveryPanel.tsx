@@ -83,10 +83,10 @@ export function DiscoveryPanel({
     }
   }, [])
 
-  // Fetch on mount and periodically
+  // Fetch on mount and periodically (30 seconds to avoid log spam)
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(fetchStatus, 2000)
+    const interval = setInterval(fetchStatus, 30000)
     return () => clearInterval(interval)
   }, [fetchStatus])
 
@@ -122,10 +122,15 @@ export function DiscoveryPanel({
     return () => window.removeEventListener('netfalcon-settings-changed', handleSettingsChanged)
   }, [])
 
-  // Also fetch when discoverySettings prop changes
+  // Fetch when discoverySettings prop changes (user toggled a setting)
+  // Use a ref to avoid fetching on initial mount since we already fetch in the interval effect
   useEffect(() => {
-    fetchStatus()
-  }, [discoverySettings, fetchStatus])
+    // Only fetch if settings actually changed (not on mount)
+    const savedSettings = localStorage.getItem('discoverySettings')
+    if (savedSettings) {
+      fetchStatus()
+    }
+  }, [discoverySettings])
 
   const copySessionCode = async () => {
     try {

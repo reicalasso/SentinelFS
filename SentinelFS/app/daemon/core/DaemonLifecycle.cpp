@@ -423,30 +423,31 @@ void DaemonCore::cleanupStalePeers() {
 }
 
 void DaemonCore::printConfiguration() const {
-    std::cout << "Configuration:" << std::endl;
-    std::cout << "  TCP Port: " << config_.tcpPort << std::endl;
-    std::cout << "  Discovery Port: " << config_.discoveryPort << std::endl;
-    std::cout << "  Watch Directory: " << config_.watchDirectory << std::endl;
-    std::cout << "  Encryption: " << (config_.encryptionEnabled ? "Enabled" : "Disabled") << std::endl;
-    std::cout << "  Upload Limit: " 
-              << (config_.uploadLimit > 0 ? std::to_string(config_.uploadLimit / 1024) + " KB/s" : "Unlimited") 
-              << std::endl;
-    std::cout << "  Download Limit: " 
-              << (config_.downloadLimit > 0 ? std::to_string(config_.downloadLimit / 1024) + " KB/s" : "Unlimited") 
-              << std::endl;
+    auto& logger = Logger::instance();
+    std::string configStr = "Configuration:\n";
+    configStr += "  TCP Port: " + std::to_string(config_.tcpPort) + "\n";
+    configStr += "  Discovery Port: " + std::to_string(config_.discoveryPort) + "\n";
+    configStr += "  Watch Directory: " + config_.watchDirectory + "\n";
+    configStr += "  Encryption: " + std::string(config_.encryptionEnabled ? "Enabled" : "Disabled") + "\n";
+    
+    std::string ul = (config_.uploadLimit > 0 ? std::to_string(config_.uploadLimit / 1024) + " KB/s" : "Unlimited");
+    configStr += "  Upload Limit: " + ul + "\n";
+    
+    std::string dl = (config_.downloadLimit > 0 ? std::to_string(config_.downloadLimit / 1024) + " KB/s" : "Unlimited");
+    configStr += "  Download Limit: " + dl;
+    
+    logger.info(configStr, "DaemonCore");
     
     if (!config_.sessionCode.empty()) {
-        std::cout << "  Session Code: Set ✓" << std::endl;
-        
         if (config_.encryptionEnabled) {
-            std::cout << "  🔒 Encryption key will be derived from session code" << std::endl;
+            logger.info("Session Code: Set (Encryption Enabled)", "DaemonCore");
+        } else {
+            logger.info("Session Code: Set (Encryption Disabled)", "DaemonCore");
         }
     } else {
-        std::cout << "  Session Code: Not set (any peer can connect)" << std::endl;
-        std::cout << "  ⚠️  WARNING: For security, use --generate-code to create a session code!" << std::endl;
-        
+        logger.warn("Session Code: Not set (any peer can connect). Use --generate-code for security.", "DaemonCore");
         if (config_.encryptionEnabled) {
-            std::cerr << "Error: Cannot enable encryption without a session code!" << std::endl;
+            logger.error("Error: Cannot enable encryption without a session code!", "DaemonCore");
         }
     }
 }

@@ -115,7 +115,7 @@ void EventHandlers::setupHandlers() {
         try {
             std::string path = std::any_cast<std::string>(data);
             auto& logger = Logger::instance();
-            logger.info("Received WATCH_ADDED event for: " + path, "EventHandlers");
+            logger.debug("Received WATCH_ADDED event for: " + path, "EventHandlers");
             fileSyncHandler_->scanDirectory(path);
         } catch (const std::exception& e) {
             Logger::instance().error("Error handling WATCH_ADDED: " + std::string(e.what()), "EventHandlers");
@@ -581,7 +581,7 @@ void EventHandlers::processPendingChanges() {
             
             std::string filename = std::filesystem::path(fullPath).filename().string();
             long long fileSize = std::filesystem::file_size(fullPath);
-            logger.info("📡 Broadcasting pending file: " + filename + " (" + std::to_string(fileSize) + " bytes)", "EventHandlers");
+            logger.debug("📡 Broadcasting pending file: " + filename + " (" + std::to_string(fileSize) + " bytes)", "EventHandlers");
             
             // Broadcast only (database was already updated when file was modified)
             fileSyncHandler_->broadcastUpdate(fullPath);
@@ -638,7 +638,7 @@ void EventHandlers::setupOfflineQueue() {
             switch (op.type) {
                 case sfs::sync::OperationType::Create:
                 case sfs::sync::OperationType::Update:
-                    logger.info("Processing queued update: " + filename, "OfflineQueue");
+                    logger.debug("Processing queued update: " + filename, "OfflineQueue");
                     if (fileSyncHandler_ && fileSyncHandler_->updateFileInDatabase(op.filePath)) {
                         fileSyncHandler_->broadcastUpdate(op.filePath);
                         return true;
@@ -646,7 +646,7 @@ void EventHandlers::setupOfflineQueue() {
                     break;
                     
                 case sfs::sync::OperationType::Delete:
-                    logger.info("Processing queued delete: " + filename, "OfflineQueue");
+                    logger.debug("Processing queued delete: " + filename, "OfflineQueue");
                     // Remove from database and broadcast delete to peers
                     if (storage_->removeFile(op.filePath)) {
                         if (fileSyncHandler_) {
@@ -657,7 +657,7 @@ void EventHandlers::setupOfflineQueue() {
                     break;
                     
                 case sfs::sync::OperationType::Rename:
-                    logger.info("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
+                    logger.debug("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
                     // Rename is handled as: delete old path, then create/update new path
                     // First, remove old path from database and broadcast delete
                     if (storage_->removeFile(op.filePath)) {

@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
             // but arguments processed later will override file settings
             std::string path = argv[++i];
             if (fileConfig.loadFromFile(path, true)) {
-                std::cout << "Loaded configuration from " << path << std::endl;
+                logger.info("Loaded configuration from " + path, "Daemon");
                 
                 // Update config struct from file
                 config.tcpPort = fileConfig.getInt("tcp_port", config.tcpPort);
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
                 if (ul > 0) config.uploadLimit = ul * 1024;
                 if (dl > 0) config.downloadLimit = dl * 1024;
             } else {
-                std::cerr << "Failed to load config file: " << path << std::endl;
+                logger.error("Failed to load config file: " + path, "Daemon");
             }
         }
         else if (arg == "--port" && i + 1 < argc) {
@@ -173,12 +173,12 @@ int main(int argc, char* argv[]) {
 
     // Validate configuration
     if (!config.sessionCode.empty() && !SessionCode::isValid(config.sessionCode)) {
-        std::cerr << "Error: Invalid session code format. Must be 6 alphanumeric characters." << std::endl;
+        logger.error("Error: Invalid session code format. Must be 6 alphanumeric characters.", "Daemon");
         return 1;
     }
     
     if (config.encryptionEnabled && config.sessionCode.empty()) {
-        std::cerr << "Error: Cannot enable encryption without a session code!" << std::endl;
+        logger.error("Error: Cannot enable encryption without a session code!", "Daemon");
         return 1;
     }
 
@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
     DaemonCore daemon(config);
     
     if (!daemon.initialize()) {
-        std::cerr << "Failed to initialize daemon" << std::endl;
+        logger.critical("Failed to initialize daemon", "Daemon");
         return 1;
     }
 
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
     });
     
     if (!ipcHandler.start()) {
-        std::cerr << "Warning: Failed to start IPC server. CLI commands will not work." << std::endl;
+        logger.warn("Failed to start IPC server. CLI commands will not work.", "Daemon");
     }
 
     // --- Metrics / Health Server ---
@@ -278,8 +278,7 @@ int main(int argc, char* argv[]) {
     });
 
     if (!metricsServer.start()) {
-        std::cerr << "Warning: Failed to start metrics server on port "
-                  << config.metricsPort << std::endl;
+        logger.warn("Failed to start metrics server on port " + std::to_string(config.metricsPort), "Daemon");
     }
 
     // --- RTT Measurement + Auto-Remesh Thread ---
@@ -306,10 +305,10 @@ int main(int argc, char* argv[]) {
                         updatedPeer.status = "active";
                         updatedPeer.latency = rtt;
                         storage->addPeer(updatedPeer);
-                        std::cout << "Updated latency for " << peer.id << ": " << rtt << "ms" << std::endl;
+                        logger.debug("Updated latency for " + peer.id + ": " + std::to_string(rtt) + "ms", "AutoRemesh");
                     } else {
                         autoRemesh.updateMeasurement(peer.id, -1, false);
-                        std::cout << "Failed to measure RTT for " << peer.id << std::endl;
+                        logger.warn("Failed to measure RTT for " + peer.id, "AutoRemesh");
                         PeerInfo updatedPeer = peer;
                         updatedPeer.status = "offline";
                         updatedPeer.latency = -1;
@@ -323,7 +322,7 @@ int main(int argc, char* argv[]) {
                     updatedPeer.status = "offline";
                     updatedPeer.latency = -1;
                     storage->addPeer(updatedPeer);
-                    std::cout << "Peer " << peer.id << " not connected, attempting reconnect..." << std::endl;
+                    logger.debug("Peer " + peer.id + " not connected, attempting reconnect...", "AutoRemesh");
                     network->connectToPeer(peer.ip, peer.port);
                 }
             }
@@ -403,7 +402,7 @@ int main(int argc, char* argv[]) {
                 if (network->isPeerConnected(id)) {
                     network->disconnectPeer(id);
                     ++disconnectCount;
-                    std::cout << "[AutoRemesh] Disconnected suboptimal peer: " << id << std::endl;
+                    logger.info("Disconnected suboptimal peer: " + id, "AutoRemesh");
                 }
             }
 
@@ -424,17 +423,14 @@ int main(int argc, char* argv[]) {
                 if (!network->isPeerConnected(id)) {
                     if (network->connectToPeer(p->ip, p->port)) {
                         ++connectCount;
-                        std::cout << "[AutoRemesh] Connected preferred peer: " << id
-                                  << " (" << p->ip << ":" << p->port << ")" << std::endl;
+                        logger.info("Connected preferred peer: " + id + " (" + p->ip + ":" + std::to_string(p->port) + ")", "AutoRemesh");
                     }
                 }
             }
 
             if (connectCount > 0 || disconnectCount > 0) {
                 metrics.incrementRemeshCycles();
-                std::cout << "[AutoRemesh] Remesh cycle: "
-                          << "connected=" << connectCount
-                          << ", disconnected=" << disconnectCount << std::endl;
+                logger.info("Remesh cycle: connected=" + std::to_string(connectCount) + ", disconnected=" + std::to_string(disconnectCount), "AutoRemesh");
             }
         }
     }));
@@ -452,21 +448,20 @@ int main(int argc, char* argv[]) {
             // Broadcast presence every 5 seconds
             network->broadcastPresence(config.discoveryPort, config.tcpPort);
             
-            // Show peer status every 30 seconds
+            // Log peer status every 30 seconds
             if (loopCount % 6 == 0) {
                 auto sortedPeers = storage->getPeersByLatency();
+                auto& logger = Logger::instance();
                 if (!sortedPeers.empty()) {
-                    std::cout << "\n=== Connected Peers (sorted by latency) ===" << std::endl;
+                    std::string statusMsg = "Connected Peers: ";
                     for (const auto& peer : sortedPeers) {
-                        std::cout << "  " << peer.id << " (" << peer.ip << ":" << peer.port << ") - ";
-                        if (peer.latency >= 0) {
-                            std::cout << peer.latency << "ms";
-                        } else {
-                            std::cout << "N/A";
-                        }
-                        std::cout << " [" << peer.status << "]" << std::endl;
+                        statusMsg += peer.id + " (" + (peer.latency >= 0 ? std::to_string(peer.latency) + "ms" : "N/A") + "), ";
                     }
-                    std::cout << "==========================================\n" << std::endl;
+                    // Remove trailing comma
+                    if (statusMsg.length() > 2) {
+                        statusMsg = statusMsg.substr(0, statusMsg.length() - 2);
+                    }
+                    logger.info(statusMsg, "Daemon");
                 }
             }
             

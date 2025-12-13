@@ -67,7 +67,7 @@ namespace SentinelFS {
                         destroy(p);
                     } catch (...) {
                         // Swallow exceptions in destructor to prevent std::terminate
-                        std::cerr << "Exception in plugin destroy function\n";
+                        Logger::instance().error("Exception in plugin destroy function", "PluginLoader");
                     }
                 }
             });

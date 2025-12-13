@@ -1,0 +1,100 @@
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:19 PM] {
+[7:16:19 PM] "plugin": "NetFalcon",
+[7:16:19 PM] "version": "1.0.0",
+[7:16:19 PM] "transports": {
+[7:16:19 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:19 PM] "quic": { "enabled": false, "listening": false },
+[7:16:19 PM] "relay": { "enabled": true, "connected": false }
+[7:16:19 PM] },
+[7:16:19 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:19 PM] "localPeerId": "FALCON_91046",
+[7:16:19 PM] "listeningPort": 8080,
+[7:16:19 PM] "sessionCode": "",
+[7:16:19 PM] "encryptionEnabled": false
+[7:16:19 PM] }
+[7:16:21 PM] {
+[7:16:21 PM] "plugin": "NetFalcon",
+[7:16:21 PM] "version": "1.0.0",
+[7:16:21 PM] "transports": {
+[7:16:21 PM] "tcp": { "enabled": true, "listening": true },
+[7:16:21 PM] "quic": { "enabled": false, "listening": false },
+[7:16:21 PM] "relay": { "enabled": true, "connected": false }
+[7:16:21 PM] },
+[7:16:21 PM] "strategy": "FALLBACK_CHAIN",
+[7:16:21 PM] "localPeerId": "FALCON_91046",
+[7:16:21 PM] "listeningPort": 8080,
+[7:16:21 PM] "sessionCode": "",
+[7:16:21 PM] "encryptionEnabled": false
+[7:16:21 PM] }

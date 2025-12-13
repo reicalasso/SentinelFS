@@ -118,6 +118,7 @@ void InotifyWatcher::addWatchRecursive(const std::string& path) {
         return;
     }
     
+    size_t initialCount = getWatchCount();
     addWatch(path);
     
     if (fs::is_directory(path, ec)) {
@@ -128,6 +129,13 @@ void InotifyWatcher::addWatchRecursive(const std::string& path) {
                 addWatch(it->path().string());
             }
         }
+    }
+    
+    // Log summary instead of per-directory
+    size_t addedCount = getWatchCount() - initialCount;
+    if (addedCount > 0) {
+        auto& logger = Logger::instance();
+        logger.log(LogLevel::DEBUG, "Added " + std::to_string(addedCount) + " inotify watches for " + path, "InotifyWatcher");
     }
 }
 

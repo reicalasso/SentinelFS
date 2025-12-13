@@ -237,6 +237,9 @@ function connectToDaemon() {
                 } else if (json.type === 'FALCONSTORE_STATS' && json.payload !== undefined) {
                     // FalconStore stats
                     win?.webContents.send('daemon-data', { type: 'FALCONSTORE_STATS', payload: json.payload })
+                } else if (json.plugin === 'NetFalcon') {
+                    // NetFalcon status - silently handle, don't log
+                    win?.webContents.send('daemon-data', { type: 'NETFALCON_STATUS', payload: json })
                 } else if (Array.isArray(json)) {
                     // Fallback/Legacy: Distinguish between PEERS and FILES by checking first element
                     if (json.length > 0 && json[0].path !== undefined) {
@@ -245,7 +248,11 @@ function connectToDaemon() {
                         win?.webContents.send('daemon-data', { type: 'PEERS', payload: json })
                     }
                 } else {
-                    win?.webContents.send('daemon-data', { type: 'UNKNOWN', payload: json })
+                    // Silently ignore unknown JSON responses to avoid log spam
+                    // Only send to renderer if it looks like actual data
+                    if (Object.keys(json).length > 0) {
+                        win?.webContents.send('daemon-data', { type: 'UNKNOWN', payload: json })
+                    }
                 }
             } else {
                 // Plain text log
@@ -332,23 +339,23 @@ let monitorInterval: NodeJS.Timeout | null = null
 function startMonitoring() {
     if (monitorInterval) clearInterval(monitorInterval)
     
-    // Poll daemon for status every 2 seconds
+    // Poll daemon for status every 5 seconds (reduced from 2s to avoid log spam)
     monitorInterval = setInterval(() => {
         if (daemonSocket && !daemonSocket.destroyed) {
             // Send multiple commands in sequence with proper spacing
             daemonSocket.write('STATUS_JSON\n')
-            setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 150)
-            setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 300)
-            setTimeout(() => daemonSocket?.write('FILES_JSON\n'), 450)
-            setTimeout(() => daemonSocket?.write('ACTIVITY_JSON\n'), 600)
-            setTimeout(() => daemonSocket?.write('TRANSFERS_JSON\n'), 750)
-            setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 900)
-            setTimeout(() => daemonSocket?.write('THREAT_STATUS_JSON\n'), 1050)
-            setTimeout(() => daemonSocket?.write('THREATS_JSON\n'), 1200)
-            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATUS\n'), 1350)
-            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATS\n'), 1500)
+            setTimeout(() => daemonSocket?.write('METRICS_JSON\n'), 200)
+            setTimeout(() => daemonSocket?.write('PEERS_JSON\n'), 400)
+            setTimeout(() => daemonSocket?.write('FILES_JSON\n'), 600)
+            setTimeout(() => daemonSocket?.write('ACTIVITY_JSON\n'), 800)
+            setTimeout(() => daemonSocket?.write('TRANSFERS_JSON\n'), 1000)
+            setTimeout(() => daemonSocket?.write('CONFIG_JSON\n'), 1200)
+            setTimeout(() => daemonSocket?.write('THREAT_STATUS_JSON\n'), 1400)
+            setTimeout(() => daemonSocket?.write('THREATS_JSON\n'), 1600)
+            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATUS\n'), 1800)
+            setTimeout(() => daemonSocket?.write('FALCONSTORE_STATS\n'), 2000)
         }
-    }, 2000)
+    }, 5000)
 }
 
 // Quit when all windows are closed, except on macOS.

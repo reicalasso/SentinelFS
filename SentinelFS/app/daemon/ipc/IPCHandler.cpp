@@ -10,6 +10,7 @@
 #include "DaemonCore.h"
 #include "ipc/commands/Commands.h"
 #include "FalconStore.h"
+#include "Logger.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -102,7 +103,7 @@ bool IPCHandler::ensureSocketDirectory() {
     
     if (!std::filesystem::exists(parentDir)) {
         if (!securityConfig_.createParentDirs) {
-            std::cerr << "IPC: Socket directory does not exist: " << parentDir << std::endl;
+            Logger::instance().error("IPC: Socket directory does not exist: " + parentDir.string(), "IPCHandler");
             return false;
         }
         
@@ -110,12 +111,12 @@ bool IPCHandler::ensureSocketDirectory() {
             std::filesystem::create_directories(parentDir);
             
             if (chmod(parentDir.c_str(), securityConfig_.parentDirPermissions) != 0) {
-                std::cerr << "IPC: Warning - Failed to set directory permissions" << std::endl;
+                Logger::instance().warn("IPC: Failed to set directory permissions", "IPCHandler");
             }
             
-            std::cout << "IPC: Created socket directory: " << parentDir << std::endl;
+            Logger::instance().info("IPC: Created socket directory: " + parentDir.string(), "IPCHandler");
         } catch (const std::exception& e) {
-            std::cerr << "IPC: Failed to create socket directory: " << e.what() << std::endl;
+            Logger::instance().error("IPC: Failed to create socket directory: " + std::string(e.what()), "IPCHandler");
             return false;
         }
     }
@@ -128,7 +129,7 @@ bool IPCHandler::verifyClientCredentials(int clientSocket, uid_t& clientUid, gid
     socklen_t credLen = sizeof(cred);
     
     if (getsockopt(clientSocket, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) != 0) {
-        std::cerr << "IPC: Failed to get client credentials" << std::endl;
+        Logger::instance().error("IPC: Failed to get client credentials", "IPCHandler");
         return false;
     }
     
@@ -183,7 +184,7 @@ bool IPCHandler::checkRateLimit(uid_t uid) {
     }
     
     if (limit.commandCount >= securityConfig_.maxCommandsPerMinute) {
-        std::cerr << "IPC: Rate limit exceeded for UID " << uid << std::endl;
+        Logger::instance().warn("IPC: Rate limit exceeded for UID " + std::to_string(uid), "IPCHandler");
         return false;
     }
     
@@ -208,9 +209,10 @@ void IPCHandler::auditConnection(uid_t uid, gid_t gid, bool authorized) {
         groupname = gr->gr_name;
     }
     
-    std::cout << "IPC AUDIT: Connection from UID=" << uid << " (" << username << ") "
-              << "GID=" << gid << " (" << groupname << ") - "
-              << (authorized ? "AUTHORIZED" : "DENIED") << std::endl;
+    std::string auditMsg = "IPC AUDIT: Connection from UID=" + std::to_string(uid) + " (" + username + ") " +
+                           "GID=" + std::to_string(gid) + " (" + groupname + ") - " +
+                           (authorized ? "AUTHORIZED" : "DENIED");
+    Logger::instance().info(auditMsg, "IPCHandler");
 }
 
 bool IPCHandler::start() {
@@ -227,7 +229,7 @@ bool IPCHandler::start() {
     serverSocket_ = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverSocket_ < 0) {
         umask(oldMask);
-        std::cerr << "IPC: Cannot create socket" << std::endl;
+        Logger::instance().error("IPC: Cannot create socket", "IPCHandler");
         return false;
     }
     
@@ -238,7 +240,7 @@ bool IPCHandler::start() {
     
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         umask(oldMask);
-        std::cerr << "IPC: Cannot bind socket: " << strerror(errno) << std::endl;
+        Logger::instance().error("IPC: Cannot bind socket: " + std::string(strerror(errno)), "IPCHandler");
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -247,32 +249,30 @@ bool IPCHandler::start() {
     umask(oldMask);
 
     if (chmod(socketPath_.c_str(), securityConfig_.socketPermissions) < 0) {
-        std::cerr << "IPC: Warning - Failed to set socket file permissions: " 
-                  << strerror(errno) << std::endl;
+        Logger::instance().warn("IPC: Failed to set socket file permissions: " + std::string(strerror(errno)), "IPCHandler");
     }
     
     if (!securityConfig_.requiredGroup.empty()) {
         struct group* gr = getgrnam(securityConfig_.requiredGroup.c_str());
         if (gr) {
             if (chown(socketPath_.c_str(), -1, gr->gr_gid) < 0) {
-                std::cerr << "IPC: Warning - Failed to set socket group ownership" << std::endl;
+                Logger::instance().warn("IPC: Failed to set socket group ownership", "IPCHandler");
             }
         } else {
-            std::cerr << "IPC: Warning - Group '" << securityConfig_.requiredGroup 
-                      << "' not found" << std::endl;
+            Logger::instance().warn("IPC: Group '" + securityConfig_.requiredGroup + "' not found", "IPCHandler");
         }
     }
     
     if (listen(serverSocket_, 5) < 0) {
-        std::cerr << "IPC: Cannot listen" << std::endl;
+        Logger::instance().error("IPC: Cannot listen", "IPCHandler");
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
     }
     
-    std::cout << "IPC Server listening on " << socketPath_ 
-              << " (mode: " << std::oct << securityConfig_.socketPermissions << std::dec << ")"
-              << std::endl;
+    std::stringstream ss;
+    ss << "IPC Server listening on " << socketPath_ << " (mode: " << std::oct << securityConfig_.socketPermissions << std::dec << ")";
+    Logger::instance().info(ss.str(), "IPCHandler");
     
     running_ = true;
     serverThread_ = std::thread(&IPCHandler::serverLoop, this);
@@ -579,14 +579,14 @@ std::string IPCHandler::processCommand(const std::string& command) {
 // NetFalcon command handlers
 std::string IPCHandler::handleNetFalconStatus() {
     std::ostringstream ss;
-    ss << "{\n";
-    ss << "  \"plugin\": \"NetFalcon\",\n";
-    ss << "  \"version\": \"1.0.0\",\n";
-    ss << "  \"transports\": {\n";
-    ss << "    \"tcp\": { \"enabled\": " << (network_ && network_->isTransportEnabled("tcp") ? "true" : "false") << ", \"listening\": " << (network_ ? "true" : "false") << " },\n";
-    ss << "    \"quic\": { \"enabled\": " << (network_ && network_->isTransportEnabled("quic") ? "true" : "false") << ", \"listening\": false },\n";
-    ss << "    \"relay\": { \"enabled\": " << (network_ && network_->isTransportEnabled("relay") ? "true" : "false") << ", \"connected\": " << (network_ && network_->isRelayConnected() ? "true" : "false") << " }\n";
-    ss << "  },\n";
+    ss << "{";
+    ss << "\"plugin\":\"NetFalcon\",";
+    ss << "\"version\":\"1.0.0\",";
+    ss << "\"transports\":{";
+    ss << "\"tcp\":{\"enabled\":" << (network_ && network_->isTransportEnabled("tcp") ? "true" : "false") << ",\"listening\":" << (network_ ? "true" : "false") << "},";
+    ss << "\"quic\":{\"enabled\":" << (network_ && network_->isTransportEnabled("quic") ? "true" : "false") << ",\"listening\":false},";
+    ss << "\"relay\":{\"enabled\":" << (network_ && network_->isTransportEnabled("relay") ? "true" : "false") << ",\"connected\":" << (network_ && network_->isRelayConnected() ? "true" : "false") << "}";
+    ss << "},";
     
     // Get strategy name
     std::string strategyName = "FALLBACK_CHAIN";
@@ -598,12 +598,12 @@ std::string IPCHandler::handleNetFalconStatus() {
             default: strategyName = "FALLBACK_CHAIN"; break;
         }
     }
-    ss << "  \"strategy\": \"" << strategyName << "\",\n";
-    ss << "  \"localPeerId\": \"" << (network_ ? network_->getLocalPeerId() : "N/A") << "\",\n";
-    ss << "  \"listeningPort\": " << (network_ ? network_->getLocalPort() : 0) << ",\n";
-    ss << "  \"sessionCode\": \"" << (network_ ? network_->getSessionCode() : "") << "\",\n";
-    ss << "  \"encryptionEnabled\": " << (network_ && network_->isEncryptionEnabled() ? "true" : "false") << "\n";
-    ss << "}\n";
+    ss << "\"strategy\":\"" << strategyName << "\",";
+    ss << "\"localPeerId\":\"" << (network_ ? network_->getLocalPeerId() : "N/A") << "\",";
+    ss << "\"listeningPort\":" << (network_ ? network_->getLocalPort() : 0) << ",";
+    ss << "\"sessionCode\":\"" << (network_ ? network_->getSessionCode() : "") << "\",";
+    ss << "\"encryptionEnabled\":" << (network_ && network_->isEncryptionEnabled() ? "true" : "false");
+    ss << "}";
     return ss.str();
 }
 

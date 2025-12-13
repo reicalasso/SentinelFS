@@ -10,6 +10,7 @@ import { ConflictCenter } from './components/ConflictCenter'
 import { QuarantineCenter } from './components/QuarantineCenter'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { FalconStore } from './components/FalconStore'
+import { Logger } from './components/Logger'
 import { mapDaemonError } from './errorMessages'
 import { useAppState } from './hooks/useAppState'
 
@@ -371,7 +372,7 @@ export default function App() {
             {activeTab === 'transfers' && <Transfers metrics={metrics as any} transfers={transfers} history={transferHistory} activity={activity as any} />}
             {activeTab === 'falconstore' && <FalconStore />}
             {activeTab === 'settings' && <Settings config={config} />}
-            {activeTab === 'logs' && <LogsView logs={logs} onClear={clearLogs} />}
+            {activeTab === 'logs' && <Logger logs={logs} onClear={clearLogs} />}
           </div>
         </main>
       </div>
@@ -434,117 +435,3 @@ function SidebarItem({ icon, label, active, onClick, badge, highlight }: any) {
   )
 }
 
-function LogsView({ logs, onClear }: { logs: string[]; onClear: () => void }) {
-  const handleCopy = async () => {
-    try {
-      const text = logs.join('\n')
-      await navigator.clipboard.writeText(text)
-    } catch (e) {
-      console.error('Failed to copy logs', e)
-    }
-  }
-
-  const handleExport = () => {
-    try {
-      const blob = new Blob([logs.join('\n')], { type: 'text/plain;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'sentinel_daemon.log.txt'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      console.error('Failed to export logs', e)
-    }
-  }
-    return (
-        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 slide-in-from-bottom-4">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20">
-                        <Terminal className="w-5 h-5 sm:w-6 sm:h-6 icon-primary" />
-                    </div>
-                    <div>
-                        <h2 className="text-lg sm:text-xl font-bold">Debug Console</h2>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Real-time daemon logs and system events</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
-                  >
-                    <span>Copy</span>
-                  </button>
-                  <button
-                    onClick={handleExport}
-                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/40 transition-all font-medium"
-                  >
-                    <span>Export</span>
-                  </button>
-                  <button
-                    onClick={onClear}
-                    className="flex items-center gap-1.5 sm:gap-2 text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/30 hover:border-destructive/30 transition-all font-medium"
-                  >
-                    <span>Clear</span>
-                  </button>
-                </div>
-            </div>
-            
-            {/* Terminal Window */}
-            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/30 shadow-xl">
-                {/* Terminal Header - macOS style */}
-                <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 terminal-header border-b border-info/30">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-error/70 hover:bg-error transition-colors cursor-pointer"></div>
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-warning/70 hover:bg-warning transition-colors cursor-pointer"></div>
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-success/70 hover:bg-success transition-colors cursor-pointer"></div>
-                    </div>
-                    <div className="text-[10px] sm:text-xs terminal-text-dim font-mono hidden sm:block">sentinel-daemon.log</div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs terminal-text-dim">
-                        <div className="dot-success animate-pulse"></div>
-                        <span>Live</span>
-                    </div>
-                </div>
-                
-                {/* Terminal Content */}
-                <div className="terminal-bg font-mono text-[10px] sm:text-xs p-3 sm:p-4 h-[calc(100vh-320px)] sm:h-[calc(100vh-280px)] overflow-auto selection:bg-primary/30">
-                    {logs.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-info-dark">
-                            <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-info-muted mb-3 sm:mb-4">
-                                <Terminal className="w-8 h-8 sm:w-10 sm:h-10 opacity-30" />
-                            </div>
-                            <p className="text-xs sm:text-sm">Waiting for daemon logs...</p>
-                            <p className="text-[10px] sm:text-xs text-info/50 mt-1">Logs will appear here in real-time</p>
-                        </div>
-                    ) : (
-                        logs.map((log, i) => (
-                            <div 
-                                key={i} 
-                                className="group mb-0.5 break-all hover:bg-white/[0.02] px-2 sm:px-3 py-0.5 sm:py-1 rounded transition-colors flex gap-2 sm:gap-4"
-                            >
-                                <span className="terminal-text-dim select-none w-6 sm:w-8 text-right flex-shrink-0">{(i + 1).toString().padStart(3, '0')}</span>
-                                <span className="terminal-text group-hover:text-info-light transition-colors break-words min-w-0">
-                                    {log.includes('ERROR') ? (
-                                        <span className="status-error">{log}</span>
-                                    ) : log.includes('WARN') ? (
-                                        <span className="status-warning">{log}</span>
-                                    ) : log.includes('SUCCESS') || log.includes('OK') ? (
-                                        <span className="status-success">{log}</span>
-                                    ) : log.includes('INFO') ? (
-                                        <span className="status-info">{log}</span>
-                                    ) : (
-                                        log
-                                    )}
-                                </span>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-        </div>
-    )
-}
