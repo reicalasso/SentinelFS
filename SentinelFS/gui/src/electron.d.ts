@@ -1,7 +1,7 @@
 export interface ElectronAPI {
   on: (channel: string, callback: (data: any) => void) => void
   off: (channel: string, callback: (data: any) => void) => void
-  sendCommand: (command: string) => Promise<{ success: boolean; error?: string }>
+  sendCommand: (command: string) => Promise<{ success: boolean; error?: string; payload?: any }>
   selectFolder: () => Promise<string | null>
 }
 

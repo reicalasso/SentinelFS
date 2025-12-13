@@ -1,6 +1,6 @@
 import { ArrowRightLeft, TrendingUp, Zap, RefreshCw, Download, Upload, Activity, Clock, CheckCircle2 } from 'lucide-react'
 import { memo } from 'react'
-import { TransfersStats, TransferCard, TransfersHistory, TransfersEmpty } from './transfers'
+import { TransfersStats, TransferCard, EnhancedTransferCard, TransfersHistory, TransfersEmpty } from './transfers'
 
 interface ActivityItem {
   type: string
@@ -14,9 +14,24 @@ interface TransfersProps {
   transfers?: any[]
   history?: any[]
   activity?: ActivityItem[]
+  onPauseTransfer?: (id: string) => void
+  onResumeTransfer?: (id: string) => void
+  onCancelTransfer?: (id: string) => void
+  onRetryTransfer?: (id: string) => void
+  onViewTransfer?: (transfer: any) => void
 }
 
-export const Transfers = memo(function Transfers({ metrics, transfers, history, activity }: TransfersProps) {
+export const Transfers = memo(function Transfers({ 
+  metrics, 
+  transfers, 
+  history, 
+  activity,
+  onPauseTransfer,
+  onResumeTransfer,
+  onCancelTransfer,
+  onRetryTransfer,
+  onViewTransfer
+}: TransfersProps) {
   const formatSize = (bytes: number) => {
     if (!bytes) return '0 B'
     if (bytes < 1024) return bytes + ' B'
@@ -137,7 +152,15 @@ export const Transfers = memo(function Transfers({ metrics, transfers, history, 
           ) : (
             <div className="space-y-3">
               {activeTransfers.map((transfer: any, i: number) => (
-                <TransferCard key={i} transfer={transfer} />
+                <EnhancedTransferCard 
+                  key={transfer.id || i} 
+                  transfer={transfer}
+                  onPause={onPauseTransfer}
+                  onResume={onResumeTransfer}
+                  onCancel={onCancelTransfer}
+                  onRetry={onRetryTransfer}
+                  onView={onViewTransfer}
+                />
               ))}
             </div>
           )}

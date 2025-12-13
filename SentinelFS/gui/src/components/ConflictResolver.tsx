@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
-import { Alert, AlertDescription } from './ui/alert';
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+// import { Button } from './ui/button';
+// import { Badge } from './ui/badge';
+// import { ScrollArea } from './ui/scroll-area';
+// import { Separator } from './ui/separator';
+// import { Alert, AlertDescription } from './ui/alert';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -145,65 +145,65 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
       <div className="grid grid-cols-3 gap-4 h-full">
         {/* Base Version */}
         {currentConflict.baseVersion && (
-          <Card className="h-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
+          <div className="border rounded-lg p-4 h-full bg-card">
+            <div className="pb-2">
+              <h3 className="text-sm flex items-center gap-2 font-semibold">
                 <FileText className="w-4 h-4" />
                 Base Version
-                <Badge variant="outline">v{currentConflict.baseVersion.version}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+                <span className="px-2 py-1 text-xs border rounded">v{currentConflict.baseVersion.version}</span>
+              </h3>
+            </div>
+            <div>
+              <div className="h-[400px] w-full rounded border p-4 overflow-auto">
                 <pre className="text-sm whitespace-pre-wrap">
                   {currentConflict.baseVersion.content || 'No content'}
                 </pre>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Local Version */}
-        <Card className="h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+        <div className="border rounded-lg p-4 h-full bg-card">
+          <div className="pb-2">
+            <h3 className="text-sm flex items-center gap-2 font-semibold">
               <User className="w-4 h-4" />
               Local Changes
-              <Badge variant="outline">v{currentConflict.localVersion.version}</Badge>
-            </CardTitle>
-            <CardDescription className="text-xs">
+              <span className="px-2 py-1 text-xs border rounded">v{currentConflict.localVersion.version}</span>
+            </h3>
+            <p className="text-xs text-muted-foreground">
               Modified: {formatTimestamp(currentConflict.localVersion.modifiedTime)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+            </p>
+          </div>
+          <div>
+            <div className="h-[400px] w-full rounded border p-4 overflow-auto">
               <pre className="text-sm whitespace-pre-wrap">
                 {currentConflict.localVersion.content || 'No content'}
               </pre>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
 
         {/* Remote Version */}
-        <Card className="h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
+        <div className="border rounded-lg p-4 h-full bg-card">
+          <div className="pb-2">
+            <h3 className="text-sm flex items-center gap-2 font-semibold">
               <User className="w-4 h-4" />
               Remote Changes
-              <Badge variant="outline">v{currentConflict.remoteVersion.version}</Badge>
-            </CardTitle>
-            <CardDescription className="text-xs">
+              <span className="px-2 py-1 text-xs border rounded">v{currentConflict.remoteVersion.version}</span>
+            </h3>
+            <p className="text-xs text-muted-foreground">
               Modified: {formatTimestamp(currentConflict.remoteVersion.modifiedTime)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+            </p>
+          </div>
+          <div>
+            <div className="h-[400px] w-full rounded border p-4 overflow-auto">
               <pre className="text-sm whitespace-pre-wrap">
                 {currentConflict.remoteVersion.content || 'No content'}
               </pre>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -212,58 +212,58 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
     if (resolutionStrategy !== 'manual' || !currentConflict) return null;
 
     return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
+      <div className="border rounded-lg p-4 mt-4 bg-card">
+        <div>
+          <h3 className="text-sm flex items-center gap-2 font-semibold">
             <GitMerge className="w-4 h-4" />
             Manual Merge Editor
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-xs text-muted-foreground">
             Edit the merged content below. Conflict markers are shown for reference.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[300px] w-full rounded-md border">
+          </p>
+        </div>
+        <div>
+          <div className="h-[300px] w-full rounded border overflow-auto">
             <textarea
               className="w-full h-full p-4 text-sm font-mono resize-none focus:outline-none"
               value={mergedContent}
               onChange={(e) => setMergedContent(e.target.value)}
               placeholder="Enter merged content..."
             />
-          </ScrollArea>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     );
   };
 
   if (pendingConflicts.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
+      <div className="border rounded-lg p-4 bg-card">
+        <div className="flex flex-col items-center justify-center py-12">
           <Check className="w-12 h-12 text-green-500 mb-4" />
           <h3 className="text-lg font-semibold">No Conflicts</h3>
           <p className="text-muted-foreground text-center mt-2">
             All files are in sync. No conflicts to resolve.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
       {/* Conflict List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="border rounded-lg p-4 bg-card">
+        <div>
+          <h3 className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="w-5 h-5" />
             File Conflicts ({pendingConflicts.length})
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-muted-foreground">
             Select a conflict to view details and resolve it
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <div className="space-y-2">
             {pendingConflicts.map((conflict, index) => (
               <div
@@ -282,9 +282,9 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     <span className="font-medium">{conflict.filePath}</span>
-                    <Badge variant={getConflictTypeColor(conflict.conflictType)}>
+                    <span className={`px-2 py-1 text-xs border rounded ${getConflictTypeColor(conflict.conflictType)}`}>
                       {conflict.conflictType}
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-3 h-3" />
@@ -294,46 +294,44 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Conflict Resolution */}
       {currentConflict && (
-        <Card>
-          <CardHeader>
+        <div className="border rounded-lg p-4 bg-card">
+          <div>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
+                <h3 className="flex items-center gap-2 font-semibold">
                   <GitMerge className="w-5 h-5" />
                   Resolve Conflict: {currentConflict.filePath}
-                </CardTitle>
-                <CardDescription>
+                </h3>
+                <p className="text-sm text-muted-foreground">
                   Conflict {currentConflictIndex + 1} of {pendingConflicts.length}
-                </CardDescription>
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  className="px-3 py-1 text-sm border rounded hover:bg-accent disabled:opacity-50"
                   onClick={() => setCurrentConflictIndex(Math.max(0, currentConflictIndex - 1))}
                   disabled={currentConflictIndex === 0}
                 >
                   <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                </button>
+                <button
+                  className="px-3 py-1 text-sm border rounded hover:bg-accent disabled:opacity-50"
                   onClick={() => setCurrentConflictIndex(
                     Math.min(pendingConflicts.length - 1, currentConflictIndex + 1)
                   )}
                   disabled={currentConflictIndex === pendingConflicts.length - 1}
                 >
                   <ChevronRight className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {/* Resolution Strategy */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Resolution Strategy</label>
@@ -357,24 +355,25 @@ export const ConflictResolver: React.FC<ConflictResolverProps> = ({
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-4 border-t">
-              <Button
-                variant="outline"
+              <button
+                className="px-4 py-2 text-sm border rounded hover:bg-accent disabled:opacity-50 flex items-center gap-2"
                 onClick={handleIgnore}
                 disabled={isResolving}
               >
-                <X className="w-4 h-4 mr-2" />
+                <X className="w-4 h-4" />
                 Ignore Conflict
-              </Button>
-              <Button
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
                 onClick={handleResolve}
                 disabled={isResolving}
               >
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="w-4 h-4" />
                 {isResolving ? 'Resolving...' : 'Resolve Conflict'}
-              </Button>
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

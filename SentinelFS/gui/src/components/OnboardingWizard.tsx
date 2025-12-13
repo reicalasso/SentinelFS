@@ -26,12 +26,12 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
     try {
       const res = await window.api.sendCommand('GENERATE_CODE')
       if (!res.success) {
-        setError(res.error ?? 'Kod üretilemedi')
+        setError(res.error ?? 'Failed to generate code')
         return
       }
-      // Daemon, yeni kodu status içinde döndüğü varsayımıyla buradan okunur.
+      // Daemon returns new code in status, assumed here
       // UI tarafında sadece kullanıcıya akışı gösteriyoruz.
-      setSessionCode('Yeni kod ayarlandı')
+      setSessionCode('New code set')
       next()
     } finally {
       setBusy(false)
@@ -47,7 +47,7 @@ export function OnboardingWizard({ open, onClose, onCompleted }: OnboardingWizar
       if (!folder) return
       const res = await window.api.sendCommand(`ADD_FOLDER ${folder}`)
       if (!res.success) {
-        setError(res.error ?? 'Klasör eklenemedi')
+        setError(res.error ?? 'Failed to add folder')
         return
       }
       setWatchFolder(folder)

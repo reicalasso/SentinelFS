@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Database, RefreshCw, Zap, Download, HardDrive, Clock, Activity, BarChart3, Shield, Layers, Search, Play, AlertCircle, CheckCircle, XCircle, Settings, Trash2, Eye } from 'lucide-react'
+import { Database, RefreshCw, Zap, Download, HardDrive, Clock, Activity, BarChart3, Shield, Layers, Search, Play, AlertCircle, CheckCircle, XCircle, Trash2, Eye } from 'lucide-react'
 
 interface FalconStoreStatus {
   plugin: string
@@ -84,12 +84,6 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
   const [tables, setTables] = useState<TableInfo[]>([])
   const [selectedTable, setSelectedTable] = useState<string>('')
   const [tableData, setTableData] = useState<{columns: string[], rows: string[][]}>({columns: [], rows: []})
-  
-  // Settings state
-  const [settingsTab, setSettingsTab] = useState(false)
-  const [cacheEnabled, setCacheEnabled] = useState(true)
-  const [cacheSize, setCacheSize] = useState(10000)
-  const [walMode, setWalMode] = useState(true)
 
   useEffect(() => {
     if (!window.api) return
@@ -105,7 +99,7 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
         setQueryResult(data.payload)
         setQueryLoading(false)
       } else if (data.type === 'FALCONSTORE_TABLES' && data.payload) {
-        setTables(data.payload)
+        setTables(data.payload.payload || data.payload)
       } else if (data.type === 'FALCONSTORE_TABLE_DATA' && data.payload) {
         setTableData(data.payload)
       }
@@ -184,13 +178,33 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
 
   const handleLoadTables = async () => {
     onLog?.('[FalconStore] Loading database tables...')
-    await window.api?.sendCommand('FALCONSTORE_GET_TABLES')
+    const response = await window.api?.sendCommand('FALCONSTORE_GET_TABLES')
+    if (response?.success) {
+      try {
+        const data = typeof response === 'string' ? JSON.parse(response) : response
+        setTables(data.payload || [])
+      } catch (error) {
+        onLog?.('[FalconStore] Failed to parse tables response: ' + error)
+      }
+    } else {
+      onLog?.('[FalconStore] Failed to load tables: ' + (response?.error || 'Unknown error'))
+    }
   }
 
   const handleLoadTableData = async (tableName: string) => {
     setSelectedTable(tableName)
     onLog?.(`[FalconStore] Loading data for table: ${tableName}`)
-    await window.api?.sendCommand(`FALCONSTORE_GET_TABLE_DATA ${JSON.stringify({ table: tableName })}`)
+    const response = await window.api?.sendCommand(`FALCONSTORE_GET_TABLE_DATA ${JSON.stringify({ table: tableName })}`)
+    if (response?.success) {
+      try {
+        const data = typeof response === 'string' ? JSON.parse(response) : response
+        setTableData(data.payload || { columns: [], rows: [] })
+      } catch (error) {
+        onLog?.('[FalconStore] Failed to parse table data response: ' + error)
+      }
+    } else {
+      onLog?.('[FalconStore] Failed to load table data: ' + (response?.error || 'Unknown error'))
+    }
   }
 
   const handleVacuum = async () => {
@@ -267,9 +281,9 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
         {/* Navigation Tabs */}
         <div className="flex gap-2 border-b border-border/40">
           <button
-            onClick={() => {setQueryTab(false); setTablesTab(false); setSettingsTab(false)}}
+            onClick={() => {setQueryTab(false); setTablesTab(false)}}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
-              !queryTab && !tablesTab && !settingsTab
+              !queryTab && !tablesTab
                 ? 'text-primary border-primary'
                 : 'text-muted-foreground border-transparent hover:text-foreground'
             }`}
@@ -277,7 +291,7 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
             Overview
           </button>
           <button
-            onClick={() => {setQueryTab(true); setTablesTab(false); setSettingsTab(false)}}
+            onClick={() => {setQueryTab(true); setTablesTab(false)}}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 flex items-center gap-2 ${
               queryTab
                 ? 'text-primary border-primary'
@@ -288,7 +302,7 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
             Query
           </button>
           <button
-            onClick={() => {setQueryTab(false); setTablesTab(true); setSettingsTab(false)}}
+            onClick={() => {setQueryTab(false); setTablesTab(true)}}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 flex items-center gap-2 ${
               tablesTab
                 ? 'text-primary border-primary'
@@ -298,22 +312,11 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
             <Layers className="w-3 h-3" />
             Tables
           </button>
-          <button
-            onClick={() => {setQueryTab(false); setTablesTab(false); setSettingsTab(true)}}
-            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 flex items-center gap-2 ${
-              settingsTab
-                ? 'text-primary border-primary'
-                : 'text-muted-foreground border-transparent hover:text-foreground'
-            }`}
-          >
-            <Settings className="w-3 h-3" />
-            Settings
-          </button>
         </div>
       </div>
 
       {/* Overview Tab */}
-      {!queryTab && !tablesTab && !settingsTab && (
+      {!queryTab && !tablesTab && (
         <>
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -649,89 +652,6 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Settings Tab */}
-      {settingsTab && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-border/40 bg-card/50 p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <Settings className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">Database Settings</h3>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Cache Settings */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Cache Configuration</h4>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm">Enable Cache</label>
-                  <button
-                    onClick={() => setCacheEnabled(!cacheEnabled)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      cacheEnabled ? 'bg-primary' : 'bg-secondary'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 bg-background rounded-full transition-transform ${
-                      cacheEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                    }`} />
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm">Cache Size (entries)</label>
-                  <input
-                    type="number"
-                    value={cacheSize}
-                    onChange={(e) => setCacheSize(Number(e.target.value))}
-                    className="w-full p-2 rounded-lg bg-background border border-border/40"
-                  />
-                </div>
-              </div>
-
-              {/* WAL Mode */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Performance</h4>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm">WAL Mode</label>
-                    <p className="text-xs text-muted-foreground">Better concurrency for read/write operations</p>
-                  </div>
-                  <button
-                    onClick={() => setWalMode(!walMode)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      walMode ? 'bg-primary' : 'bg-secondary'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 bg-background rounded-full transition-transform ${
-                      walMode ? 'translate-x-6' : 'translate-x-0.5'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Maintenance Actions */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Maintenance</h4>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={handleVacuum}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Vacuum Database
-                  </button>
-                  <button
-                    onClick={handleClearCache}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Clear Cache
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}

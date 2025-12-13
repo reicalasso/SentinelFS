@@ -527,21 +527,50 @@ void EventHandlers::processPendingChanges() {
     
     // Also get pending changes from database (synced=0)
     // This handles files that were pending when app was closed
+    // Process in batches to prevent memory issues with large file counts
+    const size_t BATCH_SIZE = 100;
+    size_t offset = 0;
+    size_t totalLoaded = 0;
+    
     if (storage_) {
         void* dbPtr = storage_->getDB();
         if (dbPtr) {
             sqlite3* db = static_cast<sqlite3*>(dbPtr);
-            const char* sql = "SELECT path FROM files WHERE synced = 0";
-            sqlite3_stmt* stmt = nullptr;
             
-            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-                while (sqlite3_step(stmt) == SQLITE_ROW) {
-                    const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                    if (path) {
-                        changesToProcess.push_back(path);
+            while (true) {
+                std::string sql = "SELECT path FROM files WHERE synced = 0 LIMIT " + 
+                                 std::to_string(BATCH_SIZE) + " OFFSET " + std::to_string(offset);
+                sqlite3_stmt* stmt = nullptr;
+                size_t batchLoaded = 0;
+                
+                if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    while (sqlite3_step(stmt) == SQLITE_ROW) {
+                        const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+                        if (path) {
+                            changesToProcess.push_back(path);
+                            batchLoaded++;
+                        }
                     }
+                    sqlite3_finalize(stmt);
                 }
-                sqlite3_finalize(stmt);
+                
+                totalLoaded += batchLoaded;
+                
+                // If we got less than BATCH_SIZE, we're done
+                if (batchLoaded < BATCH_SIZE) {
+                    break;
+                }
+                
+                offset += BATCH_SIZE;
+                
+                // Log progress for large datasets
+                if (totalLoaded % 1000 == 0) {
+                    logger.info("📂 Loaded " + std::to_string(totalLoaded) + " pending files from database...", "EventHandlers");
+                }
+            }
+            
+            if (totalLoaded > 0) {
+                logger.info("✓ Loaded " + std::to_string(totalLoaded) + " total pending files from database", "EventHandlers");
             }
         }
     }
@@ -568,26 +597,43 @@ void EventHandlers::processPendingChanges() {
         logger.info("📋 After deduplication: " + std::to_string(uniqueChanges.size()) + " unique file(s) to broadcast", "EventHandlers");
     }
     
-    // Broadcast each unique file change
+    // Broadcast each unique file change in batches
     // Note: Files were already added to database when paused, now we just broadcast
-    for (const auto& fullPath : uniqueChanges) {
-        try {
-            // Verify file still exists before broadcasting
-            if (!std::filesystem::exists(fullPath)) {
-                std::string filename = std::filesystem::path(fullPath).filename().string();
-                logger.warn("Skipping pending broadcast for " + filename + " (file no longer exists)", "EventHandlers");
-                continue;
+    const size_t BROADCAST_BATCH_SIZE = 50;
+    size_t broadcastCount = 0;
+    
+    for (size_t i = 0; i < uniqueChanges.size(); i += BROADCAST_BATCH_SIZE) {
+        size_t end = std::min(i + BROADCAST_BATCH_SIZE, uniqueChanges.size());
+        
+        // Process batch
+        for (size_t j = i; j < end; ++j) {
+            const auto& fullPath = uniqueChanges[j];
+            try {
+                // Verify file still exists before broadcasting
+                if (!std::filesystem::exists(fullPath)) {
+                    std::string filename = std::filesystem::path(fullPath).filename().string();
+                    logger.warn("Skipping pending broadcast for " + filename + " (file no longer exists)", "EventHandlers");
+                    continue;
+                }
+                
+                // Broadcast file change
+                handleFileModified(std::any(fullPath));
+                broadcastCount++;
+                
+            } catch (const std::exception& e) {
+                logger.error("Failed to broadcast pending change for " + fullPath + ": " + e.what(), "EventHandlers");
             }
-            
-            std::string filename = std::filesystem::path(fullPath).filename().string();
-            long long fileSize = std::filesystem::file_size(fullPath);
-            // Broadcasting pending file
-            
-            // Broadcast only (database was already updated when file was modified)
-            fileSyncHandler_->broadcastUpdate(fullPath);
-            
-        } catch (const std::exception& e) {
-            logger.error("Error broadcasting pending change for " + fullPath + ": " + std::string(e.what()), "EventHandlers");
+        }
+        
+        // Small delay between batches to prevent overwhelming the system
+        if (end < uniqueChanges.size()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        
+        // Log progress for large batches
+        if (broadcastCount % 500 == 0) {
+            logger.info("📡 Broadcasted " + std::to_string(broadcastCount) + "/" + 
+                       std::to_string(uniqueChanges.size()) + " files...", "EventHandlers");
         }
     }
     

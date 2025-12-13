@@ -7,7 +7,8 @@ import {
   NetworkSettings,
   SecuritySettings,
   AdvancedSettings,
-  AppearanceSettings
+  AppearanceSettings,
+  FalconStoreSettings
 } from './settings'
 
 interface SettingsProps {
@@ -210,6 +211,7 @@ export function Settings({ config }: SettingsProps) {
             <SettingsTab active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')} icon={<Palette className="w-4 h-4" />} label="Appearance" />
             <SettingsTab active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Globe className="w-4 h-4" />} label="Network" />
             <SettingsTab active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<Lock className="w-4 h-4" />} label="Security" />
+            <SettingsTab active={activeTab === 'falconstore'} onClick={() => setActiveTab('falconstore')} icon={<Database className="w-4 h-4" />} label="FalconStore" />
             <SettingsTab active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} icon={<Database className="w-4 h-4" />} label="Advanced" />
           </div>
         </nav>
@@ -255,6 +257,10 @@ export function Settings({ config }: SettingsProps) {
               onCopyCode={handleCopyCode}
               onSetSessionCode={handleSessionCodeChange}
             />
+          )}
+
+          {activeTab === 'falconstore' && (
+            <FalconStoreSettings onLog={(msg) => console.log(msg)} />
           )}
 
           {activeTab === 'advanced' && (
