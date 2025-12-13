@@ -7,6 +7,7 @@
 #include "Logger.h"
 #include "Config.h"
 #include "../../core/storage/include/FileVersionManager.h"
+#include "../../core/include/DatabaseMigrations.h"
 #include <iostream>
 #include <csignal>
 #include <filesystem>
@@ -90,10 +91,33 @@ bool DaemonCore::initialize() {
     
     logger.info("Current working directory: " + std::filesystem::current_path().string(), "DaemonCore");
     
+    // Initialize database first
+    std::string dbPath = config_.dbPath.empty() 
+        ? (std::getenv("SENTINEL_DB_PATH") ? std::getenv("SENTINEL_DB_PATH") : "sentinel.db")
+        : config_.dbPath;
+    
+    logger.info("Initializing database at: " + dbPath, "DaemonCore");
+    database_ = std::make_unique<DatabaseManager>(dbPath);
+    
+    if (!database_->initialize(DatabaseMigrations::getAllMigrations())) {
+        logger.error("Failed to initialize database", "DaemonCore");
+        initStatus_.result = InitializationStatus::Result::PlugInLoadFailure;
+        initStatus_.message = "Database initialization failed";
+        return false;
+    }
+    
+    logger.info("Database initialized successfully", "DaemonCore");
+    
     // Load plugins
     if (!loadPlugins()) {
         logger.error("Failed to load plugins", "DaemonCore");
         return false;
+    }
+    
+    // Inject DatabaseManager into storage plugin if it supports it
+    if (storage_ && database_) {
+        storage_->setDatabaseManager(database_.get());
+        logger.info("DatabaseManager injected into storage plugin", "DaemonCore");
     }
     
     // Configure network plugin

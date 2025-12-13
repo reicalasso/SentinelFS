@@ -6,6 +6,7 @@
 #include "IFileAPI.h"
 #include "EventBus.h"
 #include "PluginManager.h"
+#include "DatabaseManager.h"
 #include <memory>
 #include <atomic>
 #include <string>
@@ -72,6 +73,7 @@ public:
     INetworkAPI* getNetwork() const { return network_.get(); }
     IFileAPI* getFilesystem() const { return filesystem_.get(); }
     EventBus* getEventBus() { return &eventBus_; }
+    DatabaseManager* getDatabase() const { return database_.get(); }
     
     /**
      * @brief Get configuration
@@ -142,6 +144,9 @@ private:
     std::shared_ptr<INetworkAPI> network_;
     std::shared_ptr<IFileAPI> filesystem_;
     std::shared_ptr<IPlugin> mlPlugin_;
+    
+    // Database manager
+    std::unique_ptr<DatabaseManager> database_;
     
     // File version manager
     std::unique_ptr<FileVersionManager> versionManager_;

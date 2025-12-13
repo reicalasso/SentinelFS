@@ -343,6 +343,10 @@ public:
     
     void* getDB() override;
     
+    // DatabaseManager support
+    DatabaseManager* getDatabaseManager() override;
+    void setDatabaseManager(DatabaseManager* dbManager) override;
+    
     // Watched folder operations
     bool addWatchedFolder(const std::string& path) override;
     bool removeWatchedFolder(const std::string& path) override;

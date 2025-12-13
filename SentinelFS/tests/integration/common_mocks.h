@@ -91,6 +91,10 @@ public:
 
     void* getDB() override { return db; }
     
+    // DatabaseManager support
+    DatabaseManager* getDatabaseManager() override { return nullptr; }
+    void setDatabaseManager(DatabaseManager* dbManager) override { (void)dbManager; }
+    
     bool addFile(const std::string& path, const std::string& hash, long long timestamp, long long size) override {
         FileMetadata metadata;
         metadata.path = path;

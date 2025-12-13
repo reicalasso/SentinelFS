@@ -17,6 +17,7 @@ set(IPC_COMMAND_SOURCES
     ipc/commands/FileCommands.cpp
     ipc/commands/TransferCommands.cpp
     ipc/commands/RelayCommands.cpp
+    ipc/commands/FalconStoreCommands.cpp
 )
 
 # IPC Handler
@@ -39,15 +40,19 @@ add_executable(sentinel_daemon
     ${DAEMON_CORE_SOURCES}
 )
 
-target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} falconstore dl pthread sqlite3)
+target_link_libraries(sentinel_daemon ${SENTINEL_CORE_LIB} falconstore dl pthread sqlite3 jsoncpp)
+
 target_include_directories(sentinel_daemon PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ipc
-    ../../core/include
-    ../../core/network/include
-    ../../core/security/include
-    ../../core/sync/include
-    ../../core/utils/include
-    ../../plugins/falconstore/include
-    ipc/commands
+    ${CMAKE_SOURCE_DIR}/core/include
+    ${CMAKE_SOURCE_DIR}/core/utils/include
+    ${CMAKE_SOURCE_DIR}/core/network/include
+    ${CMAKE_SOURCE_DIR}/core/security/include
+    ${CMAKE_SOURCE_DIR}/core/storage/include
+    ${CMAKE_SOURCE_DIR}/core/sync/include
+    ${CMAKE_SOURCE_DIR}/app/daemon
+    ${CMAKE_SOURCE_DIR}/app/daemon/core
+    ${CMAKE_SOURCE_DIR}/app/daemon/ipc
+    ${CMAKE_SOURCE_DIR}/app/daemon/ipc/commands
 )

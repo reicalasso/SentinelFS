@@ -9,6 +9,7 @@
 #include "Cache.h"
 #include "Logger.h"
 #include "EventBus.h"
+#include "../../../core/include/DatabaseManager.h"
 
 #include <sqlite3.h>
 #include <filesystem>
@@ -31,6 +32,7 @@ struct FalconStore::Impl {
     // Database
     sqlite3* db{nullptr};
     std::string dbPath;
+    DatabaseManager* dbManager{nullptr};
     
     // Components
     std::unique_ptr<Falcon::MigrationManager> migrationManager;
@@ -864,6 +866,14 @@ bool FalconStore::logFileAccess(const std::string& filePath, const std::string& 
 
 void* FalconStore::getDB() {
     return impl_->db;
+}
+
+DatabaseManager* FalconStore::getDatabaseManager() {
+    return impl_->dbManager;
+}
+
+void FalconStore::setDatabaseManager(DatabaseManager* dbManager) {
+    impl_->dbManager = dbManager;
 }
 
 // ============================================================================

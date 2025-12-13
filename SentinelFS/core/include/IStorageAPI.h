@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IPlugin.h"
+#include "DatabaseManager.h"
 #include <string>
 #include <optional>
 #include <vector>
@@ -195,6 +196,18 @@ namespace SentinelFS {
          * @deprecated Use specific API methods instead for proper statistics tracking
          */
         virtual void* getDB() = 0;
+        
+        /**
+         * @brief Get DatabaseManager instance
+         * @return DatabaseManager pointer or nullptr if not supported
+         */
+        virtual DatabaseManager* getDatabaseManager() = 0;
+        
+        /**
+         * @brief Set DatabaseManager instance (for dependency injection)
+         * @param dbManager DatabaseManager instance
+         */
+        virtual void setDatabaseManager(DatabaseManager* dbManager) = 0;
         
         // --- Watched Folder Operations ---
         

@@ -10,11 +10,13 @@
 #include <map>
 #include <mutex>
 #include <sys/types.h>
+#include <json/json.h>
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 #include "HealthReport.h"
 #include "ipc/commands/CommandHandler.h"
+#include "ipc/commands/FalconStoreCommands.h"
 
 namespace SentinelFS {
     class DaemonCore;
@@ -182,6 +184,7 @@ private:
     std::unique_ptr<FileCommands> fileCmds_;
     std::unique_ptr<TransferCommands> transferCmds_;
     std::unique_ptr<RelayCommands> relayCmds_;
+    std::unique_ptr<FalconStoreCommands> falconstoreCmds_;
     
     // Security helper methods
     bool ensureSocketDirectory();
@@ -203,6 +206,10 @@ private:
     std::string handleFalconStoreStats();
     std::string handleFalconStoreOptimize();
     std::string handleFalconStoreBackup(const std::string& args);
+    
+    // Helper methods for JSON command handling
+    Json::Value parseJsonData(const std::string& args);
+    std::string formatJsonResponse(const Json::Value& response);
 };
 
 } // namespace SentinelFS

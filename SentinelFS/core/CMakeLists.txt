@@ -69,8 +69,10 @@ set(CORE_SOURCES
     utils/src/Compression.cpp
     utils/src/PathUtils.cpp
     utils/src/DBHelper.cpp
-    utils/src/BatchQueries.cpp
     src/ErrorCodes.cpp
+    src/DatabaseManager.cpp
+    src/DatabaseMigrations.cpp
+    utils/src/BatchQueries.cpp
 )
 
 add_library(sentinel_core SHARED ${CORE_SOURCES})

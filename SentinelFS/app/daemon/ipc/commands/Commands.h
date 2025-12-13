@@ -15,3 +15,4 @@
 #include "FileCommands.h"
 #include "TransferCommands.h"
 #include "RelayCommands.h"
+#include "FalconStoreCommands.h"

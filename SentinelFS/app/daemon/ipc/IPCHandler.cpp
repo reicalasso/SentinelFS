@@ -91,6 +91,7 @@ void IPCHandler::initializeCommandHandlers() {
     fileCmds_ = std::make_unique<FileCommands>(cmdContext_);
     transferCmds_ = std::make_unique<TransferCommands>(cmdContext_);
     relayCmds_ = std::make_unique<RelayCommands>(cmdContext_);
+    falconstoreCmds_ = std::make_unique<FalconStoreCommands>(cmdContext_);
 }
 
 bool IPCHandler::ensureSocketDirectory() {
@@ -567,6 +568,21 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return handleFalconStoreOptimize();
     } else if (cmd == "FALCONSTORE_BACKUP") {
         return handleFalconStoreBackup(args);
+    } else if (cmd == "FALCONSTORE_EXECUTE_QUERY") {
+        Json::Value response = falconstoreCmds_->executeQuery(args, parseJsonData(args));
+        return formatJsonResponse(response);
+    } else if (cmd == "FALCONSTORE_GET_TABLES") {
+        Json::Value response = falconstoreCmds_->getTables(args, Json::Value());
+        return formatJsonResponse(response);
+    } else if (cmd == "FALCONSTORE_GET_TABLE_DATA") {
+        Json::Value response = falconstoreCmds_->getTableData(args, parseJsonData(args));
+        return formatJsonResponse(response);
+    } else if (cmd == "FALCONSTORE_VACUUM") {
+        Json::Value response = falconstoreCmds_->vacuum(args, Json::Value());
+        return formatJsonResponse(response);
+    } else if (cmd == "FALCONSTORE_CLEAR_CACHE") {
+        Json::Value response = falconstoreCmds_->clearCache(args, Json::Value());
+        return formatJsonResponse(response);
     }
     
     // Unknown command - sanitized response to avoid information disclosure
@@ -768,6 +784,30 @@ std::string IPCHandler::handleFalconStoreBackup(const std::string& args) {
         return "OK: Backup created at " + backupPath + "\n";
     }
     return "ERROR: Backup failed\n";
+}
+
+// Helper method to parse JSON data from command arguments
+Json::Value IPCHandler::parseJsonData(const std::string& args) {
+    Json::Value data(Json::objectValue);
+    
+    if (!args.empty()) {
+        // Try to parse the argument as JSON
+        Json::Reader reader;
+        if (!reader.parse(args, data)) {
+            // If parsing fails, return empty object
+            data = Json::Value(Json::objectValue);
+        }
+    }
+    
+    return data;
+}
+
+// Helper method to format JSON response for IPC
+std::string IPCHandler::formatJsonResponse(const Json::Value& response) {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";
+    std::string jsonStr = Json::writeString(builder, response);
+    return jsonStr + "\n";
 }
 
 // Sanitize response to remove sensitive system information

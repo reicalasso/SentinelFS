@@ -82,6 +82,10 @@ public:
     bool logFileAccess(const std::string& filePath, const std::string& opType, const std::string& deviceId, long long timestamp) override { return true; }
     void* getDB() override { return nullptr; }
     
+    // DatabaseManager support
+    DatabaseManager* getDatabaseManager() override { return nullptr; }
+    void setDatabaseManager(DatabaseManager* dbManager) override { (void)dbManager; }
+    
     // New IStorageAPI methods - stub implementations
     bool addWatchedFolder(const std::string& path) override { return true; }
     bool removeWatchedFolder(const std::string& path) override { return true; }
