@@ -1,6 +1,7 @@
 #include "PeerCommands.h"
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
+#include "Logger.h"
 #include <sstream>
 #include <sqlite3.h>
 #include <algorithm>
@@ -64,8 +65,10 @@ std::string PeerCommands::handleConnect(const std::string& args) {
     }
     
     if (ctx_.network->connectToPeer(ip, port)) {
+        Logger::instance().info("Initiating connection to peer: " + ip + ":" + std::to_string(port), "PeerCommands");
         return "Success: Connecting to " + ip + ":" + std::to_string(port) + "...\n";
     } else {
+        Logger::instance().error("Failed to connect to peer: " + ip + ":" + std::to_string(port) + ". Check if the peer is running and accessible.", "PeerCommands");
         return "Error: Failed to initiate connection to " + ip + ":" + std::to_string(port) + "\n";
     }
 }
@@ -102,9 +105,11 @@ std::string PeerCommands::handleAddPeer(const std::string& args) {
     }
     
     if (ctx_.network->connectToPeer(ip, port)) {
+        Logger::instance().info("Initiated connection to peer: " + ip + ":" + std::to_string(port), "PeerCommands");
         return "Success: Connecting to peer " + ip + ":" + std::to_string(port) + "...\n";
     } else {
-        return "Error: Failed to initiate connection to " + ip + ":" + std::to_string(port) + "\n";
+        Logger::instance().error("Failed to connect to peer: " + ip + ":" + std::to_string(port) + ". Check if the peer is running and accessible.", "PeerCommands");
+        return "Error: Failed to connect to peer " + ip + ":" + std::to_string(port) + "\n";
     }
 }
 
@@ -119,9 +124,11 @@ std::string PeerCommands::handleBlockPeer(const std::string& args) {
     
     // Use API for proper statistics tracking
     if (ctx_.storage->blockPeer(args)) {
+        Logger::instance().info("Blocked peer: " + args, "PeerCommands");
         return "Success: Peer blocked: " + args + "\n";
     }
     
+    Logger::instance().error("Failed to block peer: " + args, "PeerCommands");
     return "Error: Failed to block peer\n";
 }
 
@@ -136,14 +143,17 @@ std::string PeerCommands::handleUnblockPeer(const std::string& args) {
     
     // Use API for proper statistics tracking
     if (ctx_.storage->unblockPeer(args)) {
+        Logger::instance().info("Unblocked peer: " + args, "PeerCommands");
         return "Success: Peer unblocked: " + args + "\n";
     }
     
+    Logger::instance().error("Failed to unblock peer: " + args, "PeerCommands");
     return "Error: Failed to unblock peer\n";
 }
 
 std::string PeerCommands::handleClearPeers() {
     if (ctx_.storage) {
+        Logger::instance().info("Cleared all peers from database", "PeerCommands");
         ctx_.storage->removeAllPeers();
         return "Success: All peers cleared from database\n";
     }

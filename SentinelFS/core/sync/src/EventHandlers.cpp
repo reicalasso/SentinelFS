@@ -115,7 +115,7 @@ void EventHandlers::setupHandlers() {
         try {
             std::string path = std::any_cast<std::string>(data);
             auto& logger = Logger::instance();
-            logger.debug("Received WATCH_ADDED event for: " + path, "EventHandlers");
+            // Watch event received
             fileSyncHandler_->scanDirectory(path);
         } catch (const std::exception& e) {
             Logger::instance().error("Error handling WATCH_ADDED: " + std::string(e.what()), "EventHandlers");
@@ -328,7 +328,7 @@ void EventHandlers::handleFileCreated(const std::any& data) {
             if (ignoreList_.count(filename)) {
                 auto now = std::chrono::steady_clock::now();
                 if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
-                    logger.debug("Ignoring creation for " + filename + " (recently patched)", "EventHandlers");
+                    // File recently patched, ignoring
                     return;
                 }
                 ignoreList_.erase(filename);
@@ -365,7 +365,7 @@ void EventHandlers::handleFileModified(const std::any& data) {
             if (ignoreList_.count(filename)) {
                 auto now = std::chrono::steady_clock::now();
                 if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
-                    logger.debug("Ignoring update for " + filename + " (recently patched)", "EventHandlers");
+                    // File recently patched, ignoring
                     return;
                 }
                 ignoreList_.erase(filename);
@@ -401,7 +401,7 @@ void EventHandlers::handleFileDeleted(const std::any& data) {
             if (ignoreList_.count(filename)) {
                 auto now = std::chrono::steady_clock::now();
                 if (now - ignoreList_[filename] < std::chrono::seconds(2)) {
-                    logger.debug("Ignoring deletion for " + filename + " (recently processed)", "EventHandlers");
+                    // File recently processed, ignoring
                     return;
                 }
                 ignoreList_.erase(filename);
@@ -430,7 +430,7 @@ void EventHandlers::handleDataReceived(const std::any& data) {
             msg = std::string(rawData.begin(), rawData.end());
         }
 
-        logger.debug("Received " + std::to_string(rawData.size()) + " bytes from peer " + peerId, "EventHandlers");
+        // Received data from peer
 
         // Check for new wire protocol (binary messages start with magic bytes)
         constexpr uint32_t PROTOCOL_MAGIC = 0x53454E54;  // "SENT"
@@ -438,7 +438,7 @@ void EventHandlers::handleDataReceived(const std::any& data) {
             uint32_t magic = *reinterpret_cast<const uint32_t*>(rawData.data());
             if (magic == PROTOCOL_MAGIC) {
                 // New 7-stage pipeline message
-                logger.debug("Routing to SyncPipeline (wire protocol)", "EventHandlers");
+                // Routing to SyncPipeline
                 syncPipeline_->handleMessage(peerId, rawData);
                 return;
             }
@@ -547,7 +547,7 @@ void EventHandlers::processPendingChanges() {
     }
     
     if (changesToProcess.empty()) {
-        logger.debug("No pending changes to broadcast", "EventHandlers");
+        // No pending changes to broadcast
         return;
     }
     
@@ -581,7 +581,7 @@ void EventHandlers::processPendingChanges() {
             
             std::string filename = std::filesystem::path(fullPath).filename().string();
             long long fileSize = std::filesystem::file_size(fullPath);
-            logger.debug("📡 Broadcasting pending file: " + filename + " (" + std::to_string(fileSize) + " bytes)", "EventHandlers");
+            // Broadcasting pending file
             
             // Broadcast only (database was already updated when file was modified)
             fileSyncHandler_->broadcastUpdate(fullPath);
@@ -612,7 +612,7 @@ void EventHandlers::setupOfflineQueue() {
         // Check if we have peers to sync with
         auto peers = storage_->getAllPeers();
         if (peers.empty()) {
-            logger.debug("No peers available, keeping operation in queue", "OfflineQueue");
+            // No peers available, keeping in queue
             return false; // Retry later
         }
         
@@ -628,7 +628,7 @@ void EventHandlers::setupOfflineQueue() {
         }
         
         if (activePeers.empty() && network_) {
-            logger.debug("No active peers available, keeping operation in queue", "OfflineQueue");
+            // No active peers available, keeping in queue
             return false; // Retry later
         }
         
@@ -638,7 +638,7 @@ void EventHandlers::setupOfflineQueue() {
             switch (op.type) {
                 case sfs::sync::OperationType::Create:
                 case sfs::sync::OperationType::Update:
-                    logger.debug("Processing queued update: " + filename, "OfflineQueue");
+                    // Processing queued update
                     if (fileSyncHandler_ && fileSyncHandler_->updateFileInDatabase(op.filePath)) {
                         fileSyncHandler_->broadcastUpdate(op.filePath);
                         return true;
@@ -646,7 +646,7 @@ void EventHandlers::setupOfflineQueue() {
                     break;
                     
                 case sfs::sync::OperationType::Delete:
-                    logger.debug("Processing queued delete: " + filename, "OfflineQueue");
+                    // Processing queued delete
                     // Remove from database and broadcast delete to peers
                     if (storage_->removeFile(op.filePath)) {
                         if (fileSyncHandler_) {
@@ -657,7 +657,7 @@ void EventHandlers::setupOfflineQueue() {
                     break;
                     
                 case sfs::sync::OperationType::Rename:
-                    logger.debug("Processing queued rename: " + filename + " -> " + op.targetPath, "OfflineQueue");
+                    // Processing queued rename
                     // Rename is handled as: delete old path, then create/update new path
                     // First, remove old path from database and broadcast delete
                     if (storage_->removeFile(op.filePath)) {

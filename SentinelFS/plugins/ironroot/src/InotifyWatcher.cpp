@@ -86,7 +86,7 @@ bool InotifyWatcher::addWatch(const std::string& path) {
         pathToWd_[path] = wd;
     }
     
-    logger.log(LogLevel::DEBUG, "Added inotify watch: " + path, "InotifyWatcher");
+    // Individual watch logs suppressed to prevent spam - see addWatchRecursive for summary
     return true;
 }
 
@@ -106,7 +106,7 @@ bool InotifyWatcher::removeWatch(const std::string& path) {
     watchDescriptors_.erase(wd);
     pathToWd_.erase(it);
     
-    logger.log(LogLevel::DEBUG, "Removed inotify watch: " + path, "InotifyWatcher");
+    // Watch removed
     return true;
 }
 

@@ -110,7 +110,7 @@ std::optional<FileVersion> FileVersionManager::createVersion(
     }
     
     if (isExcluded(filePath)) {
-        Logger::instance().debug("File excluded from versioning: " + filePath, "FileVersionManager");
+        // File excluded from versioning
         return std::nullopt;
     }
     
@@ -182,7 +182,7 @@ std::optional<FileVersion> FileVersionManager::createVersionFromData(
         // Check if this exact version already exists (same hash)
         for (const auto& v : versions) {
             if (v.hash == hash) {
-                Logger::instance().debug("Version with same hash already exists: " + hash, "FileVersionManager");
+                // Version with same hash already exists
                 return v;
             }
         }
@@ -221,7 +221,7 @@ std::optional<FileVersion> FileVersionManager::createVersionFromData(
             const auto& oldVersion = versions.back();
             try {
                 fs::remove(oldVersion.versionPath);
-                Logger::instance().debug("Pruned old version: " + oldVersion.versionPath, "FileVersionManager");
+                // Pruned old version
             } catch (...) {}
             versions.pop_back();
         }

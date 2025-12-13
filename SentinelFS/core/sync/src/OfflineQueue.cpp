@@ -37,16 +37,14 @@ void OfflineQueue::enqueue(OperationType type, const std::string& filePath) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.emplace(type, filePath);
     
-    SentinelFS::Logger::instance().debug(
-        "Queued operation: " + filePath, "OfflineQueue");
+    // Operation queued
 }
 
 void OfflineQueue::enqueueRename(const std::string& oldPath, const std::string& newPath) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.emplace(OperationType::Rename, oldPath, newPath);
     
-    SentinelFS::Logger::instance().debug(
-        "Queued rename: " + oldPath + " -> " + newPath, "OfflineQueue");
+    // Rename queued
 }
 
 std::size_t OfflineQueue::pendingCount() const {

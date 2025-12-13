@@ -34,7 +34,7 @@ interface LoggerProps {
 
 export function Logger({ logs, onClear }: LoggerProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedLevel, setSelectedLevel] = useState<string>('ALL')
+  const [selectedLevel, setSelectedLevel] = useState<string>('INFO')
   const [autoScroll, setAutoScroll] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null)

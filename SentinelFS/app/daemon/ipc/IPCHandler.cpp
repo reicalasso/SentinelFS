@@ -103,7 +103,7 @@ bool IPCHandler::ensureSocketDirectory() {
     
     if (!std::filesystem::exists(parentDir)) {
         if (!securityConfig_.createParentDirs) {
-            Logger::instance().error("IPC: Socket directory does not exist: " + parentDir.string(), "IPCHandler");
+            Logger::instance().error("IPC: Cannot access socket directory. Please check permissions for: " + parentDir.string(), "IPCHandler");
             return false;
         }
         
@@ -116,7 +116,7 @@ bool IPCHandler::ensureSocketDirectory() {
             
             Logger::instance().info("IPC: Created socket directory: " + parentDir.string(), "IPCHandler");
         } catch (const std::exception& e) {
-            Logger::instance().error("IPC: Failed to create socket directory: " + std::string(e.what()), "IPCHandler");
+            Logger::instance().error("IPC: Failed to create socket directory. Check permissions and disk space for: " + parentDir.string(), "IPCHandler");
             return false;
         }
     }
@@ -129,7 +129,7 @@ bool IPCHandler::verifyClientCredentials(int clientSocket, uid_t& clientUid, gid
     socklen_t credLen = sizeof(cred);
     
     if (getsockopt(clientSocket, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) != 0) {
-        Logger::instance().error("IPC: Failed to get client credentials", "IPCHandler");
+        Logger::instance().error("IPC: Security verification failed. Unable to authenticate client connection.", "IPCHandler");
         return false;
     }
     
@@ -229,7 +229,7 @@ bool IPCHandler::start() {
     serverSocket_ = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverSocket_ < 0) {
         umask(oldMask);
-        Logger::instance().error("IPC: Cannot create socket", "IPCHandler");
+        Logger::instance().error("IPC: Cannot create communication socket. Another daemon instance may be running.", "IPCHandler");
         return false;
     }
     
@@ -240,7 +240,7 @@ bool IPCHandler::start() {
     
     if (bind(serverSocket_, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         umask(oldMask);
-        Logger::instance().error("IPC: Cannot bind socket: " + std::string(strerror(errno)), "IPCHandler");
+        Logger::instance().error("IPC: Socket bind failed. Port may be in use or permissions insufficient: " + std::string(strerror(errno)), "IPCHandler");
         close(serverSocket_);
         serverSocket_ = -1;
         return false;
@@ -264,7 +264,7 @@ bool IPCHandler::start() {
     }
     
     if (listen(serverSocket_, 5) < 0) {
-        Logger::instance().error("IPC: Cannot listen", "IPCHandler");
+        Logger::instance().error("IPC: Cannot start listening for connections. Check system limits and permissions.", "IPCHandler");
         close(serverSocket_);
         serverSocket_ = -1;
         return false;

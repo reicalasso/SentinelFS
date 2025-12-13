@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
                 if (ul > 0) config.uploadLimit = ul * 1024;
                 if (dl > 0) config.downloadLimit = dl * 1024;
             } else {
-                logger.error("Failed to load config file: " + path, "Daemon");
+                logger.error("Configuration file not found or invalid: " + path + ". Using default settings.", "Daemon");
             }
         }
         else if (arg == "--port" && i + 1 < argc) {
@@ -173,12 +173,12 @@ int main(int argc, char* argv[]) {
 
     // Validate configuration
     if (!config.sessionCode.empty() && !SessionCode::isValid(config.sessionCode)) {
-        logger.error("Error: Invalid session code format. Must be 6 alphanumeric characters.", "Daemon");
+        logger.error("Invalid session code format. Please use exactly 6 letters and numbers (e.g., ABC123).", "Daemon");
         return 1;
     }
     
     if (config.encryptionEnabled && config.sessionCode.empty()) {
-        logger.error("Error: Cannot enable encryption without a session code!", "Daemon");
+        logger.error("Encryption requires a session code. Please provide a session code with --session-code or generate one with --generate-code.", "Daemon");
         return 1;
     }
 

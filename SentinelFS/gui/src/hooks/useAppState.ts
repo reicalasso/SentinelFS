@@ -165,6 +165,7 @@ type AppAction =
   | { type: 'SET_TRANSFERS'; payload: { transfers: Transfer[], history: TransferHistoryItem[] } }
   | { type: 'SET_CONFIG'; payload: AppConfig }
   | { type: 'ADD_LOG'; payload: string }
+  | { type: 'TRIM_LOGS'; payload: number }
   | { type: 'CLEAR_LOGS' }
   | { type: 'ADD_TOAST'; payload: string }
   | { type: 'REMOVE_TOAST'; payload: string }
@@ -228,6 +229,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, config: action.payload }
     case 'ADD_LOG':
       return { ...state, logs: [...state.logs.slice(-99), action.payload] }
+    case 'TRIM_LOGS':
+      return { ...state, logs: state.logs.slice(-action.payload) }
     case 'CLEAR_LOGS':
       return { ...state, logs: [] }
     case 'ADD_TOAST':
@@ -293,6 +296,7 @@ export function useAppState() {
   const [state, dispatch] = useReducer(appReducer, initialState)
   const lastLogRef = useRef<string | null>(null)
   const lastPeerCountRef = useRef<number>(0)
+  const logCountRef = useRef<number>(0)
 
   // Actions
   const setTab = useCallback((tab: AppState['activeTab']) => {
@@ -343,7 +347,17 @@ export function useAppState() {
     
     if (lastLogRef.current === formattedLog) return
     lastLogRef.current = formattedLog
+    
+    // Check current log count and trim if needed (keep last 1000 logs)
+    // Use a ref to track count and avoid stale closure issues
+    if (logCountRef.current >= 1000) {
+      // Keep only the last 900 logs to make room for new ones
+      dispatch({ type: 'TRIM_LOGS', payload: 900 })
+      logCountRef.current = 900
+    }
+    
     dispatch({ type: 'ADD_LOG', payload: formattedLog })
+    logCountRef.current++
   }, [])
 
   const clearLogs = useCallback(() => {
