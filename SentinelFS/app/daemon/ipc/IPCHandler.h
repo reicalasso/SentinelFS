@@ -207,6 +207,15 @@ private:
     std::string handleFalconStoreOptimize();
     std::string handleFalconStoreBackup(const std::string& args);
     
+    // Zer0 command handlers
+    std::string handleZer0Status();
+    std::string handleZer0Config(const std::string& args);
+    std::string handleZer0StartMonitoring();
+    std::string handleZer0StopMonitoring();
+    std::string handleZer0ReloadYara();
+    std::string handleZer0TrainModel();
+    std::string handleZer0Scan(const std::string& path);
+    
     // Helper methods for JSON command handling
     Json::Value parseJsonData(const std::string& args);
     std::string formatJsonResponse(const Json::Value& response);

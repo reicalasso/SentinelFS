@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Shield, Smartphone, Globe, Lock, Database, Palette } from 'lucide-react'
+import { Shield, Smartphone, Globe, Lock, Database, Palette, Brain } from 'lucide-react'
 import { useNotifications } from '../context/NotificationContext'
 import {
   SettingsTab,
@@ -8,7 +8,8 @@ import {
   SecuritySettings,
   AdvancedSettings,
   AppearanceSettings,
-  FalconStoreSettings
+  FalconStoreSettings,
+  Zer0Settings
 } from './settings'
 
 interface SettingsProps {
@@ -211,6 +212,7 @@ export function Settings({ config }: SettingsProps) {
             <SettingsTab active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')} icon={<Palette className="w-4 h-4" />} label="Appearance" />
             <SettingsTab active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Globe className="w-4 h-4" />} label="Network" />
             <SettingsTab active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<Lock className="w-4 h-4" />} label="Security" />
+            <SettingsTab active={activeTab === 'zer0'} onClick={() => setActiveTab('zer0')} icon={<Brain className="w-4 h-4" />} label="Zer0" />
             <SettingsTab active={activeTab === 'falconstore'} onClick={() => setActiveTab('falconstore')} icon={<Database className="w-4 h-4" />} label="FalconStore" />
             <SettingsTab active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} icon={<Database className="w-4 h-4" />} label="Advanced" />
           </div>
@@ -257,6 +259,10 @@ export function Settings({ config }: SettingsProps) {
               onCopyCode={handleCopyCode}
               onSetSessionCode={handleSessionCodeChange}
             />
+          )}
+
+          {activeTab === 'zer0' && (
+            <Zer0Settings onLog={(msg) => console.log(msg)} />
           )}
 
           {activeTab === 'falconstore' && (

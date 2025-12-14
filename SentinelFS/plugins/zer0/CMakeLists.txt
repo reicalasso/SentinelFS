@@ -15,6 +15,10 @@ set(ZER0_SOURCES
     src/Zer0Plugin.cpp
     src/MagicBytes.cpp
     src/BehaviorAnalyzer.cpp
+    src/MLEngine.cpp
+    src/YaraScanner.cpp
+    src/ProcessMonitor.cpp
+    src/AutoResponse.cpp
 )
 
 # Header files
@@ -22,6 +26,10 @@ set(ZER0_HEADERS
     include/Zer0Plugin.h
     include/MagicBytes.h
     include/BehaviorAnalyzer.h
+    include/MLEngine.h
+    include/YaraScanner.h
+    include/ProcessMonitor.h
+    include/AutoResponse.h
 )
 
 # Create shared library
@@ -39,6 +47,7 @@ target_link_libraries(zer0 PRIVATE
     OpenSSL::Crypto
     SQLite::SQLite3
     pthread
+    uuid
 )
 
 # Set output directory

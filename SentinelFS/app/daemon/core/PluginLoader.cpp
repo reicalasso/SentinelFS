@@ -202,11 +202,18 @@ bool DaemonCore::loadPlugins() {
             mlPlugin_->setStoragePlugin(storage_.get());
             logger.info("Storage reference set for ML plugin", "DaemonCore");
         }
+        
+        // Store raw pointer for Zer0 access (mlPlugin_ keeps ownership)
+        zer0Plugin_ = mlPlugin_.get();
     } else {
         logger.warn("ML plugin not loaded - anomaly detection disabled", "DaemonCore");
     }
     
     return true;
+}
+
+IPlugin* DaemonCore::getZer0Plugin() const {
+    return zer0Plugin_;
 }
 
 } // namespace SentinelFS

@@ -1,4 +1,4 @@
-import { Shield, Bug, AlertTriangle, FileWarning, Eye, Fingerprint, Activity } from 'lucide-react'
+import { Shield, Bug, AlertTriangle, FileWarning, Eye, Fingerprint, Activity, Brain, FileSearch, Zap } from 'lucide-react'
 import { ThreatStatCard } from './ThreatStatCard'
 
 interface Zer0StatusData {
@@ -17,6 +17,13 @@ interface Zer0StatusData {
   magicByteValidation?: boolean
   behavioralAnalysis?: boolean
   fileTypeAwareness?: boolean
+  // New capabilities
+  mlEnabled?: boolean
+  yaraEnabled?: boolean
+  autoResponseEnabled?: boolean
+  // ML stats
+  mlAnomaliesDetected?: number
+  yaraMatchesFound?: number
 }
 
 interface ThreatAnalysisPanelProps {
@@ -80,7 +87,7 @@ export function ThreatAnalysisPanel({ threatStatus, onOpenQuarantine }: ThreatAn
         </div>
 
         {/* Capabilities */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           {threatStatus.magicByteValidation && (
             <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <Fingerprint className="w-3 h-3" />
@@ -97,6 +104,24 @@ export function ThreatAnalysisPanel({ threatStatus, onOpenQuarantine }: ThreatAn
             <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Eye className="w-3 h-3" />
               Type-Aware
+            </span>
+          )}
+          {threatStatus.mlEnabled && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] bg-pink-500/10 text-pink-400 border border-pink-500/20">
+              <Brain className="w-3 h-3" />
+              ML Engine
+            </span>
+          )}
+          {threatStatus.yaraEnabled && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <FileSearch className="w-3 h-3" />
+              YARA
+            </span>
+          )}
+          {threatStatus.autoResponseEnabled && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <Zap className="w-3 h-3" />
+              Auto-Response
             </span>
           )}
         </div>

@@ -134,6 +134,11 @@ public:
      */
     class FileVersionManager* getVersionManager();
     const class FileVersionManager* getVersionManager() const;
+    
+    /**
+     * @brief Get Zer0 threat detection plugin (as IPlugin)
+     */
+    IPlugin* getZer0Plugin() const;
 
 private:
     DaemonConfig config_;
@@ -144,6 +149,7 @@ private:
     std::shared_ptr<INetworkAPI> network_;
     std::shared_ptr<IFileAPI> filesystem_;
     std::shared_ptr<IPlugin> mlPlugin_;
+    IPlugin* zer0Plugin_{nullptr};
     
     // Database manager
     std::unique_ptr<DatabaseManager> database_;

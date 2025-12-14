@@ -14,6 +14,7 @@
  */
 
 #include "IPlugin.h"
+#include "MLEngine.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,6 +24,15 @@
 #include <functional>
 #include <chrono>
 #include <atomic>
+
+// Forward declarations for new components
+namespace SentinelFS {
+namespace Zer0 {
+    class YaraScanner;
+    class ProcessMonitor;
+    class AutoResponse;
+}
+}
 
 namespace SentinelFS {
 
@@ -122,6 +132,10 @@ struct BehaviorEvent {
  * @brief Configuration for Zer0
  */
 struct Zer0Config {
+    // YARA rules configuration
+    std::string yaraRulesPath{"plugins/zer0/rules/default.yar"};
+    std::string yaraRulesUrl;
+    
     // Entropy thresholds by category
     std::map<FileCategory, double> entropyThresholds{
         {FileCategory::TEXT, 6.0},
@@ -252,9 +266,79 @@ public:
         uint64_t filesQuarantined{0};
         uint64_t falsePositives{0};
         std::map<Zer0::ThreatType, uint64_t> threatsByType;
+        
+        // YARA statistics
+        uint64_t yaraRulesLoaded{0};
+        uint64_t yaraFilesScanned{0};
+        uint64_t yaraMatchesFound{0};
+        
+        // ML statistics
+        bool mlModelLoaded{false};
+        uint64_t mlSamplesProcessed{0};
+        uint64_t mlAnomaliesDetected{0};
+        double mlAvgAnomalyScore{0.0};
         std::map<Zer0::ThreatLevel, uint64_t> threatsByLevel;
     };
     Stats getStats() const;
+    
+    // New component accessors
+    
+    /**
+     * @brief Get ML Engine for anomaly detection
+     */
+    Zer0::MLEngine* getMLEngine();
+    
+    /**
+     * @brief Get YARA Scanner for signature-based detection
+     */
+    Zer0::YaraScanner* getYaraScanner();
+    
+    /**
+     * @brief Get Process Monitor for real-time process tracking
+     */
+    Zer0::ProcessMonitor* getProcessMonitor();
+    
+    /**
+     * @brief Get Auto Response system for automated remediation
+     */
+    Zer0::AutoResponse* getAutoResponse();
+    
+    /**
+     * @brief Perform comprehensive scan using all detection methods
+     */
+    Zer0::DetectionResult comprehensiveScan(const std::string& path);
+    
+    /**
+     * @brief Start real-time monitoring
+     */
+    bool startMonitoring();
+    
+    /**
+     * @brief Stop real-time monitoring
+     */
+    void stopMonitoring();
+    
+    /**
+     * @brief Check if monitoring is active
+     */
+    bool isMonitoring() const;
+    
+    /**
+     * @brief Train ML model from a directory
+     * @param directoryPath Path to scan for training data
+     * @return Number of files processed
+     */
+    int trainModel(const std::string& directoryPath);
+    
+    /**
+     * @brief Get current training status
+     */
+    Zer0::MLEngine::TrainingStatus getTrainingStatus() const;
+    
+    /**
+     * @brief Publish current status to EventBus
+     */
+    void publishStatus();
 
 private:
     class Impl;

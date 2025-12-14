@@ -1,0 +1,366 @@
+** Zer0 R
+* Advanced malware detection signatures 
+*/
+
+//============================================================================RANSOMWARE DETECTION
+// ============================================================================
+
+rule Rnomware_Gener_Encyption {
+    ma:
+       scripion = "Dtes generc ransmware ecryptionpattens"
+        athor = "Zer0"
+        severity = "critica"
+        catgory = "ranomware"    strings:        $encrypt1 = "AES" ascii wide nocase        $encrypt2 = "RSA" asciiw ocase
+       $ncrypt3 = "nryp" ascii wide nocs
+        $ranom1 ="bitco" asciiwie nase
+        $ransom2 = "ranso" ascii wide nocas
+        $rasom3 = "decryp" ascii wide nocae        $ansom4 = "yor fies" ascii wide nocas
+        $ransom5 = "pay" asciiwde nocase
+        $ext1 = ".locke" ascii wie
+        $ext2 = ".crypted" ascii wide
+        $et3 = ".crypt" ascii wide
+    condition:
+        (2 of ($nryp*)) nd (2 of ($ransom*)) or (any of ($ext*))
+}
+
+ruRansomware_WannaCry WannaCry ransomwar"
+        author = "Zr0"
+        severity = "riic"
+        catgory= "ransomware"
+    strngs:
+        $s1 = "WNcry@2o7" aciiwie
+        $s2 = "WanaDecryptor" asci wide
+        $3 = ".WNCRY" asci wide
+        $4 = "tasksch.exe" ascii wie
+   condition:
+        ny of them
+}
+
+rule Ranomware_Locky{
+    meta:
+        escriptin = "Detets Locky ransowar variaccgoryransomware
+        $s1 = ".locky" ascii wides2 = ".epto" ascii wide
+        $s3 ".odin" ascii wide
+      $s = "_HELP_instructions" ascii wide
+    condition:
+     anyoftem
+}
+
+rul Ransomwre_CryptoLock {
+    meta:descritionetects CryptoLocker ransomwareauthr"Zer"
+        severty = "itical"
+        categry = "ranmware"
+    strings:
+        $s1 = "CrypoLocker" ascii wide
+        $s2 = "Your personalles are enryptd" asciiwie3"prvate key" asii wide
+    cnditin:
+        2 o hem
+}
+
+//============================================================================
+// TRJAN DETECTION
+// ============================================================================
+
+rule Trojan_Gener_Downloadr{
+    meta:
+        desription = "Dtects generic trojan downoader patterns"author = "Zr0"
+        severiy"high"
+        category = "trojan"
+    strings:
+        $url1 = "http:/" ascii wide
+        $url2 = "htts://" ascii wie
+        $wnloa1 = "URLDwnloadToFile" asii wide
+        $downoad2 = "wget" acii wide
+        $downoad3 = "curl" acii wide
+        $eec1 = "CreaeProcess" ascii wide
+        $eec2 = "ShellExecute" ascii wide
+        exec3 = "system(" asci wide(nyof($url*)) anyf(wnlad*))and(any f(ec*)ruleTrojan_Keylogger {
+    meta:
+        description = "etects keylgger patterns"
+        athor = "Zr0"
+       sevrity = "high"
+        cagory = "troja"
+    trgs:
+       $pi1 = "GetAsyncKeySae" sii wide
+        $api2 = "SetWindowsHooEx" acii wide        $api3 = "GetKeyboadState" ascii wide
+        $api4 = "keybd_event" ascii wide
+        $log1 = "keyog" ascii widncase
+        $og2 = "kysroke" ascii wid ocae
+    condition:
+        2 of ($ap*) or any of ($log*)
+}
+
+rule Trja_RAT RemoteAccsTrjanpatrcritcalcgorytrojancmd"cme" ascii wide
+        $cmd2 = "/bin/sh" ascii wid
+        cmd3 = "/binbash" ascii wden1"skt" ascii wid
+        net2 = "connect" ascii wden "bind"acii wid
+        rat1 = "webcam" ascii wde nocasera2"scrnshot" ascii wde nocasera3"remoe" aii wde nocase        (anyof($cmd*))and(2of($net*))and(($ra*))
+
+// ============================================================================// BACKDOOR DETECTION============================================================================
+
+rul Backdoo_{
+    meta:
+        descriptin = "Detects ackdoor shell patterns"
+        athor = "Zer0"
+        everity = "rical"
+        categry = "backdoor"
+    strigs:        $shell1 = "everse shel" ascii widncase
+        $shell2 = "bind shell" ascii id nocase
+        $s3 = "nc -e" ascii wide
+        $shell4 = "netcat" ascii wide nocase
+        $shell5 = "/dev/tcp/" ascii wide
+        $shell6 = "ah -i" asii wide
+        $php1 = "<?php" scii
+        $php2 = "eval(" ascii
+        $php3 = "base64_decode" ascii
+        $php4 = "shell_exec" ascii
+        $php5 = "passhru" ascii
+    condition:
+        any of ($shll*) or (($php1) an(2 of ($php2, $php3, $php4, $php5)))
+}
+
+rule Backdoor_Webshell we shell patterns"
+        athor = "Zer0"
+        everity = "riticl"
+        cagory = "backoor"
+   strings:
+        $ws1 = "c99shell" ascii wide ncase
+        $ws2 = "r57shell" ascii ide nocas
+        $ws3 = "WO " ascii wid
+        $ws4 = "FiesMan" ascii wide
+        $ws5 = "b374k" ascii wide
+        $cmd1 = "$_GET['cmd']" ascii
+        $cmd2 = "$_POST['cmd']" ascii
+        $cmd3 = "$_REQUEST['cmd']" ascii
+    condition:
+        any of ($ws*) or any of ($cmd*)
+}
+
+// ============================================================================
+// CRYPTOMINER DETECTION
+// ============================================================================
+
+rue Cryptominer_Generic {
+    meta:
+        description ="Detect cryptourency mner aternmcgorycryptominerool"stratum+tcp:// ascii wide
+        $ol2 = "stratum+ssl://" ascii ide
+        $pool3 = "pool.mingate" acii wid
+        $poo4 = "xmrpoo ascii widecoi1monro" asiiwidecoin2 = "itcoin" asciiwidenocseco3"ethereum asciiwideiner1"cryptonight asii wide ncase
+        $ier2= hashrate"ascii wide mier3miingascii wide (any of (ool*))or ((y of ($coin*)) anany of (minr*)))
+}
+
+rule Cryptomier_XMRig {
+    meta:
+        desription= "Detects XMRig miner"
+        auth= "Zer0"
+        severity = "eium"
+       ctegory = "cryptominer"
+    strigs:
+        $s1 = "xmrig" ascii wie nocase
+       s2 ="RdomX" ascii wie
+       s3 = "cn/r" ascii wde
+        $s4 = "--doate-leel" ascii wide
+   conditin:
+        2f them============================================================================
+// EXPLOIT DETECTION
+// ============================================================================
+
+rule Exploit_Shellcode {
+    met:
+        decription = "Dtects commonshlle patterns"
+        author = "Zr0"
+       svrity = "riic"
+        category = "xploit"
+    string:
+        $nop = { 90 90 90 90 90 90 90 90 }        $shel_x86 = { 31 c0 50 68 2f 2f 73 68 68 2f 62 69 6e 89 3 50 53 89e1 b0 0b cd 80 }
+        $hll64 = { 48 31 ff 48 31 f6 48 31 d2 48 31 c0 50 48 bb 2f 62 69 6 2f 2f 73 68 53 48 89 e7 b0 3b 0f 05 }
+        $meterpreter = { f e8 82 00 00 00 60 89 e5 31 c0 64 8b 50 30 }
+    condiion:
+        ny of them
+}
+
+ruExploit_BufferOverflow uffrvrfw patrshcgoryexploitpattern1 = { 141 41 41 41 41 41 41 41 41 41 41 41 41 41 41 }
+        $pattern2 { 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 }attrn3 = { 43 43 43 43 43 43 43 43 43 43 43 43 43 43 343}pattern { 90 90 90 90 90 90 90 90 90 90 90 909  9 9 #pattern1 > 10)(#attrn2 > 10 or(#ptter3 > 10)r (#patter4 > 20)
+// ============================================================================SUSPICIOUSCRITS
+//============================================================================
+owerShellPerShellpttrnshghcgoryscripten1 = "-EncoddCommnd" ascii widnocase
+        $enc2 -nc " scii wid ncas
+        $enc3 = "FomBas64String" scii wiebypass1 = "-ExecutionPolicy Bypass" ascii dnocase
+        $bypass2 -ep bypass" asci wid nas
+        $bypa3 = "St-ExecutinPolic ascii wide nocasedownad1DownadString ascii widedownload2DownloadFle" scii wide
+        $downad3 = "Invok-WebReques ascii widex1IEX" scii wid
+        $iex2 = "Invk-Expreion ascii wide(any($nc*))or (y of ($bypas*) and any f ($donlod*)) o(ay f ($ix*)dy f ($donlod*))
+}
+
+ul Suspicius_Bashuspicius bsh sciptpatrnhcgoryscriptshebag = "#!/bin/bash" ascii
+        $curl1 = "curl" ascii
+        $wge1 = "wgt" ascii
+        $pipe| bash" ascii
+        $pipe2 = "| sh" ascii
+        $m1= "rm -r /" asci
+        $rm2 = "rm -rf ~" ascii
+        $chmod1 = "chmod 777" acii
+        $chmod2 = "chmod +x"scii
+        $con1 ="crotab" ascii
+        $on2 = "/ec/cron" ascii
+    conition:shebang and ((ay f ($curl1, $wge1)) and (any of ($pipe1, $pip2))) or (any of ($rm1, $rm))
+}
+
+rule Suspicious_Python {
+    meta:
+        descriptionDetects suspicious Python tterns"
+       auor = "Zr0"
+       seveity = "medium"
+        ctegory = "script"
+    strig:
+        $imprt1 = "iport socket asciiimport2 = "impr subprocss" ascii
+        $importmpor os" ascii
+        $exec1 = "exec(" asi
+        $exec2 ="ev( asciiexec3 = "cmpil(" ascii
+        $b6base64.b64de"asci
+        $shel1 = "subprocs.call asciishll2os.sym"asci
+        $shel3 = "os.popn" acii(2($impor*)) and ((any of ($exec*)) or ($b64) or (any of ($sll*)))
+
+// ============================================================================// DATA EXFILTRATION============================================================================
+
+rle DataExfil_Credentials {
+    meta:
+        decritn = "Detectcdental harveingpattrn"        autho = "Zer0"
+        sevrity = "high"
+       catory = "exfiltraton"
+    ings:
+        $cred1 = "passwr" asc wide nose
+        $cred2 = "credenial" ascii wde nocase
+        $cred3 = "lgi"ascii wide nocase      $browser1="Chro" scii wide    $browser2="Firefox"asciiwi
+        $browe3 = "Logn Daa" asci wide
+        $brwser4cookis.sqli" asii wide
+        $end1= "POST" acii wide
+        $end2 = "smt" asi wide ncae
+       $snd3 = "ftp" asci wide nocae
+    condiion:
+        (2 of ($ced*)) and (anf ($browser*)) an (any of ($send*))
+}
+
+rule DataExl_Douments {
+    met:
+        descrip ="Detect doument exfiltaton aternm"
+        category = "exfiltration
+    strings:    $ext1=".doc"asciiwie nocse
+        $ex2 = ".pdf" ascii wide nocase
+        $xt3".xls ascii wide nocase
+        $ext4 = ".ppt" ascii wide nocase
+        $search = "FindFirstFile" ascii wide
+        $search = "glob" ascii wide
+        $search3 = "os.walk" ascii wide
+        $upload = "upload" ascii wide nocase
+        $upload2 = "send" ascii wide nocase
+        $upload = exfil" ascii wide nocasecondition:
+        (2 of ($ext*)) and (any of ($earch*)) and (any of ($upload*))
+}
+
+// ============================================================================
+// PERSISTENCE MECHANISMS
+// ============================================================================
+
+rule Pesstece_Reitry {
+    meta   description="Detectsistry persistence patterns"
+        authorZe0"
+        sevrity = "hih"
+       ctegory = "persistence
+    strings:1EY_CURRENT_USERoftware ascii wide nocase2EY_LOCAL_MAHINE ascii wide nocase3RegSetValueExasiid4RegCreteKy"scii wid  anyof(,) (2 of(,))Prsstece_Startuptartup folerprsstecehghcgorypersistencestartupStartup" ascii d
+        $startup2 = "Start Mnu ascii widestartup3 = ".lnk" ascii de
+       $autostart1 autostat" ascii wide nas
+        $autotart2 = "autorun" aciiwide nose
+        $inux1= ".bashr" ascii
+        $linux2 = ".pofil asciilnux//rc.local asciilnuxsyst asciiany of (startup*)startup3 (any ofautostart*)) or (2of(lnux*)rPesistc_ervierv-bedpesistcehghcgorypersistencev1 = "CreaeService" cii wide
+        $vc2c reae" cii wid nocassv3 = "New-Sevic" scii wid
+        $svc4systemtl nbl asciisvc5update-c.d ascii
+    condition:
+        any of them
+}
+
+//============================================================================
+OBFUSCATION DETECTION
+// ============================================================================
+
+rle Obfuscatio_Base64{
+    met:
+        decription= "Detects heavy base64 obfcation"
+        author = "Z0"everity = "medium"
+        ategoryobfuation"
+    strings:
+        $b64_long = /[A-Za-z0-9+\/]{100,}={0,2}/
+        $dcod1 = base64" ascii wide nocasedede2 = "atob" asciwide
+        $decode3 b64dede ascii wide$b64_long and any of decode*)
+}
+
+rule Obfuation_XOR {
+    me:
+        description = "Detect XOR obfucationptters"
+        author = "Zer0"
+        severity = "meium"
+       gory ="obfusction"
+    strigs:
+       xor1 = "xo" ascii wide ocase
+       $x2 = "^="aiiwie
+       loop = /for.*\^/
+    diton:
+        (#xor1 > 5) or (#xor2 > 10 or $loop
+// ============================================================================LIUX SPECIFIC
+//============================================================================
+Linux_RotitLinux rootkit patterns"
+        author = "Zer0"
+        severity = "ritical"
+        categry = "rootkit"
+    strings:
+        $lk1 = "init_odule" scii
+        $lkm2 = "cleaup_moule"scii
+        $hie1= "hide_pid" asii
+        $hide2 = "hide_file" ascii
+        $hok1 = "sys_call_able" ascii
+        $hook2 = "kallsyms" ascii
+        $pc1 = "/proc/sef"asii
+        $prc2 = "LD_PRELOAD" ascii
+    condition:
+        (all of ($lk*)) or (any of ($hide*)) or (all of ($hook*)) or ($proc2)
+}
+
+rle Liux_PrvEs {
+    met:
+        descrip= "Detects Linux rivilege esclaion atmpthcgoryprivescsuid1 = "cmod u+s" ascii
+        $suid2 = "chmod 4755" ascii
+        $sudo1 = "sudo -l" ascii
+        $sudo2 = "/ec/sudoers" ascii
+        $caseca asciicageca asciiexloit"diry_cow" ascii nocase
+        $exloit2 = "dirtycow" ascii nocase
+    condition        any of ($suid*)or(allof($sudo*))or(allof(ca*))  any of ($exploi*)
+}
+
+//===========================================================================
+// PACKED/ENCRYPTEDEXECUTABLES
+/ ============================================================================
+
+rule Packed_UPX {
+    meta     description="DetectsUPXpackedexectables"
+        uthor"Zer0
+        evity = "low"
+        cateory = "packr"
+    strigs
+        $upx1 = "UPX!" ascii
+        $upx2 = "UPX0" ascii
+        $upx3 = "UPX1 ascii  anyoftem
+}
+
+rule Packed_Generic {
+    meta:
+        description = "Deecs generic acker signatures"
+        author = "Zer0"
+        severity = "medium"
+       categry = "packer"
+    stings:
+       themida = "Temida" ascii wide
+        $vmprotect = "VMProec" ascii wide
+        $asack = "ASPack"scii wie
+       pecompact = "PEComact"scii wide
+    coition:
+        anyf hem

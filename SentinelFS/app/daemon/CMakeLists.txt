@@ -18,6 +18,7 @@ set(IPC_COMMAND_SOURCES
     ipc/commands/TransferCommands.cpp
     ipc/commands/RelayCommands.cpp
     ipc/commands/FalconStoreCommands.cpp
+    ipc/commands/Zer0Commands.cpp
 )
 
 # IPC Handler
@@ -55,4 +56,5 @@ target_include_directories(sentinel_daemon PRIVATE
     ${CMAKE_SOURCE_DIR}/app/daemon/core
     ${CMAKE_SOURCE_DIR}/app/daemon/ipc
     ${CMAKE_SOURCE_DIR}/app/daemon/ipc/commands
+    ${CMAKE_SOURCE_DIR}/plugins/zer0/include
 )

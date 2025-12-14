@@ -585,6 +585,23 @@ std::string IPCHandler::processCommand(const std::string& command) {
         return formatJsonResponse(response);
     }
     
+    // Zer0 commands
+    else if (cmd == "ZER0_STATUS") {
+        return handleZer0Status();
+    } else if (cmd == "ZER0_CONFIG") {
+        return handleZer0Config(args);
+    } else if (cmd == "ZER0_START_MONITORING") {
+        return handleZer0StartMonitoring();
+    } else if (cmd == "ZER0_STOP_MONITORING") {
+        return handleZer0StopMonitoring();
+    } else if (cmd == "ZER0_RELOAD_YARA") {
+        return handleZer0ReloadYara();
+    } else if (cmd == "ZER0_TRAIN_MODEL") {
+        return handleZer0TrainModel();
+    } else if (cmd == "ZER0_SCAN") {
+        return handleZer0Scan(args);
+    }
+    
     // Unknown command - sanitized response to avoid information disclosure
     else {
         // Don't echo back the unknown command to prevent potential injection/disclosure
