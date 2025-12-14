@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Database, Trash2, RotateCcw } from 'lucide-react'
+import { Database, Trash2, RotateCcw, HardDrive, Gauge, Wrench } from 'lucide-react'
 import { useNotifications } from '../../context/NotificationContext'
+import { Section } from './Section'
+import { Toggle } from './Toggle'
 
 interface FalconStoreSettingsProps {
   onLog?: (message: string) => void
@@ -99,103 +101,113 @@ export function FalconStoreSettings({ onLog }: FalconStoreSettingsProps) {
   
   return (
     <div className="space-y-6">
-      {/* Database Status */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Database className="w-5 h-5" />
-          Database Status
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-lg bg-secondary/20">
-            <p className="text-xs text-muted-foreground">Size</p>
-            <p className="text-lg font-semibold">{stats.size}</p>
-          </div>
-          <div className="p-4 rounded-lg bg-secondary/20">
-            <p className="text-xs text-muted-foreground">Version</p>
-            <p className="text-lg font-semibold">{stats.version}</p>
-          </div>
-          <div className="p-4 rounded-lg bg-secondary/20">
-            <p className="text-xs text-muted-foreground">Tables</p>
-            <p className="text-lg font-semibold">{stats.tables}</p>
-          </div>
-          <div className="p-4 rounded-lg bg-secondary/20">
-            <p className="text-xs text-muted-foreground">Last Optimized</p>
-            <p className="text-lg font-semibold">{stats.lastOptimized}</p>
-          </div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+          <Database className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            FalconStore
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">{stats.version}</span>
+          </h3>
+          <p className="text-xs text-muted-foreground">High-performance SQLite storage engine</p>
         </div>
       </div>
+
+      {/* Database Status */}
+      <Section title="Database Status">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <HardDrive className="w-4 h-4" />
+              <span className="text-xs">Size</span>
+            </div>
+            <div className="font-mono font-bold">{stats.size}</div>
+          </div>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Database className="w-4 h-4" />
+              <span className="text-xs">Tables</span>
+            </div>
+            <div className="font-mono font-bold">{stats.tables}</div>
+          </div>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Gauge className="w-4 h-4" />
+              <span className="text-xs">Version</span>
+            </div>
+            <div className="font-mono font-bold">{stats.version}</div>
+          </div>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Wrench className="w-4 h-4" />
+              <span className="text-xs">Optimized</span>
+            </div>
+            <div className="font-mono font-bold text-sm">{stats.lastOptimized}</div>
+          </div>
+        </div>
+      </Section>
       
       {/* Query Cache Settings */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Query Cache</h3>
-        <div className="space-y-2">
-          <label className="text-sm">Cache Size (entries)</label>
-          <input
-            type="number"
-            value={cacheSize}
-            onChange={(e) => setCacheSize(Number(e.target.value))}
-            className="w-full p-2 rounded-lg bg-background border border-border/40"
-          />
+      <Section title="Query Cache">
+        <div className="space-y-3">
+          <div>
+            <label className="settings-label">Cache Size (entries)</label>
+            <input
+              type="number"
+              value={cacheSize}
+              onChange={(e) => setCacheSize(Number(e.target.value))}
+              className="settings-input"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             Higher values improve query performance but use more memory
           </p>
         </div>
-      </div>
+      </Section>
       
       {/* Performance Settings */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Performance</h3>
+      <Section title="Performance">
         <div className="flex items-center justify-between">
           <div>
-            <label className="text-sm">WAL Mode</label>
-            <p className="text-xs text-muted-foreground">Better concurrency for read/write operations</p>
+            <span className="text-sm font-medium block">WAL Mode</span>
+            <span className="text-xs text-muted-foreground">Better concurrency for read/write operations</span>
           </div>
-          <button
-            onClick={() => setWalMode(!walMode)}
-            className={`w-12 h-6 rounded-full transition-colors ${
-              walMode ? 'bg-primary' : 'bg-secondary'
-            }`}
-          >
-            <div className={`w-5 h-5 bg-background rounded-full transition-transform ${
-              walMode ? 'translate-x-6' : 'translate-x-0.5'
-            }`} />
-          </button>
+          <Toggle checked={walMode} onChange={() => setWalMode(!walMode)} />
         </div>
-      </div>
+      </Section>
       
       {/* Maintenance Actions */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Maintenance</h3>
-        <div className="flex flex-wrap gap-3">
+      <Section title="Maintenance">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={handleVacuum}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm font-medium"
+            className="settings-btn settings-btn-secondary py-3"
           >
             <Trash2 className="w-4 h-4" />
             Vacuum Database
           </button>
           <button
             onClick={handleClearCache}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm font-medium"
+            className="settings-btn settings-btn-secondary py-3"
           >
             <RotateCcw className="w-4 h-4" />
             Clear Cache
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-3">
           Vacuum optimizes database size and performance. Clear cache removes stored query results.
         </p>
-      </div>
-      
-      {/* Save Button */}
-      <div className="flex justify-end">
+        
+        {/* Save Button */}
         <button
           onClick={handleSaveSettings}
-          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
+          className="w-full settings-btn settings-btn-primary py-3 mt-4"
         >
           Save Settings
         </button>
-      </div>
+      </Section>
     </div>
   )
 }

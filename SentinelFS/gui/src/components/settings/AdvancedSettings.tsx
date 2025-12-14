@@ -1,4 +1,4 @@
-import { Database, Download, Upload, Plus, X, FileX } from 'lucide-react'
+import { Database, Download, Upload, Plus, X, FileX, Settings2, Cpu, AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react'
 import { Section } from './Section'
 
 interface AdvancedSettingsProps {
@@ -30,32 +30,57 @@ export function AdvancedSettings({
 }: AdvancedSettingsProps) {
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-zinc-600 flex items-center justify-center shadow-lg">
+          <Settings2 className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">Advanced Settings</h3>
+          <p className="text-xs text-muted-foreground">System configuration and maintenance</p>
+        </div>
+      </div>
+
+      {/* System Information */}
       <Section title="System Information">
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between py-1">
-            <span className="text-muted-foreground">Metrics Port:</span>
-            <span className="font-mono">{config?.metricsPort || 9100}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Database className="w-4 h-4" />
+              <span className="text-xs">Database</span>
+            </div>
+            <div className="font-mono text-sm">sentinel.db</div>
+            <div className="text-xs text-muted-foreground">SQLite</div>
           </div>
-          <div className="flex justify-between py-1">
-            <span className="text-muted-foreground">Database:</span>
-            <span className="font-mono">sentinel.db (SQLite)</span>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Cpu className="w-4 h-4" />
+              <span className="text-xs">Metrics Port</span>
+            </div>
+            <div className="font-mono font-bold">{config?.metricsPort || 9100}</div>
           </div>
-          <div className="flex justify-between py-1">
-            <span className="text-muted-foreground">IPC Socket:</span>
-            <span className="font-mono text-xs">/run/user/1000/sentinelfs/sentinel_daemon.sock</span>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50 sm:col-span-1">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Settings2 className="w-4 h-4" />
+              <span className="text-xs">IPC Socket</span>
+            </div>
+            <div className="font-mono text-xs break-all">/run/user/1000/sentinelfs/sentinel_daemon.sock</div>
           </div>
         </div>
       </Section>
       
+      {/* Delta Sync Engine */}
       <Section title="Delta Sync Engine">
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between py-1">
-            <span className="text-muted-foreground">Algorithm:</span>
-            <span className="font-mono">Rolling Checksum (Adler32) + SHA-256</span>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="text-xs text-muted-foreground mb-1">Algorithm</div>
+            <div className="font-mono text-sm">Rolling Checksum</div>
+            <div className="text-xs text-muted-foreground">Adler32 + SHA-256</div>
           </div>
-          <div className="flex justify-between py-1">
-            <span className="text-muted-foreground">Block Size:</span>
-            <span className="font-mono">4 KB</span>
+          <div className="p-3 rounded-lg bg-accent/30 border border-border/50">
+            <div className="text-xs text-muted-foreground mb-1">Block Size</div>
+            <div className="font-mono font-bold">4 KB</div>
+            <div className="text-xs text-muted-foreground">Adaptive sizing</div>
           </div>
         </div>
       </Section>
@@ -125,24 +150,29 @@ export function AdvancedSettings({
       </Section>
       
       <Section title="ML Anomaly Detection">
-        <div className="settings-warning-card">
-          <div className="flex items-center gap-2 status-warning mb-2">
-            <Database className="w-4 h-4" />
+        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+          <div className="flex items-center gap-2 text-amber-400 mb-2">
+            <AlertTriangle className="w-4 h-4" />
             <span className="text-sm font-semibold">Experimental Feature</span>
           </div>
           <p className="text-xs text-muted-foreground">ML-based anomaly detection uses IsolationForest via ONNX Runtime to identify suspicious peer behavior. This feature is in beta.</p>
         </div>
       </Section>
       
-      <Section title="Danger Zone">
-        <div className="space-y-3">
-          <button onClick={onRefreshStatus} className="w-full settings-btn settings-btn-secondary py-3">
-            Refresh Daemon Status
+      <Section title="Maintenance">
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onRefreshStatus} className="settings-btn settings-btn-secondary py-3">
+            <RefreshCw className="w-4 h-4" />
+            Refresh Status
           </button>
-          <button onClick={onResetDefaults} className="w-full settings-btn settings-btn-destructive py-3">
-            Reset to Defaults
+          <button onClick={onResetDefaults} className="settings-btn settings-btn-destructive py-3">
+            <RotateCcw className="w-4 h-4" />
+            Reset Defaults
           </button>
         </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Reset will restore all settings to their default values. This action cannot be undone.
+        </p>
       </Section>
     </div>
   )

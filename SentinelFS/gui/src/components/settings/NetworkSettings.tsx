@@ -1,5 +1,6 @@
 import { Globe, Save, Plus, Zap, Network, Shield, Activity, ChevronDown } from 'lucide-react'
 import { Section } from './Section'
+import { Toggle } from './Toggle'
 import { useState, useEffect } from 'react'
 
 interface NetworkSettingsProps {
@@ -399,32 +400,20 @@ export function NetworkSettings({
               <div className="font-medium text-sm">Auto Reconnect</div>
               <p className="text-xs text-muted-foreground">Automatically reconnect on connection loss</p>
             </div>
-            <div 
-              onClick={() => updateAdvancedSetting('autoReconnect', !advancedSettings.autoReconnect)}
-              className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${
-                advancedSettings.autoReconnect ? 'bg-violet-500' : 'bg-muted'
-              }`}
-            >
-              <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 shadow transition-transform ${
-                advancedSettings.autoReconnect ? 'right-0.5' : 'left-0.5'
-              }`} />
-            </div>
+            <Toggle 
+              checked={advancedSettings.autoReconnect} 
+              onChange={() => updateAdvancedSetting('autoReconnect', !advancedSettings.autoReconnect)} 
+            />
           </div>
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-sm">Key Rotation</div>
               <p className="text-xs text-muted-foreground">Periodically rotate encryption keys</p>
             </div>
-            <div 
-              onClick={() => updateAdvancedSetting('keyRotation', !advancedSettings.keyRotation)}
-              className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${
-                advancedSettings.keyRotation ? 'bg-violet-500' : 'bg-muted'
-              }`}
-            >
-              <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 shadow transition-transform ${
-                advancedSettings.keyRotation ? 'right-0.5' : 'left-0.5'
-              }`} />
-            </div>
+            <Toggle 
+              checked={advancedSettings.keyRotation} 
+              onChange={() => updateAdvancedSetting('keyRotation', !advancedSettings.keyRotation)} 
+            />
           </div>
         </div>
       )}

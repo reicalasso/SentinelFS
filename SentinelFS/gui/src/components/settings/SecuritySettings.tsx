@@ -1,4 +1,4 @@
-import { Key, Copy, Check, RefreshCw, Save, Shield } from 'lucide-react'
+import { Key, Copy, Check, RefreshCw, Save, Shield, Lock } from 'lucide-react'
 import { Section } from './Section'
 import { Toggle } from './Toggle'
 
@@ -34,6 +34,17 @@ export function SecuritySettings({
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg">
+          <Lock className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">Security Settings</h3>
+          <p className="text-xs text-muted-foreground">Encryption and access control</p>
+        </div>
+      </div>
+
       <Section title="Session Code">
         {/* Current Code Display */}
         {config?.sessionCode && (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Shield, Smartphone, Globe, Lock, Database, Palette, Brain } from 'lucide-react'
+import { Shield, Smartphone, Globe, Lock, Database, Palette, Brain, Settings2 } from 'lucide-react'
 import { useNotifications } from '../context/NotificationContext'
 import {
   SettingsTab,
@@ -207,14 +207,21 @@ export function Settings({ config }: SettingsProps) {
         {/* Settings Navigation */}
         <nav className="settings-nav">
           <div className="flex lg:flex-col gap-1 sm:gap-2 min-w-max lg:min-w-0">
-            <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2">Navigation</div>
+            {/* Core Settings */}
+            <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2 mt-1">Core</div>
             <SettingsTab active={activeTab === 'general'} onClick={() => setActiveTab('general')} icon={<Smartphone className="w-4 h-4" />} label="General" />
-            <SettingsTab active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')} icon={<Palette className="w-4 h-4" />} label="Appearance" />
-            <SettingsTab active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Globe className="w-4 h-4" />} label="Network" />
             <SettingsTab active={activeTab === 'security'} onClick={() => setActiveTab('security')} icon={<Lock className="w-4 h-4" />} label="Security" />
+            <SettingsTab active={activeTab === 'network'} onClick={() => setActiveTab('network')} icon={<Globe className="w-4 h-4" />} label="Network" />
+            
+            {/* Features */}
+            <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2 mt-4">Features</div>
             <SettingsTab active={activeTab === 'zer0'} onClick={() => setActiveTab('zer0')} icon={<Brain className="w-4 h-4" />} label="Zer0" />
             <SettingsTab active={activeTab === 'falconstore'} onClick={() => setActiveTab('falconstore')} icon={<Database className="w-4 h-4" />} label="FalconStore" />
-            <SettingsTab active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} icon={<Database className="w-4 h-4" />} label="Advanced" />
+            
+            {/* Customization */}
+            <div className="hidden lg:block text-[10px] font-bold uppercase text-muted-foreground/60 tracking-widest px-3 mb-2 mt-4">Customize</div>
+            <SettingsTab active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')} icon={<Palette className="w-4 h-4" />} label="Appearance" />
+            <SettingsTab active={activeTab === 'advanced'} onClick={() => setActiveTab('advanced')} icon={<Settings2 className="w-4 h-4" />} label="Advanced" />
           </div>
         </nav>
 
