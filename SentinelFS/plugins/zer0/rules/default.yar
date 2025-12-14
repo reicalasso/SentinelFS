@@ -221,22 +221,18 @@ rule Trojan_RAT {
         severity = "critical"
         category = "trojan"
     strings:
-        $cmd1 = "cmd.exe" ascii wide
-        $cmd2 = "/bin/sh" ascii wide
-        $cmd3 = "/bin/bash" ascii wide
-        $net1 = "socket" ascii wide
-        $net2 = "connect" ascii wide
-        $net3 = "bind" ascii wide
         $rat1 = "webcam" ascii wide nocase
         $rat2 = "screenshot" ascii wide nocase
         $rat3 = "keylog" ascii wide nocase
-        $rat4 = "remote" ascii wide nocase
         $beacon1 = "beacon" ascii wide nocase
         $beacon2 = "BEACON_INTERVAL" ascii wide
         $c2_1 = "C2_SERVER" ascii wide
         $c2_2 = "c2_socket" ascii wide nocase
+        $c2_3 = "TrojanClient" ascii wide
+        $c2_4 = "_exfiltrate" ascii wide
+        $c2_5 = "_steal_credentials" ascii wide
     condition:
-        (any of ($cmd*)) and (2 of ($net*)) and (any of ($rat*)) or (any of ($beacon*)) or (any of ($c2*))
+        (2 of ($rat*)) or (any of ($beacon*)) or (2 of ($c2*))
 }
 
 rule Trojan_FakeUpdate {
@@ -246,21 +242,16 @@ rule Trojan_FakeUpdate {
         severity = "high"
         category = "trojan"
     strings:
-        $fake1 = "fake" ascii wide nocase
-        $fake2 = "update" ascii wide nocase
-        $fake3 = "system update" ascii wide nocase
-        $fake4 = "security update" ascii wide nocase
-        $distract1 = "please wait" ascii wide nocase
-        $distract2 = "installing" ascii wide nocase
-        $distract3 = "progress" ascii wide nocase
-        $steal1 = "steal" ascii wide nocase
-        $steal2 = "exfiltrate" ascii wide nocase
-        $steal3 = "credential" ascii wide nocase
+        $fake1 = "show_fake_update" ascii wide nocase
+        $fake2 = "fake_update" ascii wide nocase
         $c2_1 = "C2_SERVERS" ascii wide
         $c2_2 = "darkweb" ascii wide nocase
         $c2_3 = ".onion" ascii wide
+        $steal1 = "_steal_credentials" ascii wide
+        $steal2 = "_exfiltrate" ascii wide
+        $class1 = "TrojanClient" ascii wide
     condition:
-        (2 of ($fake*)) and (any of ($distract*)) or (any of ($steal*) and any of ($c2*))
+        (any of ($fake*) and any of ($c2*)) or (any of ($steal*)) or (any of ($class*))
 }
 
 // ============================================================================
@@ -435,24 +426,21 @@ rule Shell_Malicious {
     strings:
         $shebang1 = "#!/bin/bash" ascii
         $shebang2 = "#!/bin/sh" ascii
-        $curl1 = "curl" ascii
-        $wget1 = "wget" ascii
         $pipe1 = "| bash" ascii
         $pipe2 = "| sh" ascii
         $rm1 = "rm -rf /" ascii
         $rm2 = "rm -rf ~" ascii
-        $chmod1 = "chmod 777" ascii
-        $chmod2 = "chmod +x" ascii
-        $hidden1 = "/tmp/." ascii
-        $hidden2 = "mkdir -p /tmp/." ascii
-        $disable1 = "systemctl stop" ascii
+        $hidden1 = "mkdir -p /tmp/." ascii
+        $hidden2 = "/tmp/.X11-unix/." ascii
+        $disable1 = "systemctl stop apparmor" ascii
         $disable2 = "iptables -F" ascii
         $disable3 = "ufw disable" ascii
         $clean1 = "history -c" ascii
         $clean2 = "unset HISTFILE" ascii
-        $clean3 = "/dev/null" ascii
+        $miner1 = "pkill -9 xmrig" ascii
+        $miner2 = "pkill -9 minerd" ascii
     condition:
-        (any of ($shebang*)) and (((any of ($curl1, $wget1)) and (any of ($pipe*))) or (any of ($rm*)) or (2 of ($hidden*)) or (2 of ($disable*)) or (2 of ($clean*)))
+        (any of ($shebang*)) and ((any of ($pipe*)) or (any of ($rm*)) or (2 of ($hidden*)) or (2 of ($disable*)) or (2 of ($clean*)) or (any of ($miner*)))
 }
 
 // ============================================================================
