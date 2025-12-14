@@ -21,7 +21,6 @@
 #include <unistd.h>
 #include <cstring>
 #include <cctype>
-#include <dlfcn.h>
 
 namespace SentinelFS {
 
@@ -44,21 +43,10 @@ public:
     std::unique_ptr<Zer0::ProcessMonitor> processMonitor;
     std::unique_ptr<Zer0::ResponseEngine> responseEngine;
     
-    Zer0Plugin::Stats stats;
+    Zer0::Stats stats;
     mutable std::mutex statsMutex;
     
     std::string quarantineDir;
-    
-    // Helper method to resolve path relative to plugin
-    std::string resolvePluginPath(const std::string& relativePath) {
-        Dl_info info;
-        if (dladdr((void*)&Zer0Plugin::initialize, &info)) {
-            std::filesystem::path pluginDir(info.dli_fname);
-            pluginDir = pluginDir.parent_path();
-            return (pluginDir / relativePath).string();
-        }
-        return relativePath;
-    }
     
     // Helper methods
     std::string getParentProcess(pid_t pid) {
@@ -217,16 +205,9 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
     if (!impl_->yaraEngine->initialize()) {
         logger.log(LogLevel::WARNING, "YARA engine initialization failed, continuing without YARA", "Zer0");
     } else {
-        // Load default rules - temporarily hardcoded absolute path
-        std::string rulesPath = "/home/rei/sentinelFS_demo/SentinelFS/SentinelFS/plugins/zer0/rules/default.yar";
-        
-        logger.log(LogLevel::INFO, "Attempting to load YARA rules from: " + rulesPath, "Zer0");
-        
-        if (!impl_->yaraEngine->loadRules(rulesPath)) {
-            logger.log(LogLevel::WARNING, "Failed to load YARA rules from: " + rulesPath, "Zer0");
-        } else {
-            logger.log(LogLevel::INFO, "Successfully loaded YARA rules from: " + rulesPath, "Zer0");
-            logger.log(LogLevel::INFO, "YARA rules count: " + std::to_string(impl_->yaraEngine->getRulesCount()), "Zer0");
+        // Load default rules
+        if (!impl_->config.yaraRulesPath.empty()) {
+            impl_->yaraEngine->loadRules(impl_->config.yaraRulesPath);
         }
     }
     
@@ -295,53 +276,6 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
                 auto behaviorResult = checkBehavior();
                 if (behaviorResult.level >= Zer0::ThreatLevel::MEDIUM) {
                     handleThreat(behaviorResult);
-                }
-            } catch (...) {}
-        });
-        
-        // Subscribe to status requests
-        eventBus->subscribe("zer0.get_status", [this](const std::any& data) {
-            auto& logger = Logger::instance();
-            logger.log(LogLevel::DEBUG, "Zer0 received status request", "Zer0");
-            
-            try {
-                // Create status JSON with actual stats
-                std::ostringstream status;
-                status << "{";
-                status << "\"enabled\":true,";
-                status << "\"filesAnalyzed\":" << impl_->stats.filesAnalyzed << ",";
-                status << "\"threatsDetected\":" << impl_->stats.threatsDetected << ",";
-                
-                // YARA stats
-                if (impl_->yaraEngine) {
-                    status << "\"yaraRulesLoaded\":" << impl_->yaraEngine->getRulesCount() << ",";
-                    status << "\"yaraFilesScanned\":" << impl_->yaraEngine->getFilesScanned() << ",";
-                    status << "\"yaraMatchesFound\":" << impl_->yaraEngine->getMatchesFound() << ",";
-                } else {
-                    status << "\"yaraRulesLoaded\":0,";
-                    status << "\"yaraFilesScanned\":0,";
-                    status << "\"yaraMatchesFound\":0,";
-                }
-                
-                // ML stats
-                if (impl_->mlEngine) {
-                    status << "\"mlModelLoaded\":" << (impl_->mlEngine->isModelLoaded() ? "true" : "false") << ",";
-                    status << "\"mlSamplesProcessed\":" << impl_->mlEngine->getSamplesProcessed() << ",";
-                    status << "\"mlAnomaliesDetected\":" << impl_->mlEngine->getAnomaliesDetected() << ",";
-                    status << "\"mlAvgAnomalyScore\":" << std::fixed << std::setprecision(2) << impl_->mlEngine->getAvgAnomalyScore();
-                } else {
-                    status << "\"mlModelLoaded\":false,";
-                    status << "\"mlSamplesProcessed\":0,";
-                    status << "\"mlAnomaliesDetected\":0,";
-                    status << "\"mlAvgAnomalyScore\":0.00";
-                }
-                
-                status << "}";
-                
-                // Publish status response
-                if (impl_->eventBus) {
-                    impl_->eventBus->publish("zer0.status", status.str());
-                    logger.log(LogLevel::DEBUG, "Zer0 published status: " + status.str(), "Zer0");
                 }
             } catch (...) {}
         });
@@ -750,29 +684,6 @@ void Zer0Plugin::whitelistHash(const std::string& hash) {
 
 void Zer0Plugin::setDetectionCallback(DetectionCallback callback) {
     impl_->detectionCallback = std::move(callback);
-}
-
-Zer0Plugin::Stats Zer0Plugin::getStats() const {
-    std::lock_guard<std::mutex> lock(impl_->statsMutex);
-    Zer0Plugin::Stats stats = impl_->stats;
-    
-    // Get YARA statistics
-    if (impl_->yaraEngine) {
-        stats.yaraRulesLoaded = impl_->yaraEngine->getRulesCount();
-        stats.yaraFilesScanned = impl_->yaraEngine->getFilesScanned();
-        stats.yaraMatchesFound = impl_->yaraEngine->getMatchesFound();
-    }
-    
-    // Get ML statistics
-    if (impl_->mlEngine) {
-        auto mlStats = impl_->mlEngine->getStats();
-        stats.mlModelLoaded = true;
-        stats.mlSamplesProcessed = mlStats.samplesProcessed;
-        stats.mlAnomaliesDetected = mlStats.anomaliesDetected;
-        stats.mlAvgAnomalyScore = mlStats.avgAnomalyScore;
-    }
-    
-    return stats;
 }
 
 bool Zer0Plugin::quarantineFile(const std::string& path) {

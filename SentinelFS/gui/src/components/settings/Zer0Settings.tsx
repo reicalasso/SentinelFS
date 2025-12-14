@@ -94,8 +94,6 @@ export function Zer0Settings({ onLog }: Zer0SettingsProps) {
   const [trainingProgress, setTrainingProgress] = useState({ current: 0, total: 0, file: '' })
 
   useEffect(() => {
-    // Ensure YARA is always enabled by default
-    setConfig(prev => ({ ...prev, yaraEnabled: true }))
     loadZer0Status()
   }, [])
 

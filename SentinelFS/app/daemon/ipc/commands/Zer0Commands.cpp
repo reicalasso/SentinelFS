@@ -2,7 +2,6 @@
 #include "../../DaemonCore.h"
 #include "Logger.h"
 #include "IPlugin.h"
-#include "../../plugins/zer0/include/Zer0Plugin.h"
 #include <sstream>
 #include <filesystem>
 #include <thread>
@@ -24,6 +23,29 @@ std::string IPCHandler::handleZer0Status() {
         return "{\"success\": true, \"type\": \"ZER0_STATUS\", \"payload\": {\"enabled\": false}}\n";
     }
     
+    // Request status from plugin via EventBus
+    if (eventBus) {
+        // Subscribe to receive status (one-time)
+        static bool subscribed = false;
+        if (!subscribed) {
+            eventBus->subscribe("zer0.status", [](const std::any& data) {
+                try {
+                    std::lock_guard<std::mutex> lock(s_statusMutex);
+                    s_zer0StatusJson = std::any_cast<std::string>(data);
+                    s_statusReceived = true;
+                } catch (...) {}
+            });
+            subscribed = true;
+        }
+        
+        // Request status
+        s_statusReceived = false;
+        eventBus->publish("zer0.get_status", std::string{});
+        
+        // Wait briefly for response (status is published synchronously)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    
     std::ostringstream ss;
     ss << "{\n";
     ss << "  \"success\": true,\n";
@@ -40,49 +62,13 @@ std::string IPCHandler::handleZer0Status() {
     ss << "    \"yaraEnabled\": true,\n";
     ss << "    \"autoResponseEnabled\": true,\n";
     
-    // Get stats directly from plugin
-    try {
-        // Cast to Zer0Plugin to access getStats()
-        auto* zer0Plugin = static_cast<Zer0Plugin*>(zer0);
-        auto stats = zer0Plugin->getStats();
-        ss << "    \"pluginStats\": {";
-        ss << "\"enabled\":true,";
-        ss << "\"filesAnalyzed\":" << stats.filesAnalyzed << ",";
-        ss << "\"threatsDetected\":" << stats.threatsDetected << ",";
-        ss << "\"yaraRulesLoaded\":" << stats.yaraRulesLoaded << ",";
-        ss << "\"yaraFilesScanned\":" << stats.yaraFilesScanned << ",";
-        ss << "\"yaraMatchesFound\":" << stats.yaraMatchesFound << ",";
-        ss << "\"mlModelLoaded\":" << (stats.mlModelLoaded ? "true" : "false") << ",";
-        ss << "\"mlSamplesProcessed\":" << stats.mlSamplesProcessed << ",";
-        ss << "\"mlAnomaliesDetected\":" << stats.mlAnomaliesDetected << ",";
-        ss << "\"mlAvgAnomalyScore\":" << std::fixed << std::setprecision(2) << stats.mlAvgAnomalyScore;
-        ss << "},\n";
-    } catch (...) {
-        // Fallback to EventBus if direct method fails
-        if (eventBus) {
-            // Subscribe to receive status (one-time)
-            static bool subscribed = false;
-            if (!subscribed) {
-                eventBus->subscribe("zer0.status", [](const std::any& data) {
-                    try {
-                        std::lock_guard<std::mutex> lock(s_statusMutex);
-                        s_zer0StatusJson = std::any_cast<std::string>(data);
-                        s_statusReceived = true;
-                    } catch (...) {}
-                });
-                subscribed = true;
-            }
-            
-            // Request status
-            s_statusReceived = false;
-            eventBus->publish("zer0.get_status", std::string{});
-            
-            // Wait briefly for response (status is published synchronously)
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        
+    // Include stats from plugin if received
+    {
         std::lock_guard<std::mutex> lock(s_statusMutex);
         if (s_statusReceived && !s_zer0StatusJson.empty()) {
+            // Parse and include the stats from plugin
+            // The plugin sends: {"enabled":true,"filesAnalyzed":X,...}
+            // We need to extract and include the relevant parts
             ss << "    \"pluginStats\": " << s_zer0StatusJson << ",\n";
         }
     }

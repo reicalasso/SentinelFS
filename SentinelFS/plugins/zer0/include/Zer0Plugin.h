@@ -132,10 +132,6 @@ struct BehaviorEvent {
  * @brief Configuration for Zer0
  */
 struct Zer0Config {
-    // YARA rules configuration
-    std::string yaraRulesPath{"plugins/zer0/rules/default.yar"};
-    std::string yaraRulesUrl;
-    
     // Entropy thresholds by category
     std::map<FileCategory, double> entropyThresholds{
         {FileCategory::TEXT, 6.0},
@@ -266,17 +262,6 @@ public:
         uint64_t filesQuarantined{0};
         uint64_t falsePositives{0};
         std::map<Zer0::ThreatType, uint64_t> threatsByType;
-        
-        // YARA statistics
-        uint64_t yaraRulesLoaded{0};
-        uint64_t yaraFilesScanned{0};
-        uint64_t yaraMatchesFound{0};
-        
-        // ML statistics
-        bool mlModelLoaded{false};
-        uint64_t mlSamplesProcessed{0};
-        uint64_t mlAnomaliesDetected{0};
-        double mlAvgAnomalyScore{0.0};
         std::map<Zer0::ThreatLevel, uint64_t> threatsByLevel;
     };
     Stats getStats() const;
