@@ -1,0 +1,11 @@
+id,name,email,department,salary,hire_date,status
+1,John Smith,john.smith@company.com,Engineering,85000,2020-03-15,active
+2,Jane Doe,jane.doe@company.com,Marketing,72000,2019-07-22,active
+3,Bob Johnson,bob.j@company.com,Sales,68000,2021-01-10,active
+4,Alice Williams,alice.w@company.com,Engineering,92000,2018-11-05,active
+5,Charlie Brown,charlie.b@company.com,HR,65000,2022-04-18,active
+6,Diana Ross,diana.r@company.com,Finance,78000,2020-08-30,inactive
+7,Edward Chen,edward.c@company.com,Engineering,88000,2019-02-14,active
+8,Fiona Garcia,fiona.g@company.com,Marketing,71000,2021-06-25,active
+9,George Wilson,george.w@company.com,Sales,75000,2020-12-01,active
+10,Helen Martinez,helen.m@company.com,Engineering,95000,2017-09-08,active
