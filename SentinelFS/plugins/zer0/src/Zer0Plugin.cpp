@@ -150,8 +150,16 @@ Zer0Plugin::Zer0Plugin() : impl_(std::make_unique<Impl>()) {
     const char* home = std::getenv("HOME");
     if (home) {
         impl_->quarantineDir = std::string(home) + "/.local/share/sentinelfs/zer0_quarantine";
+        impl_->rulesDir = std::string(home) + "/.local/share/sentinelfs/zer0_rules";
     } else {
         impl_->quarantineDir = "/tmp/zer0_quarantine";
+        impl_->rulesDir = "/tmp/zer0_rules";
+    }
+    
+    // Also check for rules in plugin directory
+    std::string pluginRulesDir = "/home/rei/sentinelFS_demo/SentinelFS/SentinelFS/plugins/zer0/rules";
+    if (std::filesystem::exists(pluginRulesDir)) {
+        impl_->rulesDir = pluginRulesDir;
     }
 }
 
@@ -235,11 +243,28 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
         });
     }
     
+    // Initialize YARA scanner early
+    impl_->yaraScanner = std::make_unique<YaraScanner>();
+    impl_->yaraScanner->initialize();
+    
+    // Load YARA rules
+    std::string defaultRules = impl_->rulesDir + "/default.yar";
+    if (std::filesystem::exists(defaultRules)) {
+        if (impl_->yaraScanner->loadRulesFromFile(defaultRules)) {
+            impl_->yaraScanner->compileRules();
+            logger.log(LogLevel::INFO, "YARA rules loaded: " + std::to_string(impl_->yaraScanner->getRuleCount()) + " rules from " + defaultRules, "Zer0");
+        }
+    } else {
+        logger.log(LogLevel::WARN, "YARA rules file not found: " + defaultRules, "Zer0");
+    }
+    
     logger.log(LogLevel::INFO, "Zer0 initialized successfully", "Zer0");
     logger.log(LogLevel::INFO, "  - Magic byte validation: enabled", "Zer0");
     logger.log(LogLevel::INFO, "  - Behavioral analysis: enabled", "Zer0");
+    logger.log(LogLevel::INFO, "  - YARA scanning: " + std::string(impl_->yaraScanner ? "enabled" : "disabled"), "Zer0");
     logger.log(LogLevel::INFO, "  - File type awareness: enabled", "Zer0");
     logger.log(LogLevel::INFO, "  - Quarantine directory: " + impl_->quarantineDir, "Zer0");
+    logger.log(LogLevel::INFO, "  - Rules directory: " + impl_->rulesDir, "Zer0");
     
     return true;
 }
@@ -441,7 +466,58 @@ DetectionResult Zer0Plugin::analyzeFile(const std::string& path, pid_t pid, cons
         }
     }
     
-    // 7. Record event for behavioral analysis
+    // 7. YARA scanning for malware signatures
+    if (impl_->yaraScanner && impl_->yaraScanner->getRuleCount() > 0) {
+        auto yaraResult = impl_->yaraScanner->scanFile(path);
+        if (!yaraResult.matches.empty()) {
+            // Find the highest severity match
+            std::string highestSeverity = "low";
+            std::string matchedRules;
+            std::string matchedCategory;
+            
+            for (const auto& match : yaraResult.matches) {
+                if (!matchedRules.empty()) matchedRules += ", ";
+                matchedRules += match.ruleName;
+                
+                if (match.severity == "critical") {
+                    highestSeverity = "critical";
+                    matchedCategory = match.category;
+                } else if (match.severity == "high" && highestSeverity != "critical") {
+                    highestSeverity = "high";
+                    matchedCategory = match.category;
+                } else if (match.severity == "medium" && highestSeverity != "critical" && highestSeverity != "high") {
+                    highestSeverity = "medium";
+                    matchedCategory = match.category;
+                }
+            }
+            
+            // Set threat level based on YARA match severity
+            if (highestSeverity == "critical") {
+                result.level = ThreatLevel::CRITICAL;
+                result.type = ThreatType::KNOWN_MALWARE_HASH;
+            } else if (highestSeverity == "high") {
+                result.level = ThreatLevel::HIGH;
+                result.type = ThreatType::KNOWN_MALWARE_HASH;
+            } else if (highestSeverity == "medium") {
+                result.level = ThreatLevel::MEDIUM;
+                result.type = ThreatType::ANOMALOUS_BEHAVIOR;
+            } else {
+                result.level = ThreatLevel::LOW;
+                result.type = ThreatType::ANOMALOUS_BEHAVIOR;
+            }
+            
+            result.confidence = 0.9;
+            result.description = "YARA match: " + matchedRules;
+            result.details["yara_rules"] = matchedRules;
+            result.details["yara_category"] = matchedCategory;
+            result.details["yara_severity"] = highestSeverity;
+            
+            logger.log(LogLevel::WARN, "🔍 YARA match [" + highestSeverity + "]: " + path + " (" + matchedRules + ")", "Zer0");
+            return result;
+        }
+    }
+    
+    // 8. Record event for behavioral analysis
     BehaviorEvent event;
     event.path = path;
     event.eventType = "MODIFY";
