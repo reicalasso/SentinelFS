@@ -188,57 +188,7 @@ export function DiscoveryPanel({
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-        {/* Local Network Discovery */}
-        <div className="discovery-toggle-card group">
-          <div className="discovery-toggle-bg"></div>
-          
-          <div className="relative">
-            <div className="font-semibold flex items-center gap-2">
-              <Wifi className="w-4 h-4 text-primary" />
-              UDP Broadcast
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary">LAN</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5">
-              Discover peers on local network via UDP broadcast
-            </div>
-          </div>
-          <div 
-            className={`discovery-toggle ${discoverySettings.udp ? 'discovery-toggle-on' : 'discovery-toggle-off'}`}
-            onClick={() => onToggleSetting('udp')}
-          >
-            <div className={`discovery-toggle-knob ${discoverySettings.udp ? 'translate-x-7' : 'translate-x-1'}`}></div>
-          </div>
-        </div>
-        
-        {/* Relay Transport */}
-        <div className="discovery-toggle-card discovery-toggle-card-accent group">
-          <div className="discovery-toggle-bg discovery-toggle-bg-accent"></div>
-          
-          <div className="relative">
-            <div className="font-semibold flex items-center gap-2">
-              <Globe className="w-4 h-4 text-accent" />
-              Relay Transport
-              {discoverySettings.tcp && (
-                <span className={`discovery-relay-status ${
-                  relayStatus.connected ? 'discovery-relay-status-connected' : 'discovery-relay-status-connecting'
-                }`}>
-                  {relayStatus.connected ? 'Connected' : 'Connecting...'}
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5">
-              NAT traversal via relay server (fallback)
-            </div>
-          </div>
-          <div 
-            className={`discovery-toggle ${discoverySettings.tcp ? 'discovery-toggle-on-accent' : 'discovery-toggle-off'}`}
-            onClick={() => onToggleSetting('tcp')}
-          >
-            <div className={`discovery-toggle-knob ${discoverySettings.tcp ? 'translate-x-7' : 'translate-x-1'}`}></div>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Session Code Section */}
       <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20">

@@ -36,10 +36,6 @@ export function FilesHero({ stats, onAddFolder, formatSize }: FilesHeroProps) {
                   IronRoot
                 </span>
               </h2>
-              <p className="files-hero-subtitle">
-                <span className="dot-success animate-pulse"></span>
-                Advanced filesystem monitoring with debouncing & xattr
-              </p>
             </div>
           </div>
           
