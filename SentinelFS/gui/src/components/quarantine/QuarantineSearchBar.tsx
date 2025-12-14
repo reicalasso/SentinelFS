@@ -56,7 +56,7 @@ export function QuarantineSearchBar({
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Tümü ({totalThreats})
+            All ({totalThreats})
           </button>
           <button
             onClick={() => onViewModeChange('active')}
@@ -66,7 +66,7 @@ export function QuarantineSearchBar({
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Aktif ({activeThreats})
+            Waiting For Activity ({activeThreats})
           </button>
           <button
             onClick={() => onViewModeChange('safe')}
@@ -76,7 +76,7 @@ export function QuarantineSearchBar({
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Güvenli İşaretli ({totalThreats - activeThreats})
+            Safe ({totalThreats - activeThreats})
           </button>
         </div>
 

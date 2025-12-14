@@ -27,23 +27,23 @@ const strategyDescriptions: Record<TransportStrategy, string> = {
 
 const transportInfo: Record<string, { description: string; useCase: string; color: string }> = {
   tcp: {
-    description: 'Güvenilir, garanti teslimat',
-    useCase: 'Büyük dosyalar, güvenilir ağ',
+    description: 'Reliable, Guaranteed delivery',
+    useCase: 'Large files, reliable networks',
     color: 'emerald'
   },
   quic: {
-    description: 'Düşük gecikme, 0-RTT bağlantı',
-    useCase: 'Varsayılan, hızlı ağlar',
+    description: 'Low latency, 0-RTT connection',
+    useCase: 'Default, fast networks',
     color: 'orange'
   },
   relay: {
-    description: 'NAT/Firewall arkası için köprü',
+    description: 'Bridge for NAT/Firewall',
     useCase: 'Firewall/Symmetric NAT',
     color: 'violet'
   },
   webrtc: {
-    description: 'Tarayıcı tabanlı P2P',
-    useCase: 'Web arayüzü, NAT traversal dahili',
+    description: 'Browser-based P2P',
+    useCase: 'Web interface, NAT traversal internal',
     color: 'cyan'
   }
 }

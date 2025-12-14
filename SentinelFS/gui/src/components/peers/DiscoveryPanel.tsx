@@ -301,7 +301,7 @@ export function DiscoveryPanel({
             <div className="flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-orange-400" />
               <span className="font-medium text-orange-300">QUIC</span>
-              <span className="text-[10px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-300">Varsayılan</span>
+              <span className="text-[10px] px-1 py-0.5 rounded bg-orange-500/20 text-orange-300">Default</span>
               {transportStatus.quic.listening && <span className="text-muted-foreground">(listening)</span>}
             </div>
           )}
