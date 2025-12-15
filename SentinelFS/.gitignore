@@ -8,3 +8,6 @@ sentinel.db
 logs/
 *.log
 deliverables/presentation/PRESENTATIONN.md
+SentinelFS/sentinel.db-shm
+SentinelFS/sentinel.db-wal
+SentinelFS/sentinel.db-journal
