@@ -442,6 +442,8 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
 bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remotePeerId) {
     auto& logger = Logger::instance();
     
+    logger.log(LogLevel::DEBUG, "Starting handshake - isServer: " + std::string(isServer ? "true" : "false"), "TCPTransport");
+    
     if (!sessionManager_) {
         logger.log(LogLevel::ERROR, "No session manager for handshake", "TCPTransport");
         return false;
@@ -451,6 +453,7 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
     
     if (isServer) {
         // Receive client hello
+        logger.log(LogLevel::DEBUG, "Server waiting for client HELLO", "TCPTransport");
         fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(socket, &readfds);
@@ -464,13 +467,18 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
         }
         
         ssize_t len = recv(socket, buffer, sizeof(buffer) - 1, 0);
-        if (len <= 0) return false;
+        if (len <= 0) {
+            logger.log(LogLevel::DEBUG, "Failed to receive HELLO message", "TCPTransport");
+            return false;
+        }
         buffer[len] = '\0';
         
         std::string hello(buffer);
+        logger.log(LogLevel::DEBUG, "Received: " + hello, "TCPTransport");
         
         // Parse: FALCON_HELLO|VERSION|PEER_ID|SESSION_CODE|NONCE
         if (hello.find("FALCON_HELLO|") != 0 && hello.find("SENTINEL_HELLO|") != 0) {
+            logger.log(LogLevel::DEBUG, "Invalid HELLO format", "TCPTransport");
             return false;
         }
         
@@ -481,34 +489,56 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
             parts.push_back(part);
         }
         
-        if (parts.size() < 4) return false;
+        if (parts.size() < 4) {
+            logger.log(LogLevel::DEBUG, "Invalid HELLO parts count: " + std::to_string(parts.size()), "TCPTransport");
+            return false;
+        }
         
         remotePeerId = parts[2];
         std::string sessionCode = parts[3];
         
+        logger.log(LogLevel::DEBUG, "Peer ID: " + remotePeerId + ", Session: " + sessionCode, "TCPTransport");
+        
         // Verify session code
         if (!sessionManager_->verifySessionCode(sessionCode)) {
+            logger.log(LogLevel::WARN, "Invalid session code from " + remotePeerId, "TCPTransport");
             std::string reject = "FALCON_REJECT|Invalid session code";
             ::send(socket, reject.c_str(), reject.length(), 0);
             return false;
         }
         
+        logger.log(LogLevel::DEBUG, "Session code verified, getting local peer ID", "TCPTransport");
+        
+        std::string localPeerId = sessionManager_->getLocalPeerId();
+        logger.log(LogLevel::DEBUG, "Got local peer ID: " + localPeerId, "TCPTransport");
+        
         // Send welcome
-        std::string welcome = "FALCON_WELCOME|1|" + sessionManager_->getLocalPeerId();
+        std::string welcome = "FALCON_WELCOME|1|" + localPeerId;
+        logger.log(LogLevel::DEBUG, "Sending WELCOME message", "TCPTransport");
+        
         if (::send(socket, welcome.c_str(), welcome.length(), 0) < 0) {
+            logger.log(LogLevel::DEBUG, "Failed to send WELCOME", "TCPTransport");
             return false;
         }
         
+        logger.log(LogLevel::DEBUG, "Handshake complete (server)", "TCPTransport");
         return true;
     } else {
+        logger.log(LogLevel::DEBUG, "Client sending HELLO", "TCPTransport");
+        
         // Client: send hello
         std::string sessionCode = sessionManager_->getSessionCode();
         std::string localPeerId = sessionManager_->getLocalPeerId();
         
         std::string hello = "FALCON_HELLO|1|" + localPeerId + "|" + sessionCode + "|";
+        logger.log(LogLevel::DEBUG, "Sending: " + hello, "TCPTransport");
+        
         if (::send(socket, hello.c_str(), hello.length(), 0) < 0) {
+            logger.log(LogLevel::DEBUG, "Failed to send HELLO", "TCPTransport");
             return false;
         }
+        
+        logger.log(LogLevel::DEBUG, "Waiting for server response", "TCPTransport");
         
         // Receive response
         fd_set readfds;
@@ -520,14 +550,19 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
         tv.tv_usec = 0;
         
         if (select(socket + 1, &readfds, nullptr, nullptr, &tv) <= 0) {
+            logger.log(LogLevel::DEBUG, "Timeout waiting for server response", "TCPTransport");
             return false;
         }
         
         ssize_t len = recv(socket, buffer, sizeof(buffer) - 1, 0);
-        if (len <= 0) return false;
+        if (len <= 0) {
+            logger.log(LogLevel::DEBUG, "Failed to receive server response", "TCPTransport");
+            return false;
+        }
         buffer[len] = '\0';
         
         std::string response(buffer);
+        logger.log(LogLevel::DEBUG, "Received: " + response, "TCPTransport");
         
         if (response.find("FALCON_REJECT|") == 0 || response.find("SENTINEL_REJECT|") == 0) {
             logger.log(LogLevel::WARN, "Connection rejected: " + response, "TCPTransport");
@@ -535,6 +570,7 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
         }
         
         if (response.find("FALCON_WELCOME|") != 0 && response.find("SENTINEL_WELCOME|") != 0) {
+            logger.log(LogLevel::DEBUG, "Invalid WELCOME format", "TCPTransport");
             return false;
         }
         
@@ -548,8 +584,10 @@ bool TCPTransport::performHandshake(int socket, bool isServer, std::string& remo
         
         if (parts.size() >= 3) {
             remotePeerId = parts[2];
+            logger.log(LogLevel::DEBUG, "Handshake complete (client) - connected to " + remotePeerId, "TCPTransport");
         } else {
             remotePeerId = "UNKNOWN";
+            logger.log(LogLevel::DEBUG, "Handshake complete but unknown peer ID", "TCPTransport");
         }
         
         return true;

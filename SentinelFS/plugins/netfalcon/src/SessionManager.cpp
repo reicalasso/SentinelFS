@@ -22,7 +22,7 @@ void SessionManager::setLocalPeerId(const std::string& peerId) {
 }
 
 std::string SessionManager::getLocalPeerId() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // No lock needed - localPeerId_ is set once during initialization
     return localPeerId_;
 }
 
@@ -50,7 +50,7 @@ void SessionManager::setSessionCode(const std::string& sessionCode, bool enableE
 }
 
 std::string SessionManager::getSessionCode() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    // No lock needed - primarySessionCode_ is set once during initialization
     return primarySessionCode_;
 }
 
