@@ -227,8 +227,33 @@ int main(int argc, char* argv[]) {
     PathUtils::ensureDirectory(dbPath.parent_path());
 
     setenv("SENTINEL_DB_PATH", dbPath.c_str(), 1);
+    
+    // Read IPC security configuration from file
+    IPCSecurityConfig ipcSecurityConfig;
+    
+    // Parse IPC settings from config
+    std::string ipcSocketPath = fileConfig.get("ipc_socket_path", socketPath.string());
+    if (!ipcSocketPath.empty()) {
+        socketPath = ipcSocketPath;
+    }
+    
+    // Parse socket permissions (octal string to mode_t)
+    std::string ipcSocketPerms = fileConfig.get("ipc_socket_permissions", "0660");
+    try {
+        ipcSecurityConfig.socketPermissions = static_cast<mode_t>(std::stoi(ipcSocketPerms, nullptr, 8));
+    } catch (const std::exception& e) {
+        logger.warn("Invalid ipc_socket_permissions value, using default 0660", "Daemon");
+        ipcSecurityConfig.socketPermissions = 0660;
+    }
+    
+    ipcSecurityConfig.requireSameUid = fileConfig.getBool("ipc_require_same_uid", true);
+    ipcSecurityConfig.requiredGroup = fileConfig.get("ipc_allowed_group", "");
+    ipcSecurityConfig.auditConnections = fileConfig.getBool("ipc_audit_connections", false);
+    ipcSecurityConfig.maxCommandsPerMinute = fileConfig.getInt("ipc_rate_limit", 0);
+    
     IPCHandler ipcHandler(
         socketPath.string(),
+        ipcSecurityConfig,
         daemon.getNetworkPlugin(),
         daemon.getStoragePlugin(),
         daemon.getFilesystemPlugin(),

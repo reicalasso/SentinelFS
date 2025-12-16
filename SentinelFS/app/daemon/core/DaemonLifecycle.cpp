@@ -233,15 +233,6 @@ bool DaemonCore::initialize() {
         // Non-critical, continue without versioning
     }
     
-    // Initialize file version manager
-    try {
-        versionManager_ = std::make_unique<FileVersionManager>(watchDir);
-        logger.info("File version manager initialized", "DaemonCore");
-    } catch (const std::exception& e) {
-        logger.error("Failed to initialize version manager: " + std::string(e.what()), "DaemonCore");
-        // Non-critical, continue without versioning
-    }
-    
     logger.info("Daemon initialization complete", "DaemonCore");
     return true;
 }
@@ -279,6 +270,9 @@ void DaemonCore::shutdown() {
     logger.info("Shutting down daemon...", "DaemonCore");
     
     running_ = false;
+    
+    // Stop all managed threads before shutting down plugins
+    stopAllThreads();
     
     // Shutdown in reverse order of initialization
     try {
@@ -362,17 +356,23 @@ void DaemonCore::reconnectToKnownPeers() {
     
     logger.info("Attempting to reconnect to " + std::to_string(peersToConnect.size()) + " known peer(s)", "DaemonCore");
     
-    // Reconnect in a separate thread to not block startup
-    std::thread([this, peersToConnect]() {
+    // Reconnect as a managed thread to ensure proper cleanup
+    std::thread reconnectThread([this, peersToConnect]() {
         auto& logger = Logger::instance();
         
         // Wait a bit for network to fully initialize
         std::this_thread::sleep_for(std::chrono::seconds(2));
         
         for (const auto& [peerId, address, port] : peersToConnect) {
+            // Check if daemon is still running before accessing members
+            if (!running_) {
+                logger.info("Reconnect thread stopping - daemon shutting down", "DaemonCore");
+                break;
+            }
+            
             logger.info("Reconnecting to peer: " + peerId + " at " + address + ":" + std::to_string(port), "DaemonCore");
             
-            if (network_->connectToPeer(address, port)) {
+            if (network_ && network_->connectToPeer(address, port)) {
                 logger.info("Successfully reconnected to peer: " + peerId, "DaemonCore");
             } else {
                 logger.warn("Failed to reconnect to peer: " + peerId + " - will retry on discovery", "DaemonCore");
@@ -385,8 +385,19 @@ void DaemonCore::reconnectToKnownPeers() {
             
             // Small delay between connection attempts
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            
+            // Check again after delay
+            if (!running_) {
+                break;
+            }
         }
-    }).detach();
+    });
+    
+    // Store the thread in managed threads for proper cleanup
+    {
+        std::lock_guard<std::mutex> lock(threadMutex_);
+        managedThreads_.push_back(std::move(reconnectThread));
+    }
 }
 
 void DaemonCore::cleanupStalePeers() {

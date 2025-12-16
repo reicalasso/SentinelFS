@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Modern Desktop GUI for SentinelFS",
   "author": "SentinelFS Team",
-  "license": "MIT",
+  "license": "SPL-1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/reicalasso/SentinelFS.git"

@@ -4,10 +4,12 @@
 
 Built with **Modern C++ (C++17/20)** for the core daemon and **Electron/React** for the user interface, SentinelFS combines raw performance with a modern user experience.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+> **Note:** SentinelFS is currently Linux-only. The codebase uses Linux-specific features such as Unix domain sockets, dlopen/dlsym for plugin loading, and other POSIX APIs. Windows and macOS support is not yet implemented.
+
+![License](https://img.shields.io/badge/license-SPL-green.svg)
 ![C++](https://img.shields.io/badge/C++-17%2F20-00599C?logo=c%2B%2B)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
 
 ---
 
@@ -38,7 +40,6 @@ Built with **Modern C++ (C++17/20)** for the core daemon and **Electron/React** 
 ### 🧩 Modular Architecture
 *   **Plugin System:** Core functionality (Network, Storage, Filesystem, ML) is decoupled into independent plugins.
 *   **Anomaly Detection:** Integrated **Machine Learning (ONNX)** module detects suspicious file patterns (e.g., ransomware activity) in real-time.
-*   **Cross-Platform:** Seamlessly sync between Windows, Linux, and macOS devices.
 
 ---
 
