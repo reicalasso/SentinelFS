@@ -1,150 +1,137 @@
 # 🛡️ SentinelFS
 
-**SentinelFS** is a high-performance, secure, and modular **P2P file synchronization system** designed for privacy and efficiency. It eliminates the need for central servers, allowing devices to sync data directly with military-grade encryption.
+**Güvenli P2P Dosya Senkronizasyon Sistemi**
 
-Built with **Modern C++ (C++17/20)** for the core daemon and **Electron/React** for the user interface, SentinelFS combines raw performance with a modern user experience.
-
-> **Note:** SentinelFS is currently Linux-only. The codebase uses Linux-specific features such as Unix domain sockets, dlopen/dlsym for plugin loading, and other POSIX APIs. Windows and macOS support is not yet implemented.
-
-![License](https://img.shields.io/badge/license-SPL-green.svg)
-![C++](https://img.shields.io/badge/C++-17%2F20-00599C?logo=c%2B%2B)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
-![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
+SentinelFS, merkezi sunucu gerektirmeyen, cihazlar arasında doğrudan senkronizasyon sağlayan güvenli bir dosya senkronizasyon sistemidir. Askeri sınıfı şifreleme ile verilerinizi özel ve güvende tutar.
 
 ---
 
-## 📊 Project Statistics
+## ✨ Özellikler
 
-| Metric | Value |
-| :--- | :--- |
-| **Core Codebase (C++)** | ~16,600 Lines |
-| **UI Codebase (TypeScript)** | ~3,000 Lines |
-| **Total Source Files** | ~150 Files |
-| **Architecture** | Plugin-based P2P Mesh |
-| **Encryption** | AES-256-CBC + HMAC |
+### 🔒 Güvenlik
+- **Uçtan Uca Şifreleme:** AES-256-CBC ile tüm transferler şifrelenir
+- **Sıfır Bilgi:** Merkezi sunucu veri veya meta veri depolamaz
+- **Oturum Kodları:** Sadece yetkili cihazların ağa katılmasını sağlar
 
----
+### ⚡ Performans
+- **Delta Sync Motoru:** Sadece değişen blokları transfer eder, %99 bant genişliği tasarrufu
+- **Otomatik Ağ Yönetimi:** Bağlantıları otomatik olarak iyileştirir ve optimize eder
+- **Düşük Kaynak Kullanımı:** Arka planda verimli çalışır
 
-## 🚀 Key Features
-
-### 🔒 Security First
-*   **End-to-End Encryption:** All transfers are encrypted using **AES-256-CBC**.
-*   **Zero-Knowledge:** No central server stores your data or metadata.
-*   **Session Codes:** Secure handshake mechanism ensures only authorized devices join your mesh.
-
-### ⚡ High Performance
-*   **Delta Sync Engine:** Transfers only modified blocks using **Adler32** rolling checksums and **SHA-256** verification. Saves up to **99%** bandwidth on large files.
-*   **Auto-Remesh:** Intelligent network topology management that automatically heals connections and optimizes routes based on RTT and jitter.
-*   **Low Footprint:** Native C++ daemon runs efficiently in the background with minimal resource usage.
-
-### 🧩 Modular Architecture
-*   **Plugin System:** Core functionality (Network, Storage, Filesystem, ML) is decoupled into independent plugins.
-*   **Anomaly Detection:** Integrated **Machine Learning (ONNX)** module detects suspicious file patterns (e.g., ransomware activity) in real-time.
+### 🧩 Modüler Mimari
+- **Eklenti Sistemi:** Temel işlevler bağımsız eklentiler olarak ayrıştırılmıştır
+- **Makine Öğrenmesi:** Anomali tespiti ve fidye yazılımı koruması
 
 ---
 
-## 📸 Screenshots
-
-| Dashboard | Files | Transfers |
-|:---------:|:-----:|:---------:|
-| ![Dashboard](docs/images/dashboard.png) | ![Files](docs/images/files.png) | ![Transfers](docs/images/transfers.png) |
-
----
-
-## 🛠️ Technology Stack
+## 🏗️ Teknoloji
 
 ### Backend (Daemon)
-*   **Language:** C++17 / C++20
-*   **Networking:** Boost.Asio (Async I/O)
-*   **Storage:** SQLite3 (WAL mode enabled)
-*   **Crypto:** OpenSSL 1.1+
-*   **ML:** ONNX Runtime (Isolation Forest model)
+- **C++17/20** - Modern C++
+- **Boost.Asio** - Asenkron I/O
+- **SQLite3** - Veri depolama
+- **OpenSSL** - Şifreleme
+- **ONNX Runtime** - ML modelleri
 
 ### Frontend (GUI)
-*   **Framework:** Electron
-*   **UI Library:** React 18
-*   **Styling:** TailwindCSS
-*   **Language:** TypeScript
+- **Electron** - Çapraz platform arayüz
+- **React 18** - Modern UI
+- **TypeScript** - Tip güvenliği
+- **TailwindCSS** - Stiller
 
 ---
 
-## 📦 Repository Structure
+## � Proje Yapısı
 
 ```
 SentinelFS/
-├── app/                  # Application Entry Points
-│   ├── daemon/           # Main C++ Service (Plugin Manager, IPC)
-│   └── cli/              # Command Line Interface
-├── core/                 # Core Libraries & Interfaces
-│   ├── network/          # Delta Sync, Bandwidth Control, Auto-Remesh
-│   ├── security/         # Encryption, Handshake, Session Mgmt
-│   ├── sync/             # File Watcher Logic, Conflict Resolution
+├── app/                  # Uygulama Giriş Noktaları
+│   ├── daemon/           # Ana C++ Servisi
+│   └── cli/              # Komut Satırı Arayüzü
+├── core/                 # Çekirdek Kütüphaneler
+│   ├── network/          # Delta Sync, Bant Genişliği
+│   ├── security/         # Şifreleme, Oturum Yönetimi
+│   ├── sync/             # Dosya İzleyici, Çakışma Çözümü
 │   └── utils/            # ThreadPool, Logger, Config
-├── plugins/              # Modular Implementations
-│   ├── filesystem/       # OS-specific File Watchers (inotify, Win32)
-│   ├── network/          # TCP/UDP Socket Management
-│   ├── storage/          # SQLite Database Operations
-│   └── ml/               # Anomaly Detection (ONNX)
-├── gui/                  # User Interface
-│   ├── electron/         # Main Process
-│   └── src/              # Renderer Process (React)
-└── tests/                # Comprehensive Test Suite
-    ├── unit/             # Component tests
-    └── integration/      # End-to-end scenarios
+├── plugins/              # Modüler Eklentiler
+│   ├── filesystem/       # Dosya İzleyiciler
+│   ├── network/          - TCP/UDP Yönetimi
+│   ├── storage/          # Veritabanı İşlemleri
+│   └── ml/               # Anomali Tespiti
+├── gui/                  # Grafiksel Arayüz
+│   ├── electron/         # Ana Süreç
+│   └── src/              # Renderer Süreç (React)
+└── tests/                # Test Suite
 ```
 
 ---
 
-## 🔧 Build & Run Instructions
+## � Kurulum ve Çalıştırma
 
-### Prerequisites
-*   CMake 3.15+
-*   C++ Compiler (GCC 9+, Clang 10+, MSVC 2019+)
-*   Node.js 16+ & npm
-*   OpenSSL, SQLite3, Boost (Asio)
+### Gereksinimler
+- CMake 3.15+
+- C++ Derleyici (GCC 9+, Clang 10+)
+- Node.js 16+ & npm
+- OpenSSL, SQLite3, Boost (Asio)
 
-### Quick Start (Recommended)
+### Hızlı Başlangıç
 ```bash
-# Build and launch everything with one command:
+# Tek komutla derleme ve çalıştırma:
 ./scripts/start_safe.sh
 
-# Or with options:
-./scripts/start_safe.sh --daemon-only   # Only daemon, no GUI
-./scripts/start_safe.sh --rebuild       # Force clean rebuild
+# Seçeneklerle:
+./scripts/start_safe.sh --daemon-only   # Sadece daemon
+./scripts/start_safe.sh --rebuild       # Temiz derleme
 ```
 
-### Manual Build
+### Manuel Derleme
 
-**Building the Daemon:**
+**Daemon Derleme:**
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 make -j$(nproc)
 ```
 
-**Running the Daemon (with correct paths):**
+**Daemon Çalıştırma:**
 ```bash
 ./scripts/run_daemon.sh
-# Or manually:
+# Veya manuel:
 SENTINELFS_PLUGIN_DIR=./build/plugins \
 LD_LIBRARY_PATH=./build/core:$LD_LIBRARY_PATH \
 ./build/app/daemon/sentinel_daemon
 ```
 
-**Building & Running the GUI:**
+**GUI Derleme ve Çalıştırma:**
 ```bash
 cd gui
 npm install
-npm run dev    # Development mode (also starts daemon)
-npm run build  # Production build
+npm run dev    # Geliştirme modu
+npm run build  # Prodüksiyon
 ```
 
-### Configuration
-Config file: `~/.config/sentinelfs/sentinel.conf`
-Sync folder: `~/SentinelFS` (default)
+### Yapılandırma
+- Konfigürasyon: `~/.config/sentinelfs/sentinel.conf`
+- Senkronizasyon klasörü: `~/SentinelFS` (varsayılan)
 
 ---
 
-## 📄 License
+## � İstatistikler
 
-This project is licensed under the **SPL-1.0**. See the [LICENSE](LICENSE) file for details.
+| Metrik | Değer |
+|:-------|:------|
+| **C++ Kod Tabanı** | ~16,600 Satır |
+| **TypeScript Kod Tabanı** | ~3,000 Satır |
+| **Toplam Kaynak Dosya** | ~150 Dosya |
+| **Mimari** | Eklenti Tabanlı P2P Mesh |
+| **Şifreleme** | AES-256-CBC + HMAC |
+
+---
+
+## 📄 Lisans
+
+Bu proje **SPL-1.0** lisansı altındadır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+---
+
+*SentinelFS Team - Aralık 2025*
