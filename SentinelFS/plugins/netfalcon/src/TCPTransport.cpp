@@ -426,11 +426,11 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
         connections_[remotePeerId] = std::move(conn);
     }
     
-    // Start read thread - this handler thread will transform into the read thread
+    // Start read thread for this peer
     {
         std::lock_guard<std::mutex> lock(threadMutex_);
-        // Register this thread as the read thread for this peer
-        // Note: We can't move std::this_thread into the map, so we create a new joinable thread
+        // Create a new joinable thread for the read loop
+        // The handler thread is detached and will exit after this setup completes
         readThreads_[remotePeerId] = std::thread(&TCPTransport::readLoop, this, remotePeerId);
     }
     
