@@ -381,12 +381,8 @@ void TCPTransport::listenLoop() {
             
             logger.log(LogLevel::INFO, "Incoming connection from " + clientIp + ":" + std::to_string(clientPort), "TCPTransport");
             
-            // Start connection handler thread
-            {
-                std::lock_guard<std::mutex> lock(threadMutex_);
-                readThreads_["incoming_" + clientIp + ":" + std::to_string(clientPort)] = 
-                    std::thread(&TCPTransport::handleIncomingConnection, this, clientSocket, clientIp, clientPort);
-            }
+            // Start connection handler thread (detached - will register itself after handshake)
+            std::thread(&TCPTransport::handleIncomingConnection, this, clientSocket, clientIp, clientPort).detach();
         }
     }
 }
@@ -430,17 +426,11 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
         connections_[remotePeerId] = std::move(conn);
     }
     
-    // Start read thread
+    // Start read thread - this handler thread will transform into the read thread
     {
         std::lock_guard<std::mutex> lock(threadMutex_);
-        // Remove the temporary incoming handler thread entry
-        std::string tempKey = "incoming_" + clientIp + ":" + std::to_string(clientPort);
-        auto it = readThreads_.find(tempKey);
-        if (it != readThreads_.end()) {
-            it->second.join();  // Wait for handler to complete
-            readThreads_.erase(it);
-        }
-        // Start the actual read thread for the peer
+        // Register this thread as the read thread for this peer
+        // Note: We can't move std::this_thread into the map, so we create a new joinable thread
         readThreads_[remotePeerId] = std::thread(&TCPTransport::readLoop, this, remotePeerId);
     }
     
