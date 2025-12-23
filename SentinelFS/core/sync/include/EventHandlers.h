@@ -8,7 +8,8 @@
 #include <chrono>
 #include <memory>
 #include <filesystem>
-#include "EventBus.h"
+#include <thread>
+#include <EventBus.h>
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
@@ -104,6 +105,11 @@ private:
     // Pending changes queue (files modified while sync is paused)
     std::mutex pendingMutex_;
     std::vector<std::string> pendingChanges_;
+    
+    // Thread management for background operations
+    std::vector<std::thread> activeThreads_;
+    std::atomic<bool> shutdownRequested_{false};
+    std::mutex threadsMutex_;
     
     // Offline queue for operations when peers are unavailable
     std::unique_ptr<sfs::sync::OfflineQueue> offlineQueue_;

@@ -46,6 +46,11 @@ public:
     std::string quarantineDir;
     std::string rulesDir;
     
+    // Thread management
+    std::vector<std::thread> activeThreads;
+    std::atomic<bool> shutdownRequested{false};
+    std::mutex threadsMutex;
+    
     // Helpers
     double calculateEntropy(const std::vector<uint8_t>& data) {
         if (data.empty()) return 0.0;
@@ -189,7 +194,13 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
                 if (result.level >= ThreatLevel::MEDIUM) {
                     handleThreat(result);
                 }
-            } catch (...) {}
+            } catch (const std::exception& e) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    std::string("File analysis error: ") + e.what(), "Zer0");
+            } catch (...) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    "Unknown file analysis error", "Zer0");
+            }
         });
         
         eventBus->subscribe("FILE_MODIFIED", [this](const std::any& data) {
@@ -199,7 +210,13 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
                 if (result.level >= ThreatLevel::MEDIUM) {
                     handleThreat(result);
                 }
-            } catch (...) {}
+            } catch (const std::exception& e) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    std::string("File analysis error: ") + e.what(), "Zer0");
+            } catch (...) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    "Unknown file analysis error", "Zer0");
+            }
         });
         
         eventBus->subscribe("FILE_RENAMED", [this](const std::any& data) {
@@ -217,7 +234,13 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
                 if (behaviorResult.level >= ThreatLevel::MEDIUM) {
                     handleThreat(behaviorResult);
                 }
-            } catch (...) {}
+            } catch (const std::exception& e) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    std::string("File analysis error: ") + e.what(), "Zer0");
+            } catch (...) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    "Unknown file analysis error", "Zer0");
+            }
         });
         
         // Subscribe to ML training command
@@ -228,9 +251,12 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
                 logger.log(LogLevel::INFO, "Received training request for: " + directory, "Zer0");
                 
                 // Run training in background thread
-                std::thread([this, directory]() {
-                    trainModel(directory);
-                }).detach();
+                {
+                    std::lock_guard<std::mutex> lock(impl_->threadsMutex);
+                    impl_->activeThreads.emplace_back([this, directory]() {
+                        trainModel(directory);
+                    });
+                }
             } catch (const std::exception& e) {
                 Logger::instance().log(LogLevel::ERROR, 
                     std::string("Training event error: ") + e.what(), "Zer0");
@@ -273,9 +299,25 @@ void Zer0Plugin::shutdown() {
     auto& logger = Logger::instance();
     logger.log(LogLevel::INFO, "Shutting down Zer0", "Zer0");
     
+    // Signal shutdown to all threads
+    impl_->shutdownRequested = true;
+    
     if (impl_->behaviorAnalyzer) {
         impl_->behaviorAnalyzer->stop();
     }
+    
+    // Wait for all background threads to complete
+    {
+        std::lock_guard<std::mutex> lock(impl_->threadsMutex);
+        for (auto& thread : impl_->activeThreads) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+        impl_->activeThreads.clear();
+    }
+    
+    logger.log(LogLevel::INFO, "Zer0 shutdown complete", "Zer0");
 }
 
 void Zer0Plugin::setStoragePlugin(IStorageAPI* storage) {
@@ -785,7 +827,13 @@ void Zer0Plugin::handleThreat(const DetectionResult& result) {
             if (std::filesystem::exists(result.filePath)) {
                 fileSize = std::filesystem::file_size(result.filePath);
             }
-        } catch (...) {}
+        } catch (const std::exception& e) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    std::string("File analysis error: ") + e.what(), "Zer0");
+            } catch (...) {
+                Logger::instance().log(LogLevel::ERROR, 
+                    "Unknown file analysis error", "Zer0");
+            }
         
         // Save threat to database
         sqlite3* db = static_cast<sqlite3*>(impl_->storage->getDB());

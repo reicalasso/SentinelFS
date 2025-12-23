@@ -72,7 +72,20 @@ IPCHandler::IPCHandler(const std::string& socketPath,
 }
 
 IPCHandler::~IPCHandler() {
+    // Signal shutdown to all threads
+    shutdownRequested_ = true;
     stop();
+    
+    // Wait for all client threads to complete
+    {
+        std::lock_guard<std::mutex> lock(clientThreadsMutex_);
+        for (auto& thread : clientThreads_) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+        clientThreads_.clear();
+    }
 }
 
 void IPCHandler::initializeCommandHandlers() {
@@ -314,10 +327,15 @@ void IPCHandler::serverLoop() {
         int clientSocket = accept(serverSocket_, NULL, NULL);
         if (clientSocket < 0) continue;
         
-        std::thread([this, clientSocket]() {
+        // Start client handler thread
+        std::thread thread([this, clientSocket]() {
             handleClient(clientSocket);
             close(clientSocket);
-        }).detach();
+        });
+        {
+            std::lock_guard<std::mutex> lock(clientThreadsMutex_);
+            clientThreads_.push_back(std::move(thread));
+        }
     }
 }
 

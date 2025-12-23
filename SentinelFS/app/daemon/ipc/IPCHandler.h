@@ -153,6 +153,11 @@ private:
     std::atomic<bool> running_{false};
     std::thread serverThread_;
     
+    // Client thread management
+    std::vector<std::thread> clientThreads_;
+    std::mutex clientThreadsMutex_;
+    std::atomic<bool> shutdownRequested_{false};
+    
     // Security configuration
     IPCSecurityConfig securityConfig_;
     

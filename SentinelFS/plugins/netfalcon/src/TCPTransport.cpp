@@ -190,7 +190,7 @@ void TCPTransport::disconnect(const std::string& peerId) {
         auto it = readThreads_.find(peerId);
         if (it != readThreads_.end()) {
             if (it->second.joinable()) {
-                it->second.detach();
+                it->second.join();
             }
             readThreads_.erase(it);
         }
@@ -381,7 +381,12 @@ void TCPTransport::listenLoop() {
             
             logger.log(LogLevel::INFO, "Incoming connection from " + clientIp + ":" + std::to_string(clientPort), "TCPTransport");
             
-            std::thread(&TCPTransport::handleIncomingConnection, this, clientSocket, clientIp, clientPort).detach();
+            // Start connection handler thread
+            {
+                std::lock_guard<std::mutex> lock(threadMutex_);
+                readThreads_["incoming_" + clientIp + ":" + std::to_string(clientPort)] = 
+                    std::thread(&TCPTransport::handleIncomingConnection, this, clientSocket, clientIp, clientPort);
+            }
         }
     }
 }
@@ -428,6 +433,14 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
     // Start read thread
     {
         std::lock_guard<std::mutex> lock(threadMutex_);
+        // Remove the temporary incoming handler thread entry
+        std::string tempKey = "incoming_" + clientIp + ":" + std::to_string(clientPort);
+        auto it = readThreads_.find(tempKey);
+        if (it != readThreads_.end()) {
+            it->second.join();  // Wait for handler to complete
+            readThreads_.erase(it);
+        }
+        // Start the actual read thread for the peer
         readThreads_[remotePeerId] = std::thread(&TCPTransport::readLoop, this, remotePeerId);
     }
     

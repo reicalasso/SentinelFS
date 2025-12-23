@@ -63,7 +63,21 @@ EventHandlers::EventHandlers(EventBus& eventBus,
     setupOfflineQueue();
 }
 
-EventHandlers::~EventHandlers() = default;
+EventHandlers::~EventHandlers() {
+    // Signal shutdown to all background threads
+    shutdownRequested_ = true;
+    
+    // Wait for all background threads to complete
+    {
+        std::lock_guard<std::mutex> lock(threadsMutex_);
+        for (auto& thread : activeThreads_) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+        activeThreads_.clear();
+    }
+}
 
 void EventHandlers::setupHandlers() {
     eventBus_.subscribe("PEER_DISCOVERED", [this](const std::any& data) {
@@ -291,21 +305,35 @@ void EventHandlers::handlePeerConnected(const std::any& data) {
             if (useNewPipeline_) {
                 // New pipeline: initiate handshake first, then sync
                 logger.info("Initiating handshake with newly connected peer: " + peerId, "EventHandlers");
-                std::thread([this, peerId]() {
+                std::thread thread([this, peerId]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    if (syncPipeline_->initiateHandshake(peerId)) {
-                        // After handshake, broadcast files
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                        fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+                    if (!shutdownRequested_) {
+                        if (syncPipeline_->initiateHandshake(peerId)) {
+                            // After handshake, broadcast files
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                            if (!shutdownRequested_) {
+                                fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+                            }
+                        }
                     }
-                }).detach();
+                });
+                {
+                    std::lock_guard<std::mutex> lock(threadsMutex_);
+                    activeThreads_.push_back(std::move(thread));
+                }
             } else {
                 // Legacy: broadcast all files directly
                 logger.info("Triggering file sync to newly connected peer: " + peerId, "EventHandlers");
-                std::thread([this, peerId]() {
+                std::thread thread([this, peerId]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    fileSyncHandler_->broadcastAllFilesToPeer(peerId);
-                }).detach();
+                    if (!shutdownRequested_) {
+                        fileSyncHandler_->broadcastAllFilesToPeer(peerId);
+                    }
+                });
+                {
+                    std::lock_guard<std::mutex> lock(threadsMutex_);
+                    activeThreads_.push_back(std::move(thread));
+                }
             }
         }
         
