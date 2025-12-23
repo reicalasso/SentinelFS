@@ -338,8 +338,8 @@ std::optional<FileMetadata> FalconStore::getFile(const std::string& path) {
         const char* filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         
-        file.path = filePath ? filePath : "";
-        file.hash = hash ? hash : "";
+        file.path = filePath && strlen(filePath) > 0 ? filePath : "";
+        file.hash = hash && strlen(hash) > 0 ? hash : "";
         file.timestamp = sqlite3_column_int64(stmt, 2);
         file.size = sqlite3_column_int64(stmt, 3);
         result = file;
@@ -479,8 +479,8 @@ std::optional<PeerInfo> FalconStore::getPeer(const std::string& peerId) {
         const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         
-        peer.id = id ? id : "";
-        peer.ip = ip ? ip : "";
+        peer.id = id && strlen(id) > 0 ? id : "";
+        peer.ip = ip && strlen(ip) > 0 ? ip : "";
         peer.port = sqlite3_column_int(stmt, 2);
         int statusId = sqlite3_column_int(stmt, 3);
         peer.status = (statusId == 6) ? "offline" : "active";
@@ -506,8 +506,8 @@ std::vector<PeerInfo> FalconStore::getAllPeers() {
             const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
             const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
             
-            peer.id = id ? id : "";
-            peer.ip = ip ? ip : "";
+            peer.id = id && strlen(id) > 0 ? id : "";
+            peer.ip = ip && strlen(ip) > 0 ? ip : "";
             peer.port = sqlite3_column_int(stmt, 2);
             int statusId = sqlite3_column_int(stmt, 3);
             peer.status = (statusId == 6) ? "offline" : "active";
@@ -556,8 +556,8 @@ std::vector<PeerInfo> FalconStore::getPeersByLatency() {
             const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
             const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
             
-            peer.id = id ? id : "";
-            peer.ip = ip ? ip : "";
+            peer.id = id && strlen(id) > 0 ? id : "";
+            peer.ip = ip && strlen(ip) > 0 ? ip : "";
             peer.port = sqlite3_column_int(stmt, 2);
             int statusId = sqlite3_column_int(stmt, 3);
             peer.status = (statusId == 6) ? "offline" : "active";
@@ -675,10 +675,10 @@ std::vector<ConflictInfo> FalconStore::getUnresolvedConflicts() {
             const char* remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
             
             conflict.id = sqlite3_column_int(stmt, 0);
-            conflict.path = path ? path : "";
-            conflict.localHash = localHash ? localHash : "";
-            conflict.remoteHash = remoteHash ? remoteHash : "";
-            conflict.remotePeerId = remotePeerId ? remotePeerId : "";
+            conflict.path = path && strlen(path) > 0 ? path : "";
+            conflict.localHash = localHash && strlen(localHash) > 0 ? localHash : "";
+            conflict.remoteHash = remoteHash && strlen(remoteHash) > 0 ? remoteHash : "";
+            conflict.remotePeerId = remotePeerId && strlen(remotePeerId) > 0 ? remotePeerId : "";
             conflict.localTimestamp = sqlite3_column_int64(stmt, 5);
             conflict.remoteTimestamp = sqlite3_column_int64(stmt, 6);
             conflict.localSize = sqlite3_column_int64(stmt, 7);
@@ -719,10 +719,10 @@ std::vector<ConflictInfo> FalconStore::getConflictsForFile(const std::string& pa
             const char* remotePeerId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
             
             conflict.id = sqlite3_column_int(stmt, 0);
-            conflict.path = filePath ? filePath : "";
-            conflict.localHash = localHash ? localHash : "";
-            conflict.remoteHash = remoteHash ? remoteHash : "";
-            conflict.remotePeerId = remotePeerId ? remotePeerId : "";
+            conflict.path = filePath && strlen(filePath) > 0 ? filePath : "";
+            conflict.localHash = localHash && strlen(localHash) > 0 ? localHash : "";
+            conflict.remoteHash = remoteHash && strlen(remoteHash) > 0 ? remoteHash : "";
+            conflict.remotePeerId = remotePeerId && strlen(remotePeerId) > 0 ? remotePeerId : "";
             conflict.localTimestamp = sqlite3_column_int64(stmt, 5);
             conflict.remoteTimestamp = sqlite3_column_int64(stmt, 6);
             conflict.localSize = sqlite3_column_int64(stmt, 7);
@@ -1115,7 +1115,7 @@ std::vector<WatchedFolder> FalconStore::getWatchedFolders() {
             WatchedFolder folder;
             folder.id = sqlite3_column_int(stmt, 0);
             const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            folder.path = path ? path : "";
+            folder.path = path && strlen(path) > 0 ? path : "";
             folder.addedAt = sqlite3_column_int64(stmt, 2);
             folder.statusId = sqlite3_column_int(stmt, 3);
             folders.push_back(folder);
@@ -1207,9 +1207,9 @@ std::vector<FileMetadata> FalconStore::getFilesInFolder(const std::string& folde
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             FileMetadata file;
             const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            file.path = path ? path : "";
+            file.path = path && strlen(path) > 0 ? path : "";
             const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            file.hash = hash ? hash : "";
+            file.hash = hash && strlen(hash) > 0 ? hash : "";
             file.timestamp = sqlite3_column_int64(stmt, 2);
             file.size = sqlite3_column_int64(stmt, 3);
             file.synced = sqlite3_column_int(stmt, 4);
@@ -1373,9 +1373,9 @@ std::vector<FileMetadata> FalconStore::getPendingFiles() {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             FileMetadata file;
             const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            file.path = path ? path : "";
+            file.path = path && strlen(path) > 0 ? path : "";
             const char* hash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            file.hash = hash ? hash : "";
+            file.hash = hash && strlen(hash) > 0 ? hash : "";
             file.timestamp = sqlite3_column_int64(stmt, 2);
             file.size = sqlite3_column_int64(stmt, 3);
             file.synced = sqlite3_column_int(stmt, 4);

@@ -38,9 +38,17 @@ void Transaction::commit() {
 void Transaction::rollback() {
     if (!committed_) {
         char* errMsg = nullptr;
-        sqlite3_exec(db_, ("ROLLBACK TO " + rollbackSavepoint_).c_str(), nullptr, nullptr, &errMsg);
-        sqlite3_exec(db_, ("RELEASE " + rollbackSavepoint_).c_str(), nullptr, nullptr, &errMsg);
-        if (errMsg) sqlite3_free(errMsg);
+        if (sqlite3_exec(db_, ("ROLLBACK TO " + rollbackSavepoint_).c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            if (errMsg) {
+                sqlite3_free(errMsg);
+                errMsg = nullptr;
+            }
+        }
+        if (sqlite3_exec(db_, ("RELEASE " + rollbackSavepoint_).c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            if (errMsg) {
+                sqlite3_free(errMsg);
+            }
+        }
     }
 }
 
@@ -58,32 +66,44 @@ PreparedStatement::~PreparedStatement() {
 }
 
 PreparedStatement& PreparedStatement::bind(int index, int value) {
-    sqlite3_bind_int(stmt_, index, value);
+    if (sqlite3_bind_int(stmt_, index, value) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind int parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
 PreparedStatement& PreparedStatement::bind(int index, int64_t value) {
-    sqlite3_bind_int64(stmt_, index, value);
+    if (sqlite3_bind_int64(stmt_, index, value) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind int64 parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
 PreparedStatement& PreparedStatement::bind(int index, double value) {
-    sqlite3_bind_double(stmt_, index, value);
+    if (sqlite3_bind_double(stmt_, index, value) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind double parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
 PreparedStatement& PreparedStatement::bind(int index, const std::string& value) {
-    sqlite3_bind_text(stmt_, index, value.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_bind_text(stmt_, index, value.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind string parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
 PreparedStatement& PreparedStatement::bind(int index, const std::vector<uint8_t>& value) {
-    sqlite3_bind_blob(stmt_, index, value.data(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
+    if (sqlite3_bind_blob(stmt_, index, value.data(), static_cast<int>(value.size()), SQLITE_TRANSIENT) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind blob parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
 PreparedStatement& PreparedStatement::bindNull(int index) {
-    sqlite3_bind_null(stmt_, index);
+    if (sqlite3_bind_null(stmt_, index) != SQLITE_OK) {
+        throw std::runtime_error("Failed to bind null parameter at index " + std::to_string(index) + ": " + sqlite3_errmsg(db_));
+    }
     return *this;
 }
 
@@ -142,8 +162,7 @@ int PreparedStatement::getColumnCount() const {
 
 // DatabaseManager Implementation
 DatabaseManager::DatabaseManager(const std::string& dbPath) 
-    : db_(nullptr), dbPath_(dbPath) {
-    std::memset(&stats_, 0, sizeof(stats_));
+    : db_(nullptr), dbPath_(dbPath), stats_{} {
 }
 
 DatabaseManager::~DatabaseManager() {

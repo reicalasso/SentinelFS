@@ -135,7 +135,7 @@ void EventHandlers::setupHandlers() {
             if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
                 while (sqlite3_step(stmt) == SQLITE_ROW) {
                     const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                    if (path) {
+                    if (path && strlen(path) > 0) {
                         std::string pathStr = path;
                         // Avoid rescanning default dir if it's in DB
                         if (pathStr != watchDirectory_) {
@@ -546,7 +546,7 @@ void EventHandlers::processPendingChanges() {
                 if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     while (sqlite3_step(stmt) == SQLITE_ROW) {
                         const char* path = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-                        if (path) {
+                        if (path && strlen(path) > 0) {
                             changesToProcess.push_back(path);
                             batchLoaded++;
                         }

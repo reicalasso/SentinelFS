@@ -253,18 +253,18 @@ std::vector<FileConflict> ConflictHandler::getPendingConflicts(const std::string
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             FileConflict conflict;
-            conflict.fileId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            conflict.filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            conflict.localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            conflict.remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
-            conflict.baseHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+            conflict.fileId = sqlite3_column_text(stmt, 1) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)) : "";
+            conflict.filePath = sqlite3_column_text(stmt, 2) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)) : "";
+            conflict.localHash = sqlite3_column_text(stmt, 3) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)) : "";
+            conflict.remoteHash = sqlite3_column_text(stmt, 4) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4)) : "";
+            conflict.baseHash = sqlite3_column_text(stmt, 5) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5)) : "";
             conflict.localVersion = sqlite3_column_int64(stmt, 6);
             conflict.remoteVersion = sqlite3_column_int64(stmt, 7);
             conflict.baseVersion = sqlite3_column_int64(stmt, 8);
             conflict.type = static_cast<ConflictType>(sqlite3_column_int(stmt, 9));
             conflict.status = ConflictStatus::PENDING;
-            conflict.localDeviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11));
-            conflict.remoteDeviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12));
+            conflict.localDeviceId = sqlite3_column_text(stmt, 11) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11)) : "";
+            conflict.remoteDeviceId = sqlite3_column_text(stmt, 12) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12)) : "";
             conflict.localModifiedTime = sqlite3_column_int64(stmt, 13);
             conflict.remoteModifiedTime = sqlite3_column_int64(stmt, 14);
             
@@ -298,18 +298,18 @@ std::optional<FileConflict> ConflictHandler::getConflict(const std::string& conf
         sqlite3_bind_text(stmt, 1, conflictId.c_str(), -1, SQLITE_STATIC);
         
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-            conflict.fileId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            conflict.filePath = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            conflict.localHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-            conflict.remoteHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-            conflict.baseHash = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+            conflict.fileId = sqlite3_column_text(stmt, 0) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)) : "";
+            conflict.filePath = sqlite3_column_text(stmt, 1) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)) : "";
+            conflict.localHash = sqlite3_column_text(stmt, 2) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2)) : "";
+            conflict.remoteHash = sqlite3_column_text(stmt, 3) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3)) : "";
+            conflict.baseHash = sqlite3_column_text(stmt, 4) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4)) : "";
             conflict.localVersion = sqlite3_column_int64(stmt, 5);
             conflict.remoteVersion = sqlite3_column_int64(stmt, 6);
             conflict.baseVersion = sqlite3_column_int64(stmt, 7);
             conflict.type = static_cast<ConflictType>(sqlite3_column_int(stmt, 8));
             conflict.status = static_cast<ConflictStatus>(sqlite3_column_int(stmt, 9));
-            conflict.localDeviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
-            conflict.remoteDeviceId = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11));
+            conflict.localDeviceId = sqlite3_column_text(stmt, 10) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10)) : "";
+            conflict.remoteDeviceId = sqlite3_column_text(stmt, 11) ? reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11)) : "";
             conflict.localModifiedTime = sqlite3_column_int64(stmt, 12);
             conflict.remoteModifiedTime = sqlite3_column_int64(stmt, 13);
             

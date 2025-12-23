@@ -98,10 +98,10 @@ std::map<std::string, PeerInfo> BatchQueries::batchGetPeers(
         const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         const char* status = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
         
-        peer.id = id ? id : "";
-        peer.ip = ip ? ip : "";
+        peer.id = id && strlen(id) > 0 ? id : "";
+        peer.ip = ip && strlen(ip) > 0 ? ip : "";
         peer.port = sqlite3_column_int(stmt, 2);
-        peer.status = status ? status : "";
+        peer.status = status && strlen(status) > 0 ? status : "";
         peer.lastSeen = sqlite3_column_int64(stmt, 4);
         peer.latency = sqlite3_column_int(stmt, 5);
         
