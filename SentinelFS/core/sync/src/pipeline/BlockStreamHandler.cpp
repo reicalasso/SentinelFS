@@ -14,6 +14,7 @@
 #include "IFileAPI.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "PathValidator.h"
 #include <filesystem>
 #include <fstream>
 #include <cstring>
@@ -152,6 +153,13 @@ void SyncPipeline::handleBlockData(const std::string& peerId, const std::vector<
     std::memcpy(&pathLen, data.data() + offset, sizeof(pathLen));
     offset += sizeof(pathLen);
     
+    // Security: Validate path length to prevent buffer overflow
+    constexpr size_t MAX_PATH_LENGTH = 4096; // PATH_MAX on most systems
+    if (pathLen > MAX_PATH_LENGTH) {
+        logger.error("BLOCK_DATA path too large from " + peerId, "SyncPipeline");
+        return;
+    }
+    
     uint32_t chunkIndex, totalChunks, dataSize;
     std::memcpy(&chunkIndex, data.data() + offset, sizeof(chunkIndex));
     offset += sizeof(chunkIndex);
@@ -159,6 +167,13 @@ void SyncPipeline::handleBlockData(const std::string& peerId, const std::vector<
     offset += sizeof(totalChunks);
     std::memcpy(&dataSize, data.data() + offset, sizeof(dataSize));
     offset += sizeof(dataSize);
+    
+    // Security: Validate dataSize to prevent DoS
+    constexpr size_t MAX_BLOCK_SIZE = 64 * 1024 * 1024; // 64MB max block size
+    if (dataSize > MAX_BLOCK_SIZE) {
+        logger.error("BLOCK_DATA block too large from " + peerId, "SyncPipeline");
+        return;
+    }
     
     if (data.size() < offset + pathLen + dataSize) {
         logger.error("BLOCK_DATA truncated from " + peerId, "SyncPipeline");
@@ -168,8 +183,14 @@ void SyncPipeline::handleBlockData(const std::string& peerId, const std::vector<
     std::string relativePath(reinterpret_cast<const char*>(data.data() + offset), pathLen);
     offset += pathLen;
     
+    // Security: Validate path before using it
+    std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+    if (localPath.empty()) {
+        Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "SyncPipeline");
+        return;
+    }
+    
     std::string filename = std::filesystem::path(relativePath).filename().string();
-    std::string localPath = getAbsolutePath(relativePath);
     
     // Extract block data
     std::vector<uint8_t> blockData(data.begin() + offset, data.begin() + offset + dataSize);

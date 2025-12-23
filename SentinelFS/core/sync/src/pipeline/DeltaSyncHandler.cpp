@@ -11,12 +11,13 @@
  */
 
 #include "SyncPipeline.h"
+#include "DeltaSyncHandler.h"
+#include "SyncPipelineCore.h"
 #include "DeltaEngine.h"
 #include "DeltaSerialization.h"
-#include "INetworkAPI.h"
-#include "IFileAPI.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "PathValidator.h"
 #include <filesystem>
 #include <cstring>
 
@@ -63,9 +64,28 @@ void SyncPipeline::handleSignatureRequest(const std::string& peerId, const std::
     
     const SignatureRequest* req = reinterpret_cast<const SignatureRequest*>(data.data());
     
+    // Security: Validate path length to prevent buffer overflow
+    constexpr size_t MAX_PATH_LENGTH = 4096; // PATH_MAX on most systems
+    if (req->pathLength > MAX_PATH_LENGTH) {
+        logger.error("SIGNATURE_REQUEST path too large from " + peerId, "SyncPipeline");
+        return;
+    }
+    
+    if (data.size() < sizeof(SignatureRequest) + req->pathLength) {
+        logger.error("SIGNATURE_REQUEST path truncated from " + peerId, "SyncPipeline");
+        return;
+    }
+    
     std::string relativePath(reinterpret_cast<const char*>(data.data() + sizeof(SignatureRequest)),
                              req->pathLength);
-    std::string localPath = getAbsolutePath(relativePath);
+    
+    // Security: Validate path before using it
+    std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+    if (localPath.empty()) {
+        Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "SyncPipeline");
+        return;
+    }
+    
     std::string filename = std::filesystem::path(relativePath).filename().string();
     
     logger.info("🔍 Computing signature for " + filename, "SyncPipeline");
@@ -161,7 +181,12 @@ void SyncPipeline::computeAndSendDelta(const std::string& peerId, const std::str
     auto& logger = Logger::instance();
     auto& metrics = MetricsCollector::instance();
     
-    std::string localPath = getAbsolutePath(relativePath);
+    std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+    if (localPath.empty()) {
+        Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "SyncPipeline");
+        return;
+    }
+    
     std::string filename = std::filesystem::path(relativePath).filename().string();
     
     if (!std::filesystem::exists(localPath)) {
@@ -303,8 +328,14 @@ void SyncPipeline::handleDeltaResponse(const std::string& peerId, const std::vec
     std::string relativePath(reinterpret_cast<const char*>(data.data() + offset), pathLen);
     offset += pathLen;
     
+    // Security: Validate path before using it
+    std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+    if (localPath.empty()) {
+        Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "SyncPipeline");
+        return;
+    }
+    
     std::string filename = std::filesystem::path(relativePath).filename().string();
-    std::string localPath = getAbsolutePath(relativePath);
     
     // Extract delta chunk
     std::vector<uint8_t> chunkData(data.begin() + offset, data.end());

@@ -9,6 +9,7 @@
 #include "IFileAPI.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "PathValidator.h"
 #include <filesystem>
 #include <fstream>
 #include <chrono>
@@ -33,12 +34,12 @@ void DeltaSyncProtocolHandler::handleFileRequest(const std::string& peerId,
         std::string relativePath = msg.substr(prefix.length());
         std::string filename = std::filesystem::path(relativePath).filename().string();
         
-        // Convert to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
+        // Security: Validate path before using it
+        std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+        if (localPath.empty()) {
+            Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "DeltaSyncProtocol");
+            return;
         }
-        localPath += relativePath;
         
         logger.info("Received file request for: " + filename + " from " + peerId, "DeltaSyncProtocol");
         
@@ -248,12 +249,12 @@ void DeltaSyncProtocolHandler::handleDeleteFile(const std::string& peerId,
         std::string relativePath = msg.substr(prefix.length());
         std::string filename = std::filesystem::path(relativePath).filename().string();
         
-        // Convert to local absolute path
-        std::string localPath = watchDirectory_;
-        if (!localPath.empty() && localPath.back() != '/') {
-            localPath += '/';
+        // Security: Validate path before using it
+        std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+        if (localPath.empty()) {
+            Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "DeltaSyncProtocol");
+            return;
         }
-        localPath += relativePath;
         
         logger.info("Received delete request for: " + filename + " from " + peerId, "DeltaSyncProtocol");
         

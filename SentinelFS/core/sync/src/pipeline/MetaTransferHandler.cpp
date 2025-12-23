@@ -12,11 +12,14 @@
  */
 
 #include "SyncPipeline.h"
+#include "MetaTransferHandler.h"
+#include "SyncPipelineCore.h"
 #include "INetworkAPI.h"
 #include "IStorageAPI.h"
 #include "IFileAPI.h"
 #include "Logger.h"
 #include "MetricsCollector.h"
+#include "PathValidator.h"
 #include <filesystem>
 #include <fstream>
 #include <cstring>
@@ -125,6 +128,20 @@ void SyncPipeline::handleFileMeta(const std::string& peerId, const std::vector<u
     
     const FileMeta* meta = reinterpret_cast<const FileMeta*>(data.data());
     
+    // Security: Validate path length to prevent buffer overflow
+    constexpr size_t MAX_PATH_LENGTH = 4096; // PATH_MAX on most systems
+    if (meta->pathLength > MAX_PATH_LENGTH) {
+        logger.error("FILE_META path too large from " + peerId, "SyncPipeline");
+        return;
+    }
+    
+    // Security: Validate fileSize to prevent DoS
+    constexpr uint64_t MAX_FILE_SIZE = 1024ULL * 1024 * 1024 * 1024; // 1TB max file size
+    if (meta->fileSize > MAX_FILE_SIZE) {
+        logger.error("FILE_META file too large from " + peerId, "SyncPipeline");
+        return;
+    }
+    
     // Extract path
     if (data.size() < sizeof(FileMeta) + meta->pathLength) {
         logger.error("FILE_META path truncated from " + peerId, "SyncPipeline");
@@ -133,7 +150,14 @@ void SyncPipeline::handleFileMeta(const std::string& peerId, const std::vector<u
     
     std::string relativePath(reinterpret_cast<const char*>(data.data() + sizeof(FileMeta)),
                              meta->pathLength);
-    std::string localPath = getAbsolutePath(relativePath);
+    
+    // Security: Validate path before using it
+    std::string localPath = PathValidator::sanitizePath(watchDirectory_, relativePath);
+    if (localPath.empty()) {
+        Logger::instance().error("Rejected unsafe path from peer: " + relativePath, "SyncPipeline");
+        return;
+    }
+    
     std::string filename = std::filesystem::path(relativePath).filename().string();
     
     logger.info("📋 Received FILE_META for " + filename + " (" + 
