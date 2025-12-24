@@ -188,11 +188,6 @@ std::string PeerCommands::handlePeersJson() {
             continue;
         }
         
-        // Skip peers on our own port (different sessions on same machine)
-        if (p.port == localPort && (p.ip == "127.0.0.1" || p.ip == "localhost")) {
-            continue;
-        }
-        
         // Check if peer is actually connected
         bool isConnected = std::find(connectedPeerIds.begin(), connectedPeerIds.end(), p.id) != connectedPeerIds.end();
         std::string actualStatus = isConnected ? "active" : "disconnected";

@@ -398,6 +398,257 @@ inline void MigrationManager::registerDefaultMigrations() {
         },
         nullptr  // No down callback needed
     });
+    
+    // Version 8: Standardize peers table schema
+    registerMigration({
+        8, "Standardize peers table schema",
+        "",  // SQL handled by callback
+        "",
+        // Up callback - recreate peers table with proper constraints
+        [](void* dbPtr) -> bool {
+            sqlite3* db = static_cast<sqlite3*>(dbPtr);
+            char* errMsg = nullptr;
+            
+            // Create new peers table with proper schema
+            const char* createNewTable = R"(
+                CREATE TABLE IF NOT EXISTS peers_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    peer_id TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    address TEXT NOT NULL DEFAULT '',
+                    port INTEGER NOT NULL DEFAULT 0,
+                    public_key TEXT,
+                    status_id INTEGER NOT NULL DEFAULT 6,
+                    last_seen INTEGER NOT NULL DEFAULT 0,
+                    latency INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY(status_id) REFERENCES status_types(id)
+                )
+            )";
+            
+            if (sqlite3_exec(db, createNewTable, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Copy data from old table with proper defaults
+            const char* copyData = R"(
+                INSERT INTO peers_new (id, peer_id, name, address, port, public_key, status_id, last_seen, latency)
+                SELECT 
+                    id,
+                    peer_id,
+                    COALESCE(name, peer_id),
+                    COALESCE(address, ''),
+                    COALESCE(port, 0),
+                    public_key,
+                    COALESCE(status_id, 6),
+                    COALESCE(last_seen, 0),
+                    COALESCE(latency, 0)
+                FROM peers
+            )";
+            
+            if (sqlite3_exec(db, copyData, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                // Table might not exist yet, that's ok
+            }
+            
+            // Drop old table and rename new one
+            if (sqlite3_exec(db, "DROP TABLE IF EXISTS peers", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            if (sqlite3_exec(db, "ALTER TABLE peers_new RENAME TO peers", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Recreate index
+            if (sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_peers_status ON peers(status_id)", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                // Not critical
+            }
+            
+            return true;
+        },
+        nullptr  // No down callback needed
+    });
+    
+    // Version 9: Standardize all remaining tables
+    registerMigration({
+        9, "Standardize files, conflicts, and watched_folders tables",
+        "",  // SQL handled by callback
+        "",
+        // Up callback - standardize remaining tables
+        [](void* dbPtr) -> bool {
+            sqlite3* db = static_cast<sqlite3*>(dbPtr);
+            char* errMsg = nullptr;
+            
+            // ===== Standardize files table =====
+            const char* createFilesNew = R"(
+                CREATE TABLE IF NOT EXISTS files_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path TEXT UNIQUE NOT NULL,
+                    hash TEXT NOT NULL DEFAULT '',
+                    size INTEGER NOT NULL DEFAULT 0,
+                    modified INTEGER NOT NULL DEFAULT 0,
+                    synced INTEGER NOT NULL DEFAULT 0,
+                    version INTEGER NOT NULL DEFAULT 1,
+                    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+                )
+            )";
+            
+            if (sqlite3_exec(db, createFilesNew, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Copy files data with proper defaults
+            const char* copyFiles = R"(
+                INSERT INTO files_new (id, path, hash, size, modified, synced, version, created_at)
+                SELECT 
+                    id,
+                    path,
+                    COALESCE(hash, ''),
+                    COALESCE(size, 0),
+                    COALESCE(modified, 0),
+                    COALESCE(synced, 0),
+                    COALESCE(version, 1),
+                    COALESCE(created_at, strftime('%s', 'now'))
+                FROM files
+            )";
+            
+            if (sqlite3_exec(db, copyFiles, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                // Table might not exist, continue
+            }
+            
+            if (sqlite3_exec(db, "DROP TABLE IF EXISTS files", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            if (sqlite3_exec(db, "ALTER TABLE files_new RENAME TO files", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Recreate indexes
+            sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_files_path ON files(path)", nullptr, nullptr, nullptr);
+            sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_files_hash ON files(hash)", nullptr, nullptr, nullptr);
+            sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_files_synced ON files(synced)", nullptr, nullptr, nullptr);
+            
+            // ===== Standardize conflicts table =====
+            const char* createConflictsNew = R"(
+                CREATE TABLE IF NOT EXISTS conflicts_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id INTEGER NOT NULL,
+                    local_hash TEXT NOT NULL DEFAULT '',
+                    remote_hash TEXT NOT NULL DEFAULT '',
+                    local_size INTEGER NOT NULL DEFAULT 0,
+                    remote_size INTEGER NOT NULL DEFAULT 0,
+                    local_timestamp INTEGER NOT NULL DEFAULT 0,
+                    remote_timestamp INTEGER NOT NULL DEFAULT 0,
+                    remote_peer_id TEXT NOT NULL DEFAULT '',
+                    detected_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                    resolved INTEGER NOT NULL DEFAULT 0,
+                    resolution TEXT NOT NULL DEFAULT '',
+                    strategy TEXT NOT NULL DEFAULT 'manual',
+                    FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+                )
+            )";
+            
+            if (sqlite3_exec(db, createConflictsNew, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Copy conflicts data with proper defaults
+            const char* copyConflicts = R"(
+                INSERT INTO conflicts_new (id, file_id, local_hash, remote_hash, local_size, remote_size, 
+                                          local_timestamp, remote_timestamp, remote_peer_id, detected_at, 
+                                          resolved, resolution, strategy)
+                SELECT 
+                    id,
+                    file_id,
+                    COALESCE(local_hash, ''),
+                    COALESCE(remote_hash, ''),
+                    COALESCE(local_size, 0),
+                    COALESCE(remote_size, 0),
+                    COALESCE(local_timestamp, 0),
+                    COALESCE(remote_timestamp, 0),
+                    COALESCE(remote_peer_id, ''),
+                    COALESCE(detected_at, strftime('%s', 'now')),
+                    COALESCE(resolved, 0),
+                    COALESCE(resolution, ''),
+                    COALESCE(strategy, 'manual')
+                FROM conflicts
+            )";
+            
+            if (sqlite3_exec(db, copyConflicts, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                // Table might not exist, continue
+            }
+            
+            if (sqlite3_exec(db, "DROP TABLE IF EXISTS conflicts", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            if (sqlite3_exec(db, "ALTER TABLE conflicts_new RENAME TO conflicts", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Recreate indexes
+            sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_conflicts_file ON conflicts(file_id)", nullptr, nullptr, nullptr);
+            sqlite3_exec(db, "CREATE INDEX IF NOT EXISTS idx_conflicts_resolved ON conflicts(resolved)", nullptr, nullptr, nullptr);
+            
+            // ===== Standardize watched_folders table =====
+            const char* createWatchedNew = R"(
+                CREATE TABLE IF NOT EXISTS watched_folders_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path TEXT UNIQUE NOT NULL,
+                    added_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                    status_id INTEGER NOT NULL DEFAULT 1,
+                    FOREIGN KEY(status_id) REFERENCES status_types(id)
+                )
+            )";
+            
+            if (sqlite3_exec(db, createWatchedNew, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            // Copy watched_folders data with proper defaults
+            const char* copyWatched = R"(
+                INSERT INTO watched_folders_new (id, path, added_at, status_id)
+                SELECT 
+                    id,
+                    path,
+                    COALESCE(added_at, strftime('%s', 'now')),
+                    COALESCE(status_id, 1)
+                FROM watched_folders
+            )";
+            
+            if (sqlite3_exec(db, copyWatched, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                // Table might not exist, continue
+            }
+            
+            if (sqlite3_exec(db, "DROP TABLE IF EXISTS watched_folders", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            if (sqlite3_exec(db, "ALTER TABLE watched_folders_new RENAME TO watched_folders", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+                if (errMsg) sqlite3_free(errMsg);
+                return false;
+            }
+            
+            return true;
+        },
+        nullptr  // No down callback needed
+    });
 }
 
 } // namespace Falcon

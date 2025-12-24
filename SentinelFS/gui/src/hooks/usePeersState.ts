@@ -6,7 +6,7 @@ export interface Peer {
   port: number
   status: string
   latency: number
-  lastSeen?: number
+  lastSeen: number
 }
 
 interface PeersState {

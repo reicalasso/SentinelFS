@@ -664,24 +664,32 @@ void TCPTransport::pruneOldestConnection() {
     }
 }
 
-void TCPTransport::emitEvent(TransportEvent event, const std::string& peerId,
-                             const std::string& message, const std::vector<uint8_t>& data) {
+void TCPTransport::emitEvent(TransportEvent event, const std::string& peerId, const std::string& message, const std::vector<uint8_t>& data) {
     if (eventCallback_) {
         TransportEventData eventData;
         eventData.event = event;
         eventData.peerId = peerId;
-        eventData.message = message;
         eventData.data = data;
-        
+            
         eventCallback_(eventData);
     }
-    
+        
     // Also publish to EventBus for daemon integration
     if (eventBus_) {
         switch (event) {
-            case TransportEvent::CONNECTED:
-                eventBus_->publish("PEER_CONNECTED", peerId + "|||");
+            case TransportEvent::CONNECTED: {
+                // Get connection info to include in event
+                std::string connectionInfo = peerId + "|||";
+                {
+                    std::lock_guard<std::mutex> lock(connectionMutex_);
+                    auto it = connections_.find(peerId);
+                    if (it != connections_.end()) {
+                        connectionInfo = peerId + "|" + it->second->address + "|" + std::to_string(it->second->port);
+                    }
+                }
+                eventBus_->publish("PEER_CONNECTED", connectionInfo);
                 break;
+            }
             case TransportEvent::DISCONNECTED:
                 eventBus_->publish("PEER_DISCONNECTED", peerId);
                 break;

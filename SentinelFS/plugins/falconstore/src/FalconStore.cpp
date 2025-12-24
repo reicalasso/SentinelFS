@@ -373,10 +373,19 @@ std::optional<FileMetadata> FalconStore::getFile(const std::string& path) {
 bool FalconStore::addPeer(const PeerInfo& peer) {
     std::unique_lock<std::shared_mutex> lock(impl_->dbMutex);
     
+    // Ensure all required fields have valid values (no NULL, no empty strings for required fields)
+    std::string peerId = peer.id.empty() ? "UNKNOWN" : peer.id;
+    std::string name = peer.id.empty() ? "UNKNOWN" : peer.id;
+    std::string address = peer.ip.empty() ? "" : peer.ip;
+    int port = (peer.port <= 0 || peer.port > 65535) ? 0 : peer.port;
+    int64_t lastSeen = (peer.lastSeen <= 0) ? std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) : peer.lastSeen;
+    int latency = (peer.latency < 0) ? 0 : peer.latency;
+    
     // Map status string to status_id
     int statusId = 1;  // default: active
     if (peer.status == "offline") statusId = 6;
     else if (peer.status == "pending") statusId = 2;
+    else if (peer.status == "disconnected") statusId = 6;
     
     // First check if peer exists by address:port (peer IDs change on restart)
     const char* checkSql = "SELECT id, peer_id FROM peers WHERE address = ? AND port = ?";
@@ -385,8 +394,8 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
     int existingId = 0;
     
     if (sqlite3_prepare_v2(impl_->db, checkSql, -1, &checkStmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(checkStmt, 1, peer.ip.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_int(checkStmt, 2, peer.port);
+        sqlite3_bind_text(checkStmt, 1, address.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_int(checkStmt, 2, port);
         if (sqlite3_step(checkStmt) == SQLITE_ROW) {
             existsByAddress = true;
             existingId = sqlite3_column_int(checkStmt, 0);
@@ -404,17 +413,17 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
         )";
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(impl_->db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_STATIC);
             sqlite3_bind_int(stmt, 3, statusId);
-            sqlite3_bind_int64(stmt, 4, peer.lastSeen);
-            sqlite3_bind_int(stmt, 5, peer.latency);
+            sqlite3_bind_int64(stmt, 4, lastSeen);
+            sqlite3_bind_int(stmt, 5, latency);
             sqlite3_bind_int(stmt, 6, existingId);
             success = sqlite3_step(stmt) == SQLITE_DONE;
             sqlite3_finalize(stmt);
         }
     } else {
-        // Insert new peer
+        // Insert new peer with all required fields
         const char* sql = R"(
             INSERT INTO peers (peer_id, name, address, port, status_id, last_seen, latency)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -429,13 +438,13 @@ bool FalconStore::addPeer(const PeerInfo& peer) {
         
         sqlite3_stmt* stmt;
         if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(stmt, 1, peer.id.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 2, peer.id.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 3, peer.ip.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_int(stmt, 4, peer.port);
+            sqlite3_bind_text(stmt, 1, peerId.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 3, address.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_int(stmt, 4, port);
             sqlite3_bind_int(stmt, 5, statusId);
-            sqlite3_bind_int64(stmt, 6, peer.lastSeen);
-            sqlite3_bind_int(stmt, 7, peer.latency);
+            sqlite3_bind_int64(stmt, 6, lastSeen);
+            sqlite3_bind_int(stmt, 7, latency);
             success = sqlite3_step(stmt) == SQLITE_DONE;
             sqlite3_finalize(stmt);
         }
@@ -464,7 +473,7 @@ bool FalconStore::removePeer(const std::string& peerId) {
 std::optional<PeerInfo> FalconStore::getPeer(const std::string& peerId) {
     std::shared_lock<std::shared_mutex> lock(impl_->dbMutex);
     
-    const char* sql = "SELECT peer_id, address, port, status_id, last_seen, latency FROM peers WHERE peer_id = ?";
+    const char* sql = "SELECT peer_id, name, address, port, status_id, last_seen, latency FROM peers WHERE peer_id = ?";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -477,15 +486,17 @@ std::optional<PeerInfo> FalconStore::getPeer(const std::string& peerId) {
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         PeerInfo peer;
         const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
         
-        peer.id = id ? id : "";
-        peer.ip = ip ? ip : "";
-        peer.port = sqlite3_column_int(stmt, 2);
-        int statusId = sqlite3_column_int(stmt, 3);
+        // All fields are NOT NULL in schema, but handle safely
+        peer.id = id ? std::string(id) : "UNKNOWN";
+        peer.ip = ip ? std::string(ip) : "";
+        peer.port = sqlite3_column_int(stmt, 3);
+        int statusId = sqlite3_column_int(stmt, 4);
         peer.status = (statusId == 6) ? "offline" : "active";
-        peer.lastSeen = sqlite3_column_int64(stmt, 4);
-        peer.latency = sqlite3_column_int(stmt, 5);
+        peer.lastSeen = sqlite3_column_int64(stmt, 5);
+        peer.latency = sqlite3_column_int(stmt, 6);
         result = peer;
     }
     
@@ -497,24 +508,27 @@ std::vector<PeerInfo> FalconStore::getAllPeers() {
     std::shared_lock<std::shared_mutex> lock(impl_->dbMutex);
     
     std::vector<PeerInfo> peers;
-    const char* sql = "SELECT peer_id, address, port, status_id, last_seen, latency FROM peers";
+    const char* sql = "SELECT peer_id, name, address, port, status_id, last_seen, latency FROM peers";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             PeerInfo peer;
             const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
             
-            peer.id = id ? id : "";
-            peer.ip = ip ? ip : "";
-            peer.port = sqlite3_column_int(stmt, 2);
-            int statusId = sqlite3_column_int(stmt, 3);
+            // All fields are NOT NULL in schema, but handle safely
+            peer.id = id ? std::string(id) : "UNKNOWN";
+            peer.ip = ip ? std::string(ip) : "";
+            peer.port = sqlite3_column_int(stmt, 3);
+            int statusId = sqlite3_column_int(stmt, 4);
             peer.status = (statusId == 6) ? "offline" : "active";
-            peer.lastSeen = sqlite3_column_int64(stmt, 4);
-            peer.latency = sqlite3_column_int(stmt, 5);
+            peer.lastSeen = sqlite3_column_int64(stmt, 5);
+            peer.latency = sqlite3_column_int(stmt, 6);
             
-            if (!peer.id.empty()) {
+            // Only add valid peers
+            if (!peer.id.empty() && peer.id != "UNKNOWN") {
                 peers.push_back(peer);
             }
         }
@@ -547,24 +561,27 @@ std::vector<PeerInfo> FalconStore::getPeersByLatency() {
     std::shared_lock<std::shared_mutex> lock(impl_->dbMutex);
     
     std::vector<PeerInfo> peers;
-    const char* sql = "SELECT peer_id, address, port, status_id, last_seen, latency FROM peers ORDER BY CASE WHEN latency < 0 THEN 999999 ELSE latency END ASC";
+    const char* sql = "SELECT peer_id, name, address, port, status_id, last_seen, latency FROM peers ORDER BY CASE WHEN latency < 0 THEN 999999 ELSE latency END ASC";
     sqlite3_stmt* stmt;
     
     if (sqlite3_prepare_v2(impl_->db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             PeerInfo peer;
             const char* id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* ip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
             
-            peer.id = id ? id : "";
-            peer.ip = ip ? ip : "";
-            peer.port = sqlite3_column_int(stmt, 2);
-            int statusId = sqlite3_column_int(stmt, 3);
+            // All fields are NOT NULL in schema, but handle safely
+            peer.id = id ? std::string(id) : "UNKNOWN";
+            peer.ip = ip ? std::string(ip) : "";
+            peer.port = sqlite3_column_int(stmt, 3);
+            int statusId = sqlite3_column_int(stmt, 4);
             peer.status = (statusId == 6) ? "offline" : "active";
-            peer.lastSeen = sqlite3_column_int64(stmt, 4);
-            peer.latency = sqlite3_column_int(stmt, 5);
+            peer.lastSeen = sqlite3_column_int64(stmt, 5);
+            peer.latency = sqlite3_column_int(stmt, 6);
             
-            if (!peer.id.empty()) {
+            // Only add valid peers
+            if (!peer.id.empty() && peer.id != "UNKNOWN") {
                 peers.push_back(peer);
             }
         }

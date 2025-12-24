@@ -220,16 +220,16 @@ export const Peers = memo(function Peers({ peers }: { peers?: any[] }) {
 
   // Filter out blocked peers and map backend peers to UI format
   const displayPeers = (peers && peers.length > 0) ? peers
-    .filter(p => !blockedPeers.has(p.id))
+    .filter(p => p && p.id && !blockedPeers.has(p.id))
     .map(p => ({
-      id: p.id,
+      id: p.id || 'UNKNOWN',
       name: p.id ? `Device ${p.id.substring(0, 8)}` : 'Unknown Device',
-      ip: `${p.ip || 'Unknown'}:${p.port || '?'}`,
+      ip: `${p.ip || ''}:${p.port || 0}`,
       type: 'laptop',
-      status: p.status || 'Disconnected',
+      status: p.status || 'offline',
       trusted: true,
-      latency: p.latency >= 0 ? p.latency : -1,
-      lastSeen: p.latency >= 0 ? `${p.latency}ms` : 'Unknown',
+      latency: (p.latency !== undefined && p.latency >= 0) ? p.latency : 0,
+      lastSeen: (p.latency !== undefined && p.latency >= 0) ? `${p.latency}ms` : 'Unknown',
       transport: p.transport || 'QUIC' as 'TCP' | 'QUIC' | 'WebRTC' | 'Relay'
     })) : []
 
