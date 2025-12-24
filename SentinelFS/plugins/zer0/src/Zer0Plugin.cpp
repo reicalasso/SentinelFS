@@ -46,6 +46,10 @@ public:
     std::string quarantineDir;
     std::string rulesDir;
     
+    // ML training state
+    std::atomic<bool> mlReady{false};
+    std::thread mlTrainingThread;
+    
     // Helpers
     double calculateEntropy(const std::vector<uint8_t>& data) {
         if (data.empty()) return 0.0;
@@ -180,6 +184,74 @@ bool Zer0Plugin::initialize(EventBus* eventBus) {
     // Start behavior analyzer
     impl_->behaviorAnalyzer->start(impl_->config.behaviorWindow);
     
+    // Initialize and train ML engine asynchronously
+    impl_->mlEngine = std::make_unique<MLEngine>();
+    impl_->mlEngine->initialize();
+    
+    // Try to load existing model first
+    const char* home = std::getenv("HOME");
+    std::string homeDir = home ? std::string(home) : "";
+    std::string modelPath = home ? std::string(home) + "/.local/share/sentinelfs/ml_model.bin" : "/tmp/sentinel_ml_model.bin";
+    
+    if (std::filesystem::exists(modelPath)) {
+        if (impl_->mlEngine->loadModel(modelPath)) {
+            impl_->mlReady = true;
+            logger.log(LogLevel::INFO, "Loaded existing ML model from: " + modelPath, "Zer0");
+        } else {
+            logger.log(LogLevel::WARN, "Failed to load ML model, will retrain", "Zer0");
+        }
+    }
+    
+    // Start ML training in background thread if no model loaded
+    if (!impl_->mlReady.load()) {
+        impl_->mlTrainingThread = std::thread([this, homeDir]() {
+            auto& logger = Logger::instance();
+            logger.log(LogLevel::INFO, "Starting ML model training in background...", "Zer0");
+            
+            // Train on common user directories with clean files (avoid executables)
+            std::vector<std::string> trainDirs;
+            if (!homeDir.empty()) {
+                trainDirs = {
+                    homeDir + "/Documents",
+                    homeDir + "/Downloads",
+                    homeDir + "/Pictures",
+                    homeDir + "/Music",
+                    homeDir + "/Videos"
+                };
+            }
+            trainDirs.insert(trainDirs.end(), {
+                "/usr/share/doc",
+                "/usr/share/man"
+            });
+            
+            int totalFiles = 0;
+            for (const auto& dir : trainDirs) {
+                if (std::filesystem::exists(dir)) {
+                    int files = impl_->mlEngine->trainFromDirectory(dir, false);
+                    totalFiles += files;
+                    logger.log(LogLevel::DEBUG, "Trained on " + std::to_string(files) + " files from " + dir, "Zer0");
+                }
+            }
+            
+            if (totalFiles > 0) {
+                // Save the trained model
+                std::string savePath = !homeDir.empty() ? homeDir + "/.local/share/sentinelfs/ml_model.bin" : "/tmp/sentinel_ml_model.bin";
+                std::filesystem::create_directories(std::filesystem::path(savePath).parent_path());
+                
+                if (impl_->mlEngine->saveModel(savePath)) {
+                    logger.log(LogLevel::INFO, "ML model trained and saved to: " + savePath, "Zer0");
+                } else {
+                    logger.log(LogLevel::WARN, "ML model trained but failed to save", "Zer0");
+                }
+            } else {
+                logger.log(LogLevel::WARN, "ML model training complete - no training data found", "Zer0");
+            }
+            
+            // Mark ML as ready
+            impl_->mlReady = true;
+        });
+    }
+    
     // Subscribe to file events
     if (eventBus) {
         eventBus->subscribe("FILE_CREATED", [this](const std::any& data) {
@@ -276,6 +348,11 @@ void Zer0Plugin::shutdown() {
     if (impl_->behaviorAnalyzer) {
         impl_->behaviorAnalyzer->stop();
     }
+    
+    // Stop ML training thread if running
+    if (impl_->mlTrainingThread.joinable()) {
+        impl_->mlTrainingThread.join();
+    }
 }
 
 void Zer0Plugin::setStoragePlugin(IStorageAPI* storage) {
@@ -335,6 +412,10 @@ DetectionResult Zer0Plugin::analyzeFile(const std::string& path, pid_t pid, cons
     // Calculate hash
     result.fileHash = impl_->calculateHash(path);
     
+    // Calculate entropy for ransomware detection
+    auto fullFileData = impl_->readFileHeader(path, 1048576); // Read up to 1MB for entropy
+    result.entropy = impl_->calculateEntropy(fullFileData);
+    
     // Check for known malware hash
     if (impl_->config.whitelistedHashes.count(result.fileHash) > 0) {
         result.level = ThreatLevel::NONE;
@@ -343,6 +424,58 @@ DetectionResult Zer0Plugin::analyzeFile(const std::string& path, pid_t pid, cons
     }
     
     // === THREAT DETECTION ===
+    
+    // Use ML-based detection if ready (hybrid approach)
+    if (impl_->mlEngine && impl_->mlReady.load()) {
+        // Primary: ML-based anomaly detection
+        auto features = MLEngine::extractFileFeatures(path);
+        auto anomalyResult = impl_->mlEngine->analyzeFeatures(features);
+        
+        // Set entropy from features
+        result.entropy = features.entropy;
+        
+        if (anomalyResult.anomalyScore > 0.3) {  // Lower threshold for better detection
+            // Map anomaly to threat type based on features
+            if (features.entropy > 7.0) {
+                result.type = ThreatType::HIGH_ENTROPY_TEXT;
+                result.description = "High entropy file detected (possible ransomware)";
+            } else if (features.compressionRatio > 0.9) {
+                result.type = ThreatType::HIGH_ENTROPY_TEXT;
+                result.description = "Highly compressed file (possible obfuscation)";
+            } else if (magicBytes.isExecutable(header)) {
+                result.type = ThreatType::HIDDEN_EXECUTABLE;
+                result.description = "Executable file with anomalous characteristics";
+            } else {
+                result.type = ThreatType::ANOMALOUS_BEHAVIOR;
+                result.description = "Anomalous file detected by ML";
+            }
+            
+            // Set threat level based on anomaly score
+            if (anomalyResult.anomalyScore > 0.8) {
+                result.level = ThreatLevel::CRITICAL;
+            } else if (anomalyResult.anomalyScore > 0.7) {
+                result.level = ThreatLevel::HIGH;
+            } else {
+                result.level = ThreatLevel::MEDIUM;
+            }
+            
+            result.confidence = anomalyResult.confidence;
+            result.details["ml_anomaly_score"] = std::to_string(anomalyResult.anomalyScore);
+            result.details["ml_category"] = anomalyResult.category;
+            
+            for (const auto& reason : anomalyResult.reasons) {
+                result.details["ml_reason_" + std::to_string(result.details.size())] = reason;
+            }
+            
+            logger.log(LogLevel::WARN, "🤖 ML anomaly detected: " + path + 
+                      " (score: " + std::to_string(anomalyResult.anomalyScore) + ")", "Zer0");
+            
+            // Update baseline with this file
+            impl_->mlEngine->updateBaseline(features);
+            
+            return result;
+        }
+    }
     
     // 1. Check for double extension (file.pdf.exe)
     if (hasDoubleExtension(path)) {
@@ -525,6 +658,107 @@ DetectionResult Zer0Plugin::analyzeFile(const std::string& path, pid_t pid, cons
     event.processName = processName;
     event.timestamp = std::chrono::steady_clock::now();
     impl_->behaviorAnalyzer->recordEvent(event);
+    
+    // Additional heuristic checks for threats ML might miss
+    std::string contentLower;
+    auto fileContent = impl_->readFileHeader(path, 8192); // Read first 8KB for content analysis
+    if (!fileContent.empty()) {
+        contentLower = std::string(fileContent.begin(), fileContent.end());
+        std::transform(contentLower.begin(), contentLower.end(), contentLower.begin(), ::tolower);
+        
+        // Check for ransomware note keywords
+        std::vector<std::string> ransomKeywords = {
+            "your files are encrypted",
+            "pay the ransom", 
+            "bitcoin wallet",
+            "restore files",
+            "decrypt your files",
+            "payment required",
+            "private key",
+            "encryption note"
+        };
+        
+        for (const auto& keyword : ransomKeywords) {
+            if (contentLower.find(keyword) != std::string::npos) {
+                result.level = ThreatLevel::CRITICAL;
+                result.type = ThreatType::RANSOMWARE_PATTERN;
+                result.confidence = 0.85;
+                result.description = "Ransomware note detected";
+                result.details["keyword"] = keyword;
+                
+                logger.log(LogLevel::WARN, "🔐 Ransomware note detected: " + path, "Zer0");
+                return result;
+            }
+        }
+        
+        // Check for suspicious script content
+        std::string ext = impl_->getExtension(path);
+        if (ext == "py" || ext == "sh" || ext == "bat") {
+            std::vector<std::string> suspiciousPatterns = {
+                "subprocess.call",
+                "os.system",
+                "eval(",
+                "exec(",
+                "base64",
+                "requests.post",
+                "socket.socket",
+                "crypto.",
+                "cryptography.",
+                "download_file",
+                "keylogger",
+                "clipboard"
+            };
+            
+            int patternCount = 0;
+            for (const auto& pattern : suspiciousPatterns) {
+                if (contentLower.find(pattern) != std::string::npos) {
+                    patternCount++;
+                }
+            }
+            
+            if (patternCount >= 3) {
+                result.level = ThreatLevel::HIGH;
+                result.type = ThreatType::SCRIPT_IN_DATA;
+                result.confidence = 0.75;
+                result.description = "Suspicious script with multiple dangerous functions";
+                result.details["pattern_count"] = std::to_string(patternCount);
+                
+                logger.log(LogLevel::WARN, "💉 Suspicious script: " + path, "Zer0");
+                return result;
+            }
+        }
+        
+        // Check for backdoor/reverse shell patterns in C/C++ files
+        if (ext == "c" || ext == "cpp" || ext == "h") {
+            if (contentLower.find("reverse_shell") != std::string::npos ||
+                contentLower.find("backdoor") != std::string::npos ||
+                (contentLower.find("socket(") != std::string::npos && 
+                 contentLower.find("dup2(") != std::string::npos)) {
+                
+                result.level = ThreatLevel::CRITICAL;
+                result.type = ThreatType::ANOMALOUS_BEHAVIOR;
+                result.confidence = 0.9;
+                result.description = "Potential backdoor or reverse shell code";
+                
+                logger.log(LogLevel::WARN, "🚪 Backdoor detected: " + path, "Zer0");
+                return result;
+            }
+        }
+    }
+    
+    // Check for cryptominer config files by filename and path
+    if (path.find("xmrig") != std::string::npos || 
+        path.find("miner") != std::string::npos ||
+        path.find("cryptonight") != std::string::npos) {
+        
+        result.level = ThreatLevel::HIGH;
+        result.type = ThreatType::ANOMALOUS_BEHAVIOR;
+        result.confidence = 0.8;
+        result.description = "Cryptocurrency mining configuration detected";
+        
+        logger.log(LogLevel::WARN, "⛏️ Cryptominer detected: " + path, "Zer0");
+        return result;
+    }
     
     // No threat detected
     result.level = ThreatLevel::NONE;
@@ -809,20 +1043,22 @@ void Zer0Plugin::handleThreat(const DetectionResult& result) {
             } else {
                 const char* sql = R"(
                     INSERT INTO detected_threats 
-                    (file_path, threat_type_id, threat_level_id, threat_score, entropy, file_size, hash, quarantine_path, detected_at, marked_safe)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0)
+                    (file_id, file_path, threat_type_id, threat_level_id, threat_score, entropy, file_size, hash, quarantine_path, detected_at, marked_safe)
+                    VALUES ((SELECT id FROM files WHERE path = ?), ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 0)
                 )";
                 
                 sqlite3_stmt* stmt;
                 if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-                    sqlite3_bind_text(stmt, 1, result.filePath.c_str(), -1, SQLITE_TRANSIENT);
-                    sqlite3_bind_int(stmt, 2, threatTypeId);
-                    sqlite3_bind_int(stmt, 3, threatLevelId);
-                    sqlite3_bind_double(stmt, 4, result.confidence);
-                    sqlite3_bind_null(stmt, 5);  // entropy - could be added later
-                    sqlite3_bind_int64(stmt, 6, fileSize);
-                    sqlite3_bind_text(stmt, 7, result.fileHash.c_str(), -1, SQLITE_TRANSIENT);
-                    sqlite3_bind_null(stmt, 8);  // quarantine_path - will be updated after quarantine
+                    int paramIndex = 1;
+                    sqlite3_bind_text(stmt, paramIndex++, result.filePath.c_str(), -1, SQLITE_TRANSIENT);  // files.path for subquery
+                    sqlite3_bind_text(stmt, paramIndex++, result.filePath.c_str(), -1, SQLITE_TRANSIENT);  // file_path
+                    sqlite3_bind_int(stmt, paramIndex++, threatTypeId);
+                    sqlite3_bind_int(stmt, paramIndex++, threatLevelId);
+                    sqlite3_bind_double(stmt, paramIndex++, result.confidence);
+                    sqlite3_bind_double(stmt, paramIndex++, result.entropy);  // entropy - now calculated
+                    sqlite3_bind_int64(stmt, paramIndex++, fileSize);
+                    sqlite3_bind_text(stmt, paramIndex++, result.fileHash.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_null(stmt, paramIndex++);  // quarantine_path - will be updated after quarantine
                     
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         logger.log(LogLevel::INFO, "Threat saved to database: " + result.filePath, "Zer0");

@@ -97,6 +97,7 @@ struct DetectionResult {
     std::string filePath;
     std::string fileHash;
     FileCategory category{FileCategory::UNKNOWN};
+    double entropy{0.0};        // File entropy for ransomware detection
     
     // Process info (if available)
     pid_t pid{0};

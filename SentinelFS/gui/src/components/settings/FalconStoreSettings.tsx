@@ -8,6 +8,14 @@ interface FalconStoreSettingsProps {
   onLog?: (message: string) => void
 }
 
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 export function FalconStoreSettings({ onLog }: FalconStoreSettingsProps) {
   const { addNotification } = useNotifications()
   
@@ -16,7 +24,7 @@ export function FalconStoreSettings({ onLog }: FalconStoreSettingsProps) {
   const [walMode, setWalMode] = useState(true)
   const [stats, setStats] = useState({
     size: '0 KB',
-    version: 'v7',
+    version: 'v1',
     tables: 0,
     lastOptimized: 'Never'
   })
@@ -30,7 +38,12 @@ export function FalconStoreSettings({ onLog }: FalconStoreSettingsProps) {
           if (res.success) {
             const data = typeof res === 'string' ? JSON.parse(res) : res
             if (data.payload) {
-              setStats(data.payload)
+              setStats({
+                size: formatBytes(data.payload.dbSize || 0),
+                version: `v${data.payload.schemaVersion || 1}`,
+                tables: data.payload.tableCount || 0,
+                lastOptimized: 'Never'
+              })
             }
           }
         } catch (error) {

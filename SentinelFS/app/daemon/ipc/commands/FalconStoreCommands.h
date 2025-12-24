@@ -41,6 +41,26 @@ public:
      */
     Json::Value clearCache(const std::string& args, const Json::Value& data);
     
+    /**
+     * @brief Get FalconStore status information
+     */
+    Json::Value getStatus(const std::string& args, const Json::Value& data);
+    
+    /**
+     * @brief Get FalconStore statistics
+     */
+    Json::Value getStats(const std::string& args, const Json::Value& data);
+    
+    /**
+     * @brief Optimize database (VACUUM + ANALYZE)
+     */
+    Json::Value optimize(const std::string& args, const Json::Value& data);
+    
+    /**
+     * @brief Create database backup
+     */
+    Json::Value backup(const std::string& args, const Json::Value& data);
+    
 private:
     const CommandContext& ctx_;
 };

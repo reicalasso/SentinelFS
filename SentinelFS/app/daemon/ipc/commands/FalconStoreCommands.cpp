@@ -3,9 +3,14 @@
 #include "IStorageAPI.h"
 #include "DatabaseManager.h"
 #include "../../DaemonCore.h"
+#include "../../../plugins/falconstore/include/FalconStore.h"
 #include "Logger.h"
 #include <sstream>
 #include <json/json.h>
+#include <filesystem>
+#include <chrono>
+#include <iomanip>
+#include <ctime>
 
 namespace SentinelFS {
 
@@ -257,6 +262,257 @@ Json::Value FalconStoreCommands::clearCache(const std::string& args, const Json:
         
     } catch (const std::exception& e) {
         logger.error("Failed to clear cache: " + std::string(e.what()), "FalconStoreCommands");
+        response["success"] = false;
+        response["error"] = e.what();
+    }
+    
+    return response;
+}
+
+Json::Value FalconStoreCommands::getStatus(const std::string& args, const Json::Value& data) {
+    Json::Value response(Json::objectValue);
+    auto& logger = Logger::instance();
+    
+    try {
+        auto* storage = ctx_.storage;
+        if (!storage) {
+            response["success"] = false;
+            response["error"] = "Storage plugin not available";
+            return response;
+        }
+        
+        // Check if this is FalconStore
+        if (storage->getName() != "FalconStore") {
+            response["success"] = false;
+            response["error"] = "FalconStore plugin not active";
+            return response;
+        }
+        
+        // Cast to FalconStore to access its methods directly
+        auto* falconStore = dynamic_cast<FalconStore*>(storage);
+        if (!falconStore) {
+            response["success"] = false;
+            response["error"] = "Not a FalconStore instance";
+            return response;
+        }
+        
+        // Get database path from environment or default
+        const char* envPath = std::getenv("SENTINEL_DB_PATH");
+        const char* home = std::getenv("HOME");
+        std::string dbPath;
+        if (envPath) {
+            dbPath = envPath;
+        } else if (home) {
+            dbPath = std::string(home) + "/.local/share/sentinelfs/sentinel.db";
+        } else {
+            dbPath = "/tmp/sentinel.db";
+        }
+        
+        // Get database size
+        uint64_t dbSize = 0;
+        try {
+            dbSize = std::filesystem::file_size(dbPath);
+        } catch (...) {
+            // File might not exist
+        }
+        
+        // Get schema version from migration manager
+        int schemaVersion = 1;
+        int latestVersion = 1;
+        auto* migrationManager = falconStore->getMigrationManager();
+        if (migrationManager) {
+            schemaVersion = migrationManager->getCurrentVersion();
+            latestVersion = migrationManager->getLatestVersion();
+        }
+        
+        Json::Value payload(Json::objectValue);
+        payload["plugin"] = "FalconStore";
+        payload["version"] = "1.0.0";
+        payload["initialized"] = true;
+        payload["schemaVersion"] = schemaVersion;
+        payload["latestVersion"] = latestVersion;
+        payload["status"] = "running";
+        payload["dbPath"] = dbPath;
+        payload["dbSize"] = static_cast<Json::UInt64>(dbSize);
+        
+        // Cache info from FalconStore
+        auto* cache = falconStore->getCache();
+        if (cache) {
+            auto cacheStats = cache->getStats();
+            Json::Value cacheJson(Json::objectValue);
+            cacheJson["enabled"] = true;
+            cacheJson["entries"] = static_cast<Json::UInt64>(cacheStats.entries);
+            cacheJson["hits"] = static_cast<Json::UInt64>(cacheStats.hits);
+            cacheJson["misses"] = static_cast<Json::UInt64>(cacheStats.misses);
+            cacheJson["hitRate"] = cacheStats.hitRate();
+            cacheJson["memoryUsed"] = static_cast<Json::UInt64>(cacheStats.memoryUsed);
+            payload["cache"] = cacheJson;
+        } else {
+            Json::Value cacheJson(Json::objectValue);
+            cacheJson["enabled"] = false;
+            payload["cache"] = cacheJson;
+        }
+        
+        response["success"] = true;
+        response["type"] = "FALCONSTORE_STATUS";
+        response["payload"] = payload;
+        
+    } catch (const std::exception& e) {
+        logger.error("Failed to get status: " + std::string(e.what()), "FalconStoreCommands");
+        response["success"] = false;
+        response["error"] = e.what();
+    }
+    
+    return response;
+}
+
+Json::Value FalconStoreCommands::getStats(const std::string& args, const Json::Value& data) {
+    Json::Value response(Json::objectValue);
+    auto& logger = Logger::instance();
+    
+    try {
+        auto* storage = ctx_.storage;
+        if (!storage) {
+            response["success"] = false;
+            response["error"] = "Storage plugin not available";
+            return response;
+        }
+        
+        // Check if this is FalconStore
+        if (storage->getName() != "FalconStore") {
+            response["success"] = false;
+            response["error"] = "FalconStore plugin not active";
+            return response;
+        }
+        
+        // Cast to FalconStore to get actual statistics
+        auto* falconStore = dynamic_cast<FalconStore*>(storage);
+        if (!falconStore) {
+            response["success"] = false;
+            response["error"] = "Not a FalconStore instance";
+            return response;
+        }
+        
+        // Get actual statistics from FalconStore
+        auto stats = falconStore->getStats();
+        
+        Json::Value payload(Json::objectValue);
+        payload["totalQueries"] = static_cast<Json::UInt64>(stats.totalQueries);
+        payload["selectQueries"] = static_cast<Json::UInt64>(stats.selectQueries);
+        payload["insertQueries"] = static_cast<Json::UInt64>(stats.insertQueries);
+        payload["updateQueries"] = static_cast<Json::UInt64>(stats.updateQueries);
+        payload["deleteQueries"] = static_cast<Json::UInt64>(stats.deleteQueries);
+        payload["avgQueryTimeMs"] = stats.avgQueryTimeMs;
+        payload["maxQueryTimeMs"] = stats.maxQueryTimeMs;
+        payload["slowQueries"] = static_cast<Json::UInt64>(stats.slowQueries);
+        payload["dbSizeBytes"] = static_cast<Json::UInt64>(stats.dbSizeBytes);
+        payload["schemaVersion"] = stats.schemaVersion;
+        
+        // Cache statistics
+        Json::Value cache(Json::objectValue);
+        cache["hits"] = static_cast<Json::UInt64>(stats.cache.hits);
+        cache["misses"] = static_cast<Json::UInt64>(stats.cache.misses);
+        cache["entries"] = static_cast<Json::UInt64>(stats.cache.entries);
+        cache["memoryUsed"] = static_cast<Json::UInt64>(stats.cache.memoryUsed);
+        cache["hitRate"] = stats.cache.hitRate() * 100;  // Convert to percentage
+        payload["cache"] = cache;
+        
+        response["success"] = true;
+        response["type"] = "FALCONSTORE_STATS";
+        response["payload"] = payload;
+        
+    } catch (const std::exception& e) {
+        logger.error("Failed to get stats: " + std::string(e.what()), "FalconStoreCommands");
+        response["success"] = false;
+        response["error"] = e.what();
+    }
+    
+    return response;
+}
+
+Json::Value FalconStoreCommands::optimize(const std::string& args, const Json::Value& data) {
+    Json::Value response(Json::objectValue);
+    auto& logger = Logger::instance();
+    
+    try {
+        auto* storage = ctx_.storage;
+        if (!storage) {
+            response["success"] = false;
+            response["error"] = "Storage not available";
+            return response;
+        }
+        
+        // Check if this is FalconStore
+        if (storage->getName() != "FalconStore") {
+            response["success"] = false;
+            response["error"] = "FalconStore plugin not active";
+            return response;
+        }
+        
+        // Cast to FalconStore to use its optimize method
+        auto* falconStore = dynamic_cast<FalconStore*>(storage);
+        if (!falconStore) {
+            response["success"] = false;
+            response["error"] = "Not a FalconStore instance";
+            return response;
+        }
+        
+        logger.info("Starting database optimization...", "FalconStoreCommands");
+        
+        // Use FalconStore's optimize method which handles VACUUM properly
+        falconStore->optimize();
+        
+        logger.info("Database optimization completed", "FalconStoreCommands");
+        
+        response["success"] = true;
+        response["message"] = "Database optimization completed successfully";
+        
+    } catch (const std::exception& e) {
+        logger.error("Optimization failed: " + std::string(e.what()), "FalconStoreCommands");
+        response["success"] = false;
+        response["error"] = e.what();
+    }
+    
+    return response;
+}
+
+Json::Value FalconStoreCommands::backup(const std::string& args, const Json::Value& data) {
+    Json::Value response(Json::objectValue);
+    auto& logger = Logger::instance();
+    
+    try {
+        auto* dbManager = ctx_.daemonCore ? ctx_.daemonCore->getDatabase() : nullptr;
+        if (!dbManager) {
+            response["success"] = false;
+            response["error"] = "Database not available";
+            return response;
+        }
+        
+        // Generate backup path with timestamp
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        auto tm = *std::localtime(&time_t);
+        
+        std::ostringstream oss;
+        oss << "/tmp/sentinel_backup_" 
+            << std::put_time(&tm, "%Y%m%d_%H%M%S") 
+            << ".db";
+        std::string backupPath = oss.str();
+        
+        logger.info("Creating database backup: " + backupPath, "FalconStoreCommands");
+        
+        // Execute backup via VACUUM INTO
+        std::string backupSql = "VACUUM INTO '" + backupPath + "'";
+        dbManager->execute(backupSql);
+        
+        logger.info("Database backup created: " + backupPath, "FalconStoreCommands");
+        
+        response["success"] = true;
+        response["message"] = "Backup created successfully";
+        response["backupPath"] = backupPath;
+        
+    } catch (const std::exception& e) {
+        logger.error("Backup failed: " + std::string(e.what()), "FalconStoreCommands");
         response["success"] = false;
         response["error"] = e.what();
     }

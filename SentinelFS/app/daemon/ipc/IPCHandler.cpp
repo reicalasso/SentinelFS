@@ -561,13 +561,17 @@ std::string IPCHandler::processCommand(const std::string& command) {
     
     // FalconStore commands
     else if (cmd == "FALCONSTORE_STATUS") {
-        return handleFalconStoreStatus();
+        Json::Value response = falconstoreCmds_->getStatus(args, Json::Value());
+        return formatJsonResponse(response);
     } else if (cmd == "FALCONSTORE_STATS") {
-        return handleFalconStoreStats();
+        Json::Value response = falconstoreCmds_->getStats(args, Json::Value());
+        return formatJsonResponse(response);
     } else if (cmd == "FALCONSTORE_OPTIMIZE") {
-        return handleFalconStoreOptimize();
+        Json::Value response = falconstoreCmds_->optimize(args, Json::Value());
+        return formatJsonResponse(response);
     } else if (cmd == "FALCONSTORE_BACKUP") {
-        return handleFalconStoreBackup(args);
+        Json::Value response = falconstoreCmds_->backup(args, Json::Value());
+        return formatJsonResponse(response);
     } else if (cmd == "FALCONSTORE_EXECUTE_QUERY") {
         Json::Value response = falconstoreCmds_->executeQuery(args, parseJsonData(args));
         return formatJsonResponse(response);
@@ -690,117 +694,6 @@ std::string IPCHandler::handleNetFalconSetTransport(const std::string& args) {
     }
     
     return "ERROR: Unknown transport. Use tcp, quic, relay, or webrtc\n";
-}
-
-// FalconStore command handlers
-std::string IPCHandler::handleFalconStoreStatus() {
-    if (!storage_) {
-        return "{\"type\":\"FALCONSTORE_STATUS\",\"error\":\"Storage not initialized\"}\n";
-    }
-    
-    std::ostringstream ss;
-    ss << "{\"type\":\"FALCONSTORE_STATUS\",\"payload\":{";
-    ss << "\"plugin\":\"FalconStore\",";
-    ss << "\"version\":\"1.0.0\",";
-    ss << "\"initialized\":true,";
-    
-    // Get migration info if available
-    auto* falconStore = dynamic_cast<FalconStore*>(storage_);
-    if (falconStore) {
-        auto* migrationManager = falconStore->getMigrationManager();
-        if (migrationManager) {
-            ss << "\"schemaVersion\":" << migrationManager->getCurrentVersion() << ",";
-            ss << "\"latestVersion\":" << migrationManager->getLatestVersion() << ",";
-        }
-        
-        auto* cache = falconStore->getCache();
-        if (cache) {
-            auto cacheStats = cache->getStats();
-            ss << "\"cache\":{";
-            ss << "\"enabled\":true,";
-            ss << "\"entries\":" << cacheStats.entries << ",";
-            ss << "\"hits\":" << cacheStats.hits << ",";
-            ss << "\"misses\":" << cacheStats.misses << ",";
-            ss << "\"hitRate\":" << std::fixed << std::setprecision(2) << (cacheStats.hitRate() * 100) << ",";
-            ss << "\"memoryUsed\":" << cacheStats.memoryUsed;
-            ss << "},";
-        } else {
-            ss << "\"cache\":{\"enabled\":false},";
-        }
-    }
-    
-    ss << "\"status\":\"running\"";
-    ss << "}}\n";
-    return ss.str();
-}
-
-std::string IPCHandler::handleFalconStoreStats() {
-    if (!storage_) {
-        return "{\"type\":\"FALCONSTORE_STATS\",\"error\":\"Storage not initialized\"}\n";
-    }
-    
-    auto* falconStore = dynamic_cast<FalconStore*>(storage_);
-    if (!falconStore) {
-        return "{\"type\":\"FALCONSTORE_STATS\",\"error\":\"Not FalconStore\"}\n";
-    }
-    
-    auto stats = falconStore->getStats();
-    
-    std::ostringstream ss;
-    ss << "{\"type\":\"FALCONSTORE_STATS\",\"payload\":{";
-    ss << "\"totalQueries\":" << stats.totalQueries << ",";
-    ss << "\"selectQueries\":" << stats.selectQueries << ",";
-    ss << "\"insertQueries\":" << stats.insertQueries << ",";
-    ss << "\"updateQueries\":" << stats.updateQueries << ",";
-    ss << "\"deleteQueries\":" << stats.deleteQueries << ",";
-    ss << "\"avgQueryTimeMs\":" << std::fixed << std::setprecision(2) << stats.avgQueryTimeMs << ",";
-    ss << "\"maxQueryTimeMs\":" << std::fixed << std::setprecision(2) << stats.maxQueryTimeMs << ",";
-    ss << "\"slowQueries\":" << stats.slowQueries << ",";
-    ss << "\"dbSizeBytes\":" << stats.dbSizeBytes << ",";
-    ss << "\"schemaVersion\":" << stats.schemaVersion << ",";
-    ss << "\"cache\":{";
-    ss << "\"hits\":" << stats.cache.hits << ",";
-    ss << "\"misses\":" << stats.cache.misses << ",";
-    ss << "\"entries\":" << stats.cache.entries << ",";
-    ss << "\"memoryUsed\":" << stats.cache.memoryUsed << ",";
-    ss << "\"hitRate\":" << std::fixed << std::setprecision(2) << (stats.cache.hitRate() * 100);
-    ss << "}";
-    ss << "}}\n";
-    return ss.str();
-}
-
-std::string IPCHandler::handleFalconStoreOptimize() {
-    if (!storage_) {
-        return "ERROR: Storage not initialized\n";
-    }
-    
-    auto* falconStore = dynamic_cast<FalconStore*>(storage_);
-    if (!falconStore) {
-        return "ERROR: Not FalconStore\n";
-    }
-    
-    falconStore->optimize();
-    return "OK: Database optimized (VACUUM + ANALYZE)\n";
-}
-
-std::string IPCHandler::handleFalconStoreBackup(const std::string& args) {
-    if (!storage_) {
-        return "ERROR: Storage not initialized\n";
-    }
-    
-    auto* falconStore = dynamic_cast<FalconStore*>(storage_);
-    if (!falconStore) {
-        return "ERROR: Not FalconStore\n";
-    }
-    
-    std::string backupPath = args.empty() ? 
-        std::string(std::getenv("HOME") ? std::getenv("HOME") : "/tmp") + "/.local/share/sentinelfs/falcon_backup.db" : 
-        args;
-    
-    if (falconStore->backup(backupPath)) {
-        return "OK: Backup created at " + backupPath + "\n";
-    }
-    return "ERROR: Backup failed\n";
 }
 
 // Helper method to parse JSON data from command arguments

@@ -202,10 +202,6 @@ private:
     std::string handleNetFalconSetTransport(const std::string& args);
     
     // FalconStore command handlers
-    std::string handleFalconStoreStatus();
-    std::string handleFalconStoreStats();
-    std::string handleFalconStoreOptimize();
-    std::string handleFalconStoreBackup(const std::string& args);
     
     // Zer0 command handlers
     std::string handleZer0Status();
