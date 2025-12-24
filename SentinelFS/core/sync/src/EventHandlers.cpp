@@ -728,7 +728,22 @@ void EventHandlers::setupOfflineQueue() {
     
     // Start the queue processor
     offlineQueue_->start();
-    logger.info("Offline queue initialized and started", "EventHandlers");
+    logger.info("Offline queue started", "EventHandlers");
+}
+
+void EventHandlers::shutdown() {
+    auto& logger = Logger::instance();
+    logger.info("Shutting down EventHandlers...", "EventHandlers");
+    
+    // Stop offline queue first
+    if (offlineQueue_) {
+        offlineQueue_->stop();
+        logger.info("Offline queue stopped", "EventHandlers");
+    }
+    
+    // Delta protocol handler and sync pipeline cleanup happens in their destructors
+    
+    logger.info("EventHandlers shutdown complete", "EventHandlers");
 }
 
 } // namespace SentinelFS

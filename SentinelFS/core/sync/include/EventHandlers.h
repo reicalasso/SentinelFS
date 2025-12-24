@@ -67,6 +67,11 @@ public:
      */
     bool isSyncEnabled() const { return syncEnabled_; }
     
+    /**
+     * @brief Shutdown event handlers and stop all background threads
+     */
+    void shutdown();
+    
 private:
     // Event handler implementations
     void handlePeerDiscovered(const std::any& data);

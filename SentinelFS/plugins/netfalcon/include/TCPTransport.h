@@ -116,7 +116,7 @@ private:
     std::thread listenThread_;
     
     // Connections
-    mutable std::mutex connectionMutex_;
+    mutable std::recursive_mutex connectionMutex_;
     std::map<std::string, std::unique_ptr<TCPConnection>> connections_;
     std::size_t maxConnections_{64};
     

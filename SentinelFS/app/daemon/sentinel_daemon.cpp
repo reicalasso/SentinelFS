@@ -473,6 +473,9 @@ int main(int argc, char* argv[]) {
     daemon.run();
 
     // --- Cleanup ---
+    // Shutdown EventHandlers first to stop its background threads
+    eventHandlers.shutdown();
+    
     // Threads are managed by daemon.registerThread() and cleaned up in DaemonCore::shutdown()
     
     ipcHandler.stop();

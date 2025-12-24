@@ -124,7 +124,7 @@ bool TCPTransport::connect(const std::string& address, int port, const std::stri
     
     // Check for duplicate connection
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         if (connections_.find(remotePeerId) != connections_.end()) {
             logger.log(LogLevel::INFO, "Already connected to " + remotePeerId, "TCPTransport");
             close(sock);
@@ -159,7 +159,9 @@ bool TCPTransport::connect(const std::string& address, int port, const std::stri
         readThreads_[remotePeerId] = std::thread(&TCPTransport::readLoop, this, remotePeerId);
     }
     
-    logger.log(LogLevel::INFO, "Connected to peer: " + remotePeerId, "TCPTransport");
+    logger.log(LogLevel::INFO, "Connected to peer: " + remotePeerId);
+    
+    // Emit event outside of connectionMutex_ to prevent deadlock
     emitEvent(TransportEvent::CONNECTED, remotePeerId);
     
     // Register with session manager
@@ -174,7 +176,7 @@ void TCPTransport::disconnect(const std::string& peerId) {
     auto& logger = Logger::instance();
     
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it != connections_.end()) {
             logger.log(LogLevel::INFO, "Disconnecting from " + peerId, "TCPTransport");
@@ -208,7 +210,7 @@ bool TCPTransport::send(const std::string& peerId, const std::vector<uint8_t>& d
     
     int sock = -1;
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it == connections_.end() || it->second->state != ConnectionState::CONNECTED) {
             logger.log(LogLevel::WARN, "Cannot send: peer not connected: " + peerId, "TCPTransport");
@@ -242,13 +244,13 @@ bool TCPTransport::send(const std::string& peerId, const std::vector<uint8_t>& d
 }
 
 bool TCPTransport::isConnected(const std::string& peerId) const {
-    std::lock_guard<std::mutex> lock(connectionMutex_);
+    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
     auto it = connections_.find(peerId);
     return it != connections_.end() && it->second->state == ConnectionState::CONNECTED;
 }
 
 ConnectionState TCPTransport::getConnectionState(const std::string& peerId) const {
-    std::lock_guard<std::mutex> lock(connectionMutex_);
+    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
     auto it = connections_.find(peerId);
     if (it != connections_.end()) {
         return it->second->state;
@@ -257,7 +259,7 @@ ConnectionState TCPTransport::getConnectionState(const std::string& peerId) cons
 }
 
 ConnectionQuality TCPTransport::getConnectionQuality(const std::string& peerId) const {
-    std::lock_guard<std::mutex> lock(connectionMutex_);
+    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
     auto it = connections_.find(peerId);
     if (it != connections_.end()) {
         return it->second->quality;
@@ -266,7 +268,7 @@ ConnectionQuality TCPTransport::getConnectionQuality(const std::string& peerId) 
 }
 
 std::vector<std::string> TCPTransport::getConnectedPeers() const {
-    std::lock_guard<std::mutex> lock(connectionMutex_);
+    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
     std::vector<std::string> peers;
     peers.reserve(connections_.size());
     for (const auto& [peerId, conn] : connections_) {
@@ -284,7 +286,7 @@ void TCPTransport::setEventCallback(TransportEventCallback callback) {
 int TCPTransport::measureRTT(const std::string& peerId) {
     int sock = -1;
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it == connections_.end()) return -1;
         sock = it->second->socket;
@@ -309,7 +311,7 @@ int TCPTransport::measureRTT(const std::string& peerId) {
     
     // Update quality
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it != connections_.end()) {
             it->second->quality.rttMs = std::max(1, rtt);
@@ -327,7 +329,7 @@ void TCPTransport::shutdown() {
     
     // Close all connections
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         for (auto& [_, conn] : connections_) {
             ::shutdown(conn->socket, SHUT_RDWR);
             close(conn->socket);
@@ -348,7 +350,7 @@ void TCPTransport::shutdown() {
 }
 
 std::size_t TCPTransport::getConnectionCount() const {
-    std::lock_guard<std::mutex> lock(connectionMutex_);
+    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
     return connections_.size();
 }
 
@@ -399,7 +401,7 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
     
     // Check for duplicate
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         if (connections_.find(remotePeerId) != connections_.end()) {
             logger.log(LogLevel::INFO, "Duplicate connection from " + remotePeerId, "TCPTransport");
             close(clientSocket);
@@ -431,7 +433,9 @@ void TCPTransport::handleIncomingConnection(int clientSocket, const std::string&
         readThreads_[remotePeerId] = std::thread(&TCPTransport::readLoop, this, remotePeerId);
     }
     
-    logger.log(LogLevel::INFO, "Accepted connection from peer: " + remotePeerId, "TCPTransport");
+    logger.log(LogLevel::INFO, "Accepted connection from peer: " + remotePeerId);
+    
+    // Emit event outside of connectionMutex_ to prevent deadlock
     emitEvent(TransportEvent::CONNECTED, remotePeerId);
     
     if (sessionManager_) {
@@ -561,7 +565,7 @@ void TCPTransport::readLoop(const std::string& peerId) {
     
     int sock = -1;
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it == connections_.end()) return;
         sock = it->second->socket;
@@ -600,7 +604,7 @@ void TCPTransport::readLoop(const std::string& peerId) {
         
         // Update activity
         {
-            std::lock_guard<std::mutex> lock(connectionMutex_);
+            std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
             auto it = connections_.find(peerId);
             if (it != connections_.end()) {
                 it->second->lastActivity = std::chrono::steady_clock::now();
@@ -618,12 +622,25 @@ void TCPTransport::readLoop(const std::string& peerId) {
 void TCPTransport::cleanupConnection(const std::string& peerId) {
     auto& logger = Logger::instance();
     
+    // Close socket first to stop readLoop
     {
-        std::lock_guard<std::mutex> lock(connectionMutex_);
+        std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
         auto it = connections_.find(peerId);
         if (it != connections_.end()) {
             close(it->second->socket);
             connections_.erase(it);
+        }
+    }
+    
+    // Stop and detach the read thread
+    {
+        std::lock_guard<std::mutex> lock(threadMutex_);
+        auto it = readThreads_.find(peerId);
+        if (it != readThreads_.end()) {
+            if (it->second.joinable()) {
+                it->second.detach();
+            }
+            readThreads_.erase(it);
         }
     }
     
@@ -681,7 +698,7 @@ void TCPTransport::emitEvent(TransportEvent event, const std::string& peerId, co
                 // Get connection info to include in event
                 std::string connectionInfo = peerId + "|||";
                 {
-                    std::lock_guard<std::mutex> lock(connectionMutex_);
+                    std::lock_guard<std::recursive_mutex> lock(connectionMutex_);
                     auto it = connections_.find(peerId);
                     if (it != connections_.end()) {
                         connectionInfo = peerId + "|" + it->second->address + "|" + std::to_string(it->second->port);

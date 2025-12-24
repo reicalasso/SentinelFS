@@ -302,6 +302,9 @@ void DaemonCore::shutdown() {
         logger.error("Error during shutdown: " + std::string(e.what()), "DaemonCore");
     }
     
+    // Stop all managed threads
+    stopAllThreads();
+    
     logger.info("Daemon stopped gracefully", "DaemonCore");
     std::cout << "Daemon stopped." << std::endl;
 }
@@ -362,8 +365,8 @@ void DaemonCore::reconnectToKnownPeers() {
     
     logger.info("Attempting to reconnect to " + std::to_string(peersToConnect.size()) + " known peer(s)", "DaemonCore");
     
-    // Reconnect in a separate thread to not block startup
-    std::thread([this, peersToConnect]() {
+    // Reconnect in a managed thread to ensure proper cleanup
+    registerThread(std::thread([this, peersToConnect]() {
         auto& logger = Logger::instance();
         
         // Wait a bit for network to fully initialize
@@ -386,7 +389,7 @@ void DaemonCore::reconnectToKnownPeers() {
             // Small delay between connection attempts
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-    }).detach();
+    }));
 }
 
 void DaemonCore::cleanupStalePeers() {
