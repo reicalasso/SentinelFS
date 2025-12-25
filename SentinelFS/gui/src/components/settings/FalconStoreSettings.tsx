@@ -124,7 +124,6 @@ export function FalconStoreSettings({ onLog }: FalconStoreSettingsProps) {
             FalconStore
             <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">{stats.version}</span>
           </h3>
-          <p className="text-xs text-muted-foreground">High-performance SQLite storage engine</p>
         </div>
       </div>
 

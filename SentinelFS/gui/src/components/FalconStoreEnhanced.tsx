@@ -255,7 +255,6 @@ export const FalconStoreEnhanced: React.FC<FalconStoreEnhancedProps> = ({ onLog 
                   {status?.status === 'running' ? '● Running' : '○ Stopped'}
                 </span>
               </h2>
-              <p className="text-sm text-muted-foreground">High-performance storage engine with migration system</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
