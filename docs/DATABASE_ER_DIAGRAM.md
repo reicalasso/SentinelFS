@@ -1,203 +1,668 @@
 # SentinelFS Database ER Diagram
 
 ## Overview
-The SentinelFS database is designed to manage distributed file synchronization across multiple devices with version control, conflict resolution, and peer-to-peer networking capabilities.
+SentinelFS veritabanı, dağıtılmış dosya senkronizasyonu, versiyon kontrolü, çakışma çözümü, tehdit algılama ve P2P ağ iletişimi yetenekleriyle tasarlanmıştır. FalconStore eklentisi aracılığıyla SQLite tabanlı bir depolama sistemi kullanır.
 
-## High-Level ER Diagram
+**Şema Versiyonu:** 9  
+**Veritabanı Motoru:** SQLite3 (WAL modu, Foreign Keys etkin)
+
+## Tam ER Diyagramı
 
 ```mermaid
 erDiagram
-    %% Core Entities
+    %% ===============================
+    %% LOOKUP TABLES (Referans Tablolar)
+    %% ===============================
+    
+    op_types {
+        int id PK "1-7"
+        text name UK "create, update, delete, read, write, rename, move"
+    }
+    
+    status_types {
+        int id PK "1-7"
+        text name UK "active, pending, syncing, completed, failed, offline, paused"
+    }
+    
+    threat_types {
+        int id PK "0-10"
+        text name UK "Zer0 tehdit tipleri"
+    }
+    
+    threat_levels {
+        int id PK "0-5"
+        text name UK "NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL"
+    }
+    
+    %% ===============================
+    %% CORE TABLES (Ana Tablolar)
+    %% ===============================
+    
     files {
-        int id PK
-        text path UK
-        text hash
-        int size
-        int modified_time
-        int created_at
-        int updated_at
-        text file_hash
-        text checksum
+        int id PK "AUTOINCREMENT"
+        text path UK "NOT NULL"
+        text hash "DEFAULT ''"
+        int size "NOT NULL DEFAULT 0"
+        int modified "NOT NULL DEFAULT 0"
+        int synced "NOT NULL DEFAULT 0"
+        int version "NOT NULL DEFAULT 1"
+        int created_at "DEFAULT CURRENT_TIMESTAMP"
     }
     
-    device {
-        int id PK
-        text device_id UK
-        int last_seen
-        int created_at
-    }
-    
-    operations {
-        int id PK
-        int file_id FK
-        int device_id FK
-        int op_type
-        int status
-        int timestamp
-        text error_message
-        int retry_count
-        int created_at
-    }
-    
-    %% Network & Sync
     peers {
-        int id PK
-        text peer_id UK
-        text endpoint
-        int last_seen
-        int latency
-        text status
-        int trust_level
-        int created_at
-        int updated_at
-    }
-    
-    sync_state {
-        int id PK
-        int file_id FK
-        int device_id FK
-        text last_sync_hash
-        int last_sync_time
-        text sync_status
-        text conflict_resolution
-        int priority
-        text batch_id
-        int created_at
-        int updated_at
-    }
-    
-    %% Version Control
-    file_versions {
-        int id PK
-        int file_id FK
-        int device_id FK
-        int version
-        text hash
-        int size
-        int modified_time
-        blob content
-        boolean is_deleted
-        int created_at
+        int id PK "AUTOINCREMENT"
+        text peer_id UK "NOT NULL"
+        text name "NOT NULL"
+        text address "NOT NULL DEFAULT ''"
+        int port "NOT NULL DEFAULT 0"
+        text public_key "nullable"
+        int status_id FK "NOT NULL DEFAULT 6"
+        int last_seen "NOT NULL DEFAULT 0"
+        int latency "NOT NULL DEFAULT 0"
     }
     
     conflicts {
-        int id PK
-        int file_id FK
-        int device_id FK
-        int conflict_type
-        int local_version
-        int remote_version
-        text local_hash
-        text remote_hash
-        text status
-        text resolution_strategy
-        int resolved_at
-        int created_at
-        int updated_at
+        int id PK "AUTOINCREMENT"
+        int file_id FK "NOT NULL"
+        text local_hash "NOT NULL DEFAULT ''"
+        text remote_hash "NOT NULL DEFAULT ''"
+        int local_size "NOT NULL DEFAULT 0"
+        int remote_size "NOT NULL DEFAULT 0"
+        int local_timestamp "NOT NULL DEFAULT 0"
+        int remote_timestamp "NOT NULL DEFAULT 0"
+        text remote_peer_id "NOT NULL DEFAULT ''"
+        int detected_at "DEFAULT CURRENT_TIMESTAMP"
+        int resolved "NOT NULL DEFAULT 0"
+        text resolution "NOT NULL DEFAULT ''"
+        text strategy "NOT NULL DEFAULT 'manual'"
     }
     
-    merge_results {
-        int id PK
-        int conflict_id FK
-        int base_version
-        text merged_hash
-        blob merge_data
-        int conflicts_remaining
-        int created_at
+    watched_folders {
+        int id PK "AUTOINCREMENT"
+        text path UK "NOT NULL"
+        int added_at "NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        int status_id FK "NOT NULL DEFAULT 1"
     }
     
-    %% System Tables
-    schema_version {
-        int version PK
-        text description
+    %% ===============================
+    %% THREAT DETECTION (Tehdit Algılama)
+    %% ===============================
+    
+    detected_threats {
+        int id PK "AUTOINCREMENT"
+        int file_id FK "nullable"
+        text file_path "NOT NULL"
+        int threat_type_id FK "NOT NULL"
+        int threat_level_id FK "NOT NULL"
+        real threat_score "NOT NULL"
+        text detected_at "NOT NULL"
+        real entropy "nullable"
+        int file_size "NOT NULL"
+        text hash "nullable"
+        text quarantine_path "nullable"
+        text ml_model_used "nullable"
+        text additional_info "nullable"
+        int marked_safe "DEFAULT 0"
+    }
+    
+    %% ===============================
+    %% VERSION CONTROL (Versiyon Kontrolü)
+    %% ===============================
+    
+    file_versions {
+        int id PK "AUTOINCREMENT"
+        int file_id FK "NOT NULL"
+        int version "NOT NULL"
+        text hash "NOT NULL"
+        int size "NOT NULL"
+        int created_at "DEFAULT CURRENT_TIMESTAMP"
+        text created_by "nullable"
+        text delta_path "nullable"
+    }
+    
+    %% ===============================
+    %% SYNC QUEUE (Senkronizasyon Kuyruğu)
+    %% ===============================
+    
+    sync_queue {
+        int id PK "AUTOINCREMENT"
+        int file_id FK "NOT NULL"
+        text peer_id "NOT NULL"
+        int op_type_id FK "NOT NULL"
+        int status_id FK "DEFAULT 2"
+        int priority "DEFAULT 5"
+        int created_at "DEFAULT CURRENT_TIMESTAMP"
+        int started_at "nullable"
+        int completed_at "nullable"
+        int retry_count "DEFAULT 0"
+        text error_message "nullable"
+    }
+    
+    %% ===============================
+    %% ACTIVITY LOG (Aktivite Günlüğü)
+    %% ===============================
+    
+    activity_log {
+        int id PK "AUTOINCREMENT"
+        int file_id FK "nullable"
+        int op_type_id FK "NOT NULL"
+        int timestamp "DEFAULT CURRENT_TIMESTAMP"
+        text details "nullable"
+        text peer_id "nullable"
+    }
+    
+    %% ===============================
+    %% UTILITY TABLES (Yardımcı Tablolar)
+    %% ===============================
+    
+    ignore_patterns {
+        int id PK "AUTOINCREMENT"
+        text pattern UK "NOT NULL"
+        int created_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+    
+    blocked_peers {
+        text peer_id PK
+        text blocked_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+    
+    config {
+        text key PK
+        text value "nullable"
+    }
+    
+    transfer_history {
+        int id PK "AUTOINCREMENT"
+        text file_path "nullable"
+        text peer_id "nullable"
+        text direction "upload/download"
+        int bytes "nullable"
+        int success "0/1"
+        int timestamp "DEFAULT CURRENT_TIMESTAMP"
     }
     
     schema_migrations {
         int version PK
-        text name
-        int applied_at
+        text name "NOT NULL"
+        int applied_at "DEFAULT CURRENT_TIMESTAMP"
     }
     
-    %% Relationships
-    files ||--o{ operations : "has"
-    device ||--o{ operations : "performs"
-    files ||--o{ sync_state : "synced"
-    device ||--o{ sync_state : "syncs"
-    files ||--o{ file_versions : "versioned"
-    device ||--o{ file_versions : "versions"
-    files ||--o{ conflicts : "conflicts"
-    device ||--o{ conflicts : "conflicts"
-    conflicts ||--|| merge_results : "resolved_by"
+    %% ===============================
+    %% RELATIONSHIPS (İlişkiler)
+    %% ===============================
     
-    %% Unique Constraints
-    files {
-        UNIQUE(path)
-    }
-    device {
-        UNIQUE(device_id)
-    }
-    peers {
-        UNIQUE(peer_id)
-    }
-    sync_state {
-        UNIQUE(file_id, device_id)
-    }
-    file_versions {
-        UNIQUE(file_id, device_id, version)
-    }
+    %% Core relationships
+    files ||--o{ conflicts : "has conflicts"
+    files ||--o{ detected_threats : "scanned for"
+    files ||--o{ file_versions : "has versions"
+    files ||--o{ sync_queue : "queued for sync"
+    files ||--o{ activity_log : "activity logged"
+    
+    %% Lookup table relationships
+    status_types ||--o{ peers : "status"
+    status_types ||--o{ watched_folders : "status"
+    status_types ||--o{ sync_queue : "status"
+    op_types ||--o{ sync_queue : "operation"
+    op_types ||--o{ activity_log : "operation"
+    threat_types ||--o{ detected_threats : "type"
+    threat_levels ||--o{ detected_threats : "level"
 ```
 
-## Detailed Table Descriptions
+## Tablo Detayları
 
-### Core File System Tables
+### Referans Tablolar (Lookup Tables)
+
+#### `op_types`
+Dosya işlem türlerini tanımlar.
+
+| ID | Name | Açıklama |
+|----|------|----------|
+| 1 | create | Dosya oluşturma |
+| 2 | update | Dosya güncelleme |
+| 3 | delete | Dosya silme |
+| 4 | read | Dosya okuma |
+| 5 | write | Dosya yazma |
+| 6 | rename | Dosya yeniden adlandırma |
+| 7 | move | Dosya taşıma |
+
+#### `status_types`
+İşlem ve varlık durumlarını tanımlar.
+
+| ID | Name | Açıklama |
+|----|------|----------|
+| 1 | active | Aktif |
+| 2 | pending | Beklemede |
+| 3 | syncing | Senkronize ediliyor |
+| 4 | completed | Tamamlandı |
+| 5 | failed | Başarısız |
+| 6 | offline | Çevrimdışı |
+| 7 | paused | Duraklatıldı |
+
+#### `threat_types`
+Zer0 uyumlu tehdit tiplerini tanımlar.
+
+| ID | Name | Açıklama |
+|----|------|----------|
+| 0 | UNKNOWN | Bilinmeyen tehdit |
+| 1 | RANSOMWARE_PATTERN | Fidye yazılımı kalıbı |
+| 2 | HIGH_ENTROPY_TEXT | Yüksek entropi/şifreli metin |
+| 3 | HIDDEN_EXECUTABLE | Gizlenmiş çalıştırılabilir dosya |
+| 4 | EXTENSION_MISMATCH | Uzantı uyumsuzluğu |
+| 5 | DOUBLE_EXTENSION | Çift uzantı (örn: file.pdf.exe) |
+| 6 | MASS_MODIFICATION | Toplu dosya değişikliği |
+| 7 | SCRIPT_IN_DATA | Veri dosyasında gömülü script |
+| 8 | ANOMALOUS_BEHAVIOR | Anormal davranış |
+| 9 | KNOWN_MALWARE_HASH | Bilinen zararlı yazılım hash'i |
+| 10 | SUSPICIOUS_RENAME | Şüpheli yeniden adlandırma |
+
+#### `threat_levels`
+Tehdit seviyelerini tanımlar.
+
+| ID | Name | Açıklama |
+|----|------|----------|
+| 0 | NONE | Tehdit yok |
+| 1 | INFO | Bilgilendirme |
+| 2 | LOW | Düşük risk |
+| 3 | MEDIUM | Orta risk |
+| 4 | HIGH | Yüksek risk |
+| 5 | CRITICAL | Kritik risk |
+
+---
+
+### Ana Tablolar (Core Tables)
 
 #### `files`
-Stores metadata for all files in the distributed filesystem.
+Dağıtılmış dosya sistemindeki tüm dosyaların metadata bilgilerini saklar.
 
-| Column | Type | Description | Constraints |
-|--------|------|-------------|-------------|
-| id | INTEGER | Primary key | AUTO_INCREMENT |
-| path | TEXT | Full file path | UNIQUE, NOT NULL |
-| hash | TEXT | File content hash | |
-| size | INTEGER | File size in bytes | DEFAULT 0 |
-| modified_time | INTEGER | Last modification timestamp | DEFAULT 0 |
-| created_at | INTEGER | Creation timestamp | DEFAULT (strftime('%s', 'now')) |
-| updated_at | INTEGER | Last update timestamp | DEFAULT (strftime('%s', 'now')) |
-| file_hash | TEXT | Additional file hash (v4) | |
-| checksum | TEXT | File checksum (v4) | |
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| path | TEXT | Tam dosya yolu | UNIQUE, NOT NULL |
+| hash | TEXT | Dosya içerik hash'i | NOT NULL DEFAULT '' |
+| size | INTEGER | Dosya boyutu (bytes) | NOT NULL DEFAULT 0 |
+| modified | INTEGER | Son değişiklik timestamp | NOT NULL DEFAULT 0 |
+| synced | INTEGER | Senkronize durumu (0/1) | NOT NULL DEFAULT 0 |
+| version | INTEGER | Dosya versiyon numarası | NOT NULL DEFAULT 1 |
+| created_at | INTEGER | Kayıt oluşturma zamanı | DEFAULT (strftime('%s', 'now')) |
 
-#### `device`
-Represents devices participating in the distributed filesystem.
-
-| Column | Type | Description | Constraints |
-|--------|------|-------------|-------------|
-| id | INTEGER | Primary key | AUTO_INCREMENT |
-| device_id | TEXT | Unique device identifier | UNIQUE, NOT NULL |
-| last_seen | INTEGER | Last activity timestamp | DEFAULT (strftime('%s', 'now')) |
-| created_at | INTEGER | Registration timestamp | DEFAULT (strftime('%s', 'now')) |
-
-#### `operations`
-Tracks file operations across devices for synchronization.
-
-| Column | Type | Description | Constraints |
-|--------|------|-------------|-------------|
-| id | INTEGER | Primary key | AUTO_INCREMENT |
-| file_id | INTEGER | Reference to files | NOT NULL, FK → files(id) |
-| device_id | INTEGER | Reference to device | NOT NULL, FK → device(id) |
-| op_type | INTEGER | Operation type | NOT NULL (1=CREATE, 2=UPDATE, 3=DELETE, 4=READ, 5=WRITE, 6=RENAME, 7=MOVE) |
-| status | INTEGER | Operation status | NOT NULL (1=ACTIVE, 2=PENDING, 3=SYNCING, 4=COMPLETED, 5=FAILED, 6=OFFLINE, 7=PAUSED) |
-| timestamp | INTEGER | Operation timestamp | DEFAULT (strftime('%s', 'now')) |
-| error_message | TEXT | Error details if failed | |
-| retry_count | INTEGER | Number of retries | DEFAULT 0 |
-| created_at | INTEGER | Record creation time | DEFAULT (strftime('%s', 'now')) |
-
-### Network & Synchronization Tables
+**İndeksler:**
+- `idx_files_path` - path üzerinde
+- `idx_files_hash` - hash üzerinde
+- `idx_files_synced` - synced üzerinde
 
 #### `peers`
-Manages network peer information for P2P communication.
+P2P iletişimi için ağ peer bilgilerini yönetir.
 
-| Column | Type | Description | Constraints |
-|--------|------|-------------|-------------|
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| peer_id | TEXT | Benzersiz peer kimliği | UNIQUE, NOT NULL |
+| name | TEXT | Peer adı | NOT NULL |
+| address | TEXT | IP adresi | NOT NULL DEFAULT '' |
+| port | INTEGER | Port numarası | NOT NULL DEFAULT 0 |
+| public_key | TEXT | Public key (şifreleme için) | nullable |
+| status_id | INTEGER | Durum referansı | FK → status_types(id), NOT NULL DEFAULT 6 |
+| last_seen | INTEGER | Son görülme zamanı | NOT NULL DEFAULT 0 |
+| latency | INTEGER | Gecikme (ms) | NOT NULL DEFAULT 0 |
+
+**İndeksler:**
+- `idx_peers_status` - status_id üzerinde
+
+#### `conflicts`
+Dosya çakışmalarını ve çözüm durumlarını takip eder.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_id | INTEGER | Dosya referansı | FK → files(id) ON DELETE CASCADE, NOT NULL |
+| local_hash | TEXT | Yerel dosya hash'i | NOT NULL DEFAULT '' |
+| remote_hash | TEXT | Uzak dosya hash'i | NOT NULL DEFAULT '' |
+| local_size | INTEGER | Yerel dosya boyutu | NOT NULL DEFAULT 0 |
+| remote_size | INTEGER | Uzak dosya boyutu | NOT NULL DEFAULT 0 |
+| local_timestamp | INTEGER | Yerel değişiklik zamanı | NOT NULL DEFAULT 0 |
+| remote_timestamp | INTEGER | Uzak değişiklik zamanı | NOT NULL DEFAULT 0 |
+| remote_peer_id | TEXT | Uzak peer ID'si | NOT NULL DEFAULT '' |
+| detected_at | INTEGER | Çakışma tespit zamanı | DEFAULT (strftime('%s', 'now')) |
+| resolved | INTEGER | Çözüldü mü (0/1) | NOT NULL DEFAULT 0 |
+| resolution | TEXT | Çözüm detayı | NOT NULL DEFAULT '' |
+| strategy | TEXT | Çözüm stratejisi | NOT NULL DEFAULT 'manual' |
+
+**İndeksler:**
+- `idx_conflicts_file` - file_id üzerinde
+- `idx_conflicts_resolved` - resolved üzerinde
+
+#### `watched_folders`
+İzlenen klasörleri yönetir.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| path | TEXT | Klasör yolu | UNIQUE, NOT NULL |
+| added_at | INTEGER | Ekleme zamanı | NOT NULL DEFAULT (strftime('%s', 'now')) |
+| status_id | INTEGER | Durum referansı | FK → status_types(id), NOT NULL DEFAULT 1 |
+
+---
+
+### Tehdit Algılama Tabloları
+
+#### `detected_threats`
+Zer0 güvenlik motoru tarafından tespit edilen tehditleri saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_id | INTEGER | Dosya referansı | FK → files(id) ON DELETE CASCADE, nullable |
+| file_path | TEXT | Dosya yolu | NOT NULL |
+| threat_type_id | INTEGER | Tehdit tipi | FK → threat_types(id), NOT NULL |
+| threat_level_id | INTEGER | Tehdit seviyesi | FK → threat_levels(id), NOT NULL |
+| threat_score | REAL | Tehdit skoru (0.0-1.0) | NOT NULL |
+| detected_at | TEXT | Tespit zamanı (ISO format) | NOT NULL |
+| entropy | REAL | Dosya entropi değeri | nullable |
+| file_size | INTEGER | Dosya boyutu | NOT NULL |
+| hash | TEXT | Dosya hash'i | nullable |
+| quarantine_path | TEXT | Karantina yolu | nullable |
+| ml_model_used | TEXT | Kullanılan ML modeli | nullable |
+| additional_info | TEXT | Ek bilgiler (JSON) | nullable |
+| marked_safe | INTEGER | Güvenli işaretlendi (0/1) | DEFAULT 0 |
+
+**İndeksler:**
+- `idx_detected_threats_file` - file_id üzerinde
+- `idx_detected_threats_level` - threat_level_id üzerinde
+- `idx_detected_threats_detected` - detected_at üzerinde
+- `idx_detected_threats_path` - file_path üzerinde
+
+---
+
+### Versiyon Kontrolü Tabloları
+
+#### `file_versions`
+Dosya versiyonlarını ve delta bilgilerini saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_id | INTEGER | Dosya referansı | FK → files(id) ON DELETE CASCADE, NOT NULL |
+| version | INTEGER | Versiyon numarası | NOT NULL |
+| hash | TEXT | Versiyon hash'i | NOT NULL |
+| size | INTEGER | Versiyon boyutu | NOT NULL |
+| created_at | INTEGER | Oluşturma zamanı | DEFAULT (strftime('%s', 'now')) |
+| created_by | TEXT | Oluşturan peer ID | nullable |
+| delta_path | TEXT | Delta dosyası yolu | nullable |
+
+**İndeksler:**
+- `idx_file_versions_file` - file_id üzerinde
+- `idx_file_versions_version` - version üzerinde
+
+---
+
+### Senkronizasyon Tabloları
+
+#### `sync_queue`
+Senkronizasyon kuyruğunu yönetir.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_id | INTEGER | Dosya referansı | FK → files(id) ON DELETE CASCADE, NOT NULL |
+| peer_id | TEXT | Hedef peer ID'si | NOT NULL |
+| op_type_id | INTEGER | İşlem tipi | FK → op_types(id), NOT NULL |
+| status_id | INTEGER | Kuyruk durumu | FK → status_types(id), DEFAULT 2 |
+| priority | INTEGER | Öncelik (1-10) | DEFAULT 5 |
+| created_at | INTEGER | Kuyruğa ekleme zamanı | DEFAULT (strftime('%s', 'now')) |
+| started_at | INTEGER | İşlem başlama zamanı | nullable |
+| completed_at | INTEGER | İşlem tamamlanma zamanı | nullable |
+| retry_count | INTEGER | Tekrar deneme sayısı | DEFAULT 0 |
+| error_message | TEXT | Hata mesajı | nullable |
+
+**İndeksler:**
+- `idx_sync_queue_status` - status_id üzerinde
+- `idx_sync_queue_file` - file_id üzerinde
+- `idx_sync_queue_priority` - priority üzerinde
+
+---
+
+### Aktivite ve Log Tabloları
+
+#### `activity_log`
+Dosya aktivitelerini kaydeder.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_id | INTEGER | Dosya referansı | FK → files(id) ON DELETE SET NULL, nullable |
+| op_type_id | INTEGER | İşlem tipi | FK → op_types(id), NOT NULL |
+| timestamp | INTEGER | İşlem zamanı | DEFAULT (strftime('%s', 'now')) |
+| details | TEXT | İşlem detayları (JSON) | nullable |
+| peer_id | TEXT | İlgili peer ID | nullable |
+
+**İndeksler:**
+- `idx_activity_log_file` - file_id üzerinde
+- `idx_activity_log_timestamp` - timestamp üzerinde
+- `idx_activity_log_op` - op_type_id üzerinde
+
+#### `transfer_history`
+Dosya transfer geçmişini saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| file_path | TEXT | Transfer edilen dosya yolu | nullable |
+| peer_id | TEXT | Transfer yapılan peer | nullable |
+| direction | TEXT | Transfer yönü | 'upload' veya 'download' |
+| bytes | INTEGER | Transfer edilen byte sayısı | nullable |
+| success | INTEGER | Başarılı mı (0/1) | nullable |
+| timestamp | INTEGER | Transfer zamanı | DEFAULT (strftime('%s', 'now')) |
+
+---
+
+### Yardımcı Tablolar
+
+#### `ignore_patterns`
+Senkronizasyondan hariç tutulacak dosya kalıplarını saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| id | INTEGER | Primary key | AUTOINCREMENT |
+| pattern | TEXT | Glob pattern (örn: *.tmp) | UNIQUE, NOT NULL |
+| created_at | INTEGER | Ekleme zamanı | DEFAULT (strftime('%s', 'now')) |
+
+#### `blocked_peers`
+Engellenmiş peer'ları saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| peer_id | TEXT | Engellenen peer ID | PRIMARY KEY |
+| blocked_at | TEXT | Engelleme zamanı | DEFAULT CURRENT_TIMESTAMP |
+
+#### `config`
+Uygulama konfigürasyon değerlerini saklar.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| key | TEXT | Konfigürasyon anahtarı | PRIMARY KEY |
+| value | TEXT | Konfigürasyon değeri | nullable |
+
+#### `schema_migrations`
+Veritabanı şema migrasyon geçmişini takip eder.
+
+| Sütun | Tip | Açıklama | Kısıtlamalar |
+|-------|-----|----------|--------------|
+| version | INTEGER | Migrasyon versiyonu | PRIMARY KEY |
+| name | TEXT | Migrasyon adı | NOT NULL |
+| applied_at | INTEGER | Uygulama zamanı | DEFAULT (strftime('%s', 'now')) |
+
+---
+
+## İlişki Şeması
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   op_types      │     │  status_types   │     │  threat_types   │
+│   (7 kayıt)     │     │   (7 kayıt)     │     │   (11 kayıt)    │
+└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+         │                       │                       │
+         │              ┌────────┼────────┐              │
+         │              │        │        │              │
+         ▼              ▼        ▼        ▼              ▼
+┌─────────────────┐  ┌──────┐ ┌──────┐ ┌──────────┐  ┌────────────┐
+│   sync_queue    │  │peers │ │watch │ │sync_queue│  │  threat    │
+│   activity_log  │  │      │ │folder│ │          │  │  levels    │
+└────────┬────────┘  └──┬───┘ └──────┘ └──────────┘  └─────┬──────┘
+         │              │                                   │
+         │              │        ┌─────────────┐            │
+         │              │        │   files     │            │
+         │              │        │ (ana tablo) │            │
+         │              │        └──────┬──────┘            │
+         │              │               │                   │
+         └──────────────┴───────────────┼───────────────────┘
+                                        │
+              ┌───────────┬─────────────┼─────────────┬────────────┐
+              │           │             │             │            │
+              ▼           ▼             ▼             ▼            ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │conflicts │ │file_vers │ │sync_queue│ │activity  │ │detected  │
+        │          │ │ions      │ │          │ │_log      │ │_threats  │
+        └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘
+```
+
+---
+
+## GUI Veri Tipleri Eşlemesi
+
+### TypeScript Interface → Veritabanı Tablosu
+
+| TypeScript Interface | Veritabanı Tablosu | Açıklama |
+|---------------------|-------------------|----------|
+| `SyncFile` | `files` | Senkronize dosya bilgileri |
+| `Peer` | `peers` + `status_types` | Peer bağlantı bilgileri |
+| `Conflict` / `ConflictDetail` | `conflicts` + `files` | Çakışma detayları |
+| `FileVersion` | `file_versions` | Dosya versiyon geçmişi |
+| `DetectedThreat` | `detected_threats` + `threat_types` + `threat_levels` | Tehdit bilgileri |
+| `ActivityItem` | `activity_log` + `op_types` | Aktivite günlüğü |
+| `TransferHistoryItem` | `transfer_history` | Transfer geçmişi |
+
+### Tehdit Tipi Eşlemesi (GUI ↔ DB)
+
+| GUI ThreatType | DB threat_type_id | Açıklama |
+|----------------|-------------------|----------|
+| UNKNOWN | 0 | Bilinmeyen |
+| RANSOMWARE_PATTERN | 1 | Fidye yazılımı |
+| HIGH_ENTROPY_TEXT | 2 | Yüksek entropi |
+| HIDDEN_EXECUTABLE | 3 | Gizli çalıştırılabilir |
+| EXTENSION_MISMATCH | 4 | Uzantı uyumsuzluğu |
+| DOUBLE_EXTENSION | 5 | Çift uzantı |
+| MASS_MODIFICATION | 6 | Toplu değişiklik |
+| SCRIPT_IN_DATA | 7 | Gömülü script |
+| ANOMALOUS_BEHAVIOR | 8 | Anormal davranış |
+| KNOWN_MALWARE_HASH | 9 | Bilinen zararlı hash |
+| SUSPICIOUS_RENAME | 10 | Şüpheli yeniden adlandırma |
+
+### Tehdit Seviyesi Eşlemesi (GUI ↔ DB)
+
+| GUI ThreatLevel | DB threat_level_id | Renk Kodu |
+|-----------------|-------------------|-----------|
+| NONE | 0 | - |
+| INFO | 1 | Mavi |
+| LOW | 2 | Yeşil |
+| MEDIUM | 3 | Sarı |
+| HIGH | 4 | Turuncu |
+| CRITICAL | 5 | Kırmızı |
+
+---
+
+## Migrasyon Geçmişi
+
+| Versiyon | Ad | Açıklama |
+|----------|-----|----------|
+| 1 | Initial schema | Temel tablolar: files, peers, conflicts, watched_folders, lookup tables |
+| 2 | Threat detection | detected_threats tablosu, Zer0 uyumlu tehdit tipleri |
+| 3 | File versioning | file_versions tablosu |
+| 4 | Sync queue | sync_queue tablosu |
+| 5 | Activity log | activity_log tablosu |
+| 6 | Ignore patterns | ignore_patterns tablosu |
+| 7 | Legacy schema compatibility | files tablosu için geriye uyumluluk düzeltmeleri |
+| 8 | Standardize peers table | peers tablosu NOT NULL kısıtlamaları |
+| 9 | Standardize all tables | files, conflicts, watched_folders standartlaştırma |
+
+---
+
+## Örnek Sorgular
+
+### Aktif Tehditleri Listele
+```sql
+SELECT 
+    dt.id,
+    dt.file_path,
+    tt.name as threat_type,
+    tl.name as threat_level,
+    dt.threat_score,
+    dt.entropy,
+    datetime(dt.detected_at) as detected_time
+FROM detected_threats dt
+JOIN threat_types tt ON dt.threat_type_id = tt.id
+JOIN threat_levels tl ON dt.threat_level_id = tl.id
+WHERE dt.marked_safe = 0
+ORDER BY dt.threat_score DESC;
+```
+
+### Peer Durumları
+```sql
+SELECT 
+    p.peer_id,
+    p.name,
+    p.address,
+    p.port,
+    st.name as status,
+    p.latency,
+    datetime(p.last_seen, 'unixepoch') as last_seen
+FROM peers p
+JOIN status_types st ON p.status_id = st.id
+ORDER BY p.latency ASC;
+```
+
+### Dosya Versiyon Geçmişi
+```sql
+SELECT 
+    f.path,
+    fv.version,
+    fv.hash,
+    fv.size,
+    datetime(fv.created_at, 'unixepoch') as created,
+    fv.created_by
+FROM file_versions fv
+JOIN files f ON fv.file_id = f.id
+WHERE f.path = '/path/to/file'
+ORDER BY fv.version DESC;
+```
+
+### Çözülmemiş Çakışmalar
+```sql
+SELECT 
+    f.path,
+    c.local_hash,
+    c.remote_hash,
+    c.remote_peer_id,
+    c.strategy,
+    datetime(c.detected_at, 'unixepoch') as detected
+FROM conflicts c
+JOIN files f ON c.file_id = f.id
+WHERE c.resolved = 0
+ORDER BY c.detected_at DESC;
+```
+
+---
+
+## Notlar
+
+1. **Tüm timestamp'ler Unix epoch formatında** (saniye cinsinden) saklanır, `detected_threats.detected_at` hariç (ISO format string).
+
+2. **Foreign key kısıtlamaları** etkin durumdadır (`PRAGMA foreign_keys=ON`).
+
+3. **WAL modu** varsayılan olarak etkindir, performans için `PRAGMA synchronous=NORMAL` kullanılır.
+
+4. **Cache sistemi** LRU algoritması ile file ve peer sorguları için kullanılır.
+
+5. **Lookup tablolar** uygulama başlangıcında otomatik olarak doldurulur ve değiştirilmemelidir.
 | id | INTEGER | Primary key | AUTO_INCREMENT |
 | peer_id | TEXT | Unique peer identifier | UNIQUE, NOT NULL |
 | endpoint | TEXT | Network endpoint | |
