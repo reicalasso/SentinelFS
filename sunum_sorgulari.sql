@@ -414,44 +414,4 @@ LEFT JOIN threat_levels tl ON dt.threat_level_id = tl.id
 GROUP BY detection_date
 ORDER BY detection_date DESC
 LIMIT 30;
-
-
--- ============================================================================
--- NOTLAR VE AÇIKLAMALAR
--- ============================================================================
-
-/*
-SUNUM İÇİN ÖNERİLER:
-
-1. NESTED QUERIES (Sorgu 1-4):
-   - Sorgu 2 veya 3'ü gösterin (en etkileyici)
-   - Subquery'nin nasıl çalıştığını açıklayın
-
-2. JOIN QUERIES (Sorgu 5-8):
-   - Sorgu 5 veya 6'yı gösterin (3-4 tablo birleştirme)
-   - JOIN türlerini (INNER, LEFT) vurgulayın
-
-3. GROUP BY/HAVING (Sorgu 9-12):
-   - Sorgu 9'u gösterin (istatistiksel analiz)
-   - HAVING ile filtrelemeyi açıklayın
-
-4. KARMAŞIK SORGULAR (Sorgu 13-16):
-   - Sorgu 13 veya 16'yı gösterin (tüm teknikleri birleştirir)
-   - Sorgunun iş mantığını açıklayın
-
-5. BONUS (Sorgu 17-18):
-   - Zaman kalırsa Sorgu 17'yi gösterin (sistem özeti)
-
-DEMO SIRASINDA:
-- Her sorguyu çalıştırmadan önce ne yaptığını açıklayın
-- Sonuçları yorumlayın (örn: "Görüldüğü gibi 3 cihaz aktif...")
-- Sorgu performansını vurgulayın (indeksler sayesinde hızlı)
-- Gerçek dünya kullanım senaryolarını anlatın
-
-HAZIRLIK:
-1. Bu dosyayı bilgisayarınıza kaydedin
-2. SQLite veritabanınızı açın
-3. Sorguları tek tek test edin
-4. Hangi sorguları göstereceğinize karar verin (4-5 sorgu yeterli)
-5. Her sorgunun çıktısını önceden görün
 */
